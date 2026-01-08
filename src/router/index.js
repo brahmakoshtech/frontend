@@ -27,6 +27,24 @@ const routes = [
     component: () => import('../views/auth/UserLogin.jsx'),
     meta: { requiresGuest: true }
   },
+  {
+    path: '/user/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('../views/auth/ForgotPassword.jsx'),
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/user/verify-reset-otp',
+    name: 'VerifyResetOTP',
+    component: () => import('../views/auth/VerifyResetOTP.jsx'),
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/user/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/auth/ResetPassword.jsx'),
+    meta: { requiresGuest: true }
+  },
   // Auth Routes - Separate register pages
   {
     path: '/client/register',
@@ -38,6 +56,13 @@ const routes = [
     path: '/user/register',
     name: 'UserRegister',
     component: () => import('../views/auth/UserRegister.jsx'),
+    meta: { requiresGuest: true }
+  },
+  // Mobile User Registration (Multi-step with OTP)
+  {
+    path: '/mobile/user/register',
+    name: 'MobileUserRegister',
+    component: () => import('../views/mobile/MobileUserRegister.jsx'),
     meta: { requiresGuest: true }
   },
   {
@@ -56,6 +81,40 @@ const routes = [
       }
     ]
   },
+  // Mobile User Routes (Chat & Voice)
+  {
+    path: '/mobile/user',
+    component: () => import('../layouts/MobileUserLayout.jsx'),
+    meta: { requiresAuth: true, requiresRole: 'user' },
+    redirect: '/mobile/user/dashboard',
+    children: [
+      {
+        path: 'dashboard',
+        name: 'MobileUserDashboard',
+        component: () => import('../views/mobile/MobileUserDashboard.jsx')
+      },
+      {
+        path: 'profile',
+        name: 'MobileUserProfile',
+        component: () => import('../views/mobile/MobileUserProfile.jsx')
+      },
+      {
+        path: 'chat',
+        name: 'MobileChatPage',
+        component: () => import('../views/mobile/MobileChatPage.jsx')
+      },
+      {
+        path: 'voice',
+        name: 'MobileVoicePage',
+        component: () => import('../views/mobile/MobileVoicePage.jsx')
+      },
+      {
+        path: 'realtime-agent',
+        name: 'RealTimeAgent',
+        component: () => import('../views/mobile/RealTimeAgent.jsx')
+      }
+    ]
+  },
   // Super Admin routes
   {
     path: '/super-admin',
@@ -69,6 +128,11 @@ const routes = [
         component: () => import('../views/super-admin/Overview.jsx')
       },
       {
+        path: 'profile',
+        name: 'SuperAdminProfile',
+        component: () => import('../views/super-admin/Profile.jsx')
+      },
+      {
         path: 'admins',
         name: 'SuperAdminAdmins',
         component: () => import('../views/super-admin/Admins.jsx')
@@ -77,6 +141,11 @@ const routes = [
         path: 'pending-approvals',
         name: 'SuperAdminPendingApprovals',
         component: () => import('../views/super-admin/PendingApprovals.jsx')
+      },
+      {
+        path: 'users',
+        name: 'SuperAdminUsers',
+        component: () => import('../views/super-admin/Users.jsx')
       }
     ]
   },
@@ -91,6 +160,11 @@ const routes = [
         path: 'overview',
         name: 'AdminOverview',
         component: () => import('../views/admin/Overview.jsx')
+      },
+      {
+        path: 'profile',
+        name: 'AdminProfile',
+        component: () => import('../views/admin/Profile.jsx')
       },
       {
         path: 'clients',
@@ -152,6 +226,11 @@ const routes = [
         component: () => import('../views/client/Overview.jsx')
       },
       {
+        path: 'profile',
+        name: 'ClientProfile',
+        component: () => import('../views/client/Profile.jsx')
+      },
+      {
         path: 'avatar',
         name: 'ClientAvatar',
         component: () => import('../views/client/Avatar.jsx')
@@ -198,6 +277,29 @@ const routes = [
       }
     ]
   },
+  // User web frontend routes
+  {
+    path: '/user',
+    component: () => import('../layouts/DashboardLayout.jsx'),
+    meta: { requiresAuth: true, requiresRole: 'user' },
+    redirect: '/user/overview',
+    children: [
+      {
+        path: '',
+        redirect: 'overview'
+      },
+      {
+        path: 'overview',
+        name: 'UserOverview',
+        component: () => import('../views/user/Overview.jsx')
+      },
+      {
+        path: 'profile',
+        name: 'UserProfile',
+        component: () => import('../views/user/Profile.jsx')
+      }
+    ]
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
@@ -215,6 +317,7 @@ const getRoleFromPath = (path) => {
   if (path.startsWith('/super-admin')) return 'super_admin';
   if (path.startsWith('/admin')) return 'admin';
   if (path.startsWith('/client')) return 'client';
+  if (path.startsWith('/mobile/user')) return 'user'; // Check mobile/user before /user
   if (path.startsWith('/user')) return 'user';
   return null;
 };
@@ -290,6 +393,14 @@ router.beforeEach(async (to, from, next) => {
       next('/admin/overview');
     } else if (targetRole === 'client') {
       next('/client/overview');
+    } else if (targetRole === 'user') {
+      // Check if user is accessing web frontend or mobile
+      // If coming from web routes, redirect to web dashboard
+      if (from.path.startsWith('/user') && !from.path.startsWith('/mobile')) {
+        next('/user/overview');
+      } else {
+        next('/mobile/user/dashboard'); // Default to mobile dashboard
+      }
     } else {
       next('/dashboard');
     }

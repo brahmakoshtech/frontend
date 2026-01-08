@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-jfg8.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Helper to get role from path
 const getRoleFromPath = (path) => {
@@ -10,6 +10,7 @@ const getRoleFromPath = (path) => {
 };
 
 // Helper to get token for a specific role
+// IMPORTANT: Never fallback to other roles - each role must use its own token
 const getTokenForRole = (role) => {
   if (!role) {
     // Try to get role from current path
@@ -18,14 +19,28 @@ const getTokenForRole = (role) => {
   }
   
   if (role) {
-    return localStorage.getItem(`token_${role}`);
+    const token = localStorage.getItem(`token_${role}`);
+    // Verify token role matches (decode and check)
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.role === role) {
+          return token;
+        } else {
+          console.warn(`[Token Mismatch] Token role (${payload.role}) doesn't match requested role (${role})`);
+          return null; // Don't return mismatched token
+        }
+      } catch (e) {
+        // If can't decode, return as-is (might be invalid token)
+        return token;
+      }
+    }
+    return null;
   }
   
-  // Fallback: try to find any token
-  return localStorage.getItem('token_super_admin') || 
-         localStorage.getItem('token_admin') || 
-         localStorage.getItem('token_client') || 
-         localStorage.getItem('token_user');
+  // NO FALLBACK - return null if role not specified
+  // This prevents using wrong tokens
+  return null;
 };
 
 class ApiService {
@@ -36,22 +51,85 @@ class ApiService {
   async request(endpoint, options = {}) {
     // Get token from options or determine from endpoint/context
     let token = options.token;
+    let tokenSource = 'provided';
     
     if (!token) {
       // Determine role from endpoint
       if (endpoint.includes('/super-admin/') || endpoint.includes('/auth/super-admin/')) {
         token = getTokenForRole('super_admin');
+        tokenSource = 'super_admin (endpoint match)';
       } else if (endpoint.includes('/admin/') || endpoint.includes('/auth/admin/')) {
         token = getTokenForRole('admin');
+        tokenSource = 'admin (endpoint match)';
       } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/')) {
         token = getTokenForRole('client');
-      } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/')) {
+        tokenSource = 'client (endpoint match)';
+      } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') || 
+                 endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
+        // CRITICAL: Mobile endpoints (chat, voice, user profile) MUST use user token ONLY
+        // These endpoints are ONLY for 'user' role - NEVER use other tokens
         token = getTokenForRole('user');
+        tokenSource = 'user (mobile endpoint - user role required)';
+        
+        // Verify token is actually a user token
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.role !== 'user') {
+              console.error('[API Error] Wrong token role for mobile endpoint:', {
+                endpoint,
+                tokenRole: payload.role,
+                requiredRole: 'user',
+                message: 'Rejecting non-user token for mobile endpoint'
+              });
+              token = null; // Reject wrong token
+              tokenSource = 'rejected (wrong role)';
+            }
+          } catch (e) {
+            console.warn('[API Warning] Could not verify token role:', e);
+          }
+        }
+        
+        // Warn if no user token found but other tokens exist
+        if (!token) {
+          const otherTokens = {
+            super_admin: !!localStorage.getItem('token_super_admin'),
+            admin: !!localStorage.getItem('token_admin'),
+            client: !!localStorage.getItem('token_client')
+          };
+          const hasOtherTokens = Object.values(otherTokens).some(v => v);
+          if (hasOtherTokens) {
+            console.error('[API Error]', {
+              endpoint,
+              message: 'Mobile endpoint requires user token, but user is not logged in. Other roles are logged in. Please logout and login as a user.',
+              otherTokens,
+              availableTokens: Object.keys(otherTokens).filter(k => otherTokens[k])
+            });
+          }
+        }
       } else {
-        // Try to get token from current route
-        token = getTokenForRole();
+        // For other endpoints, try to get token from current route
+        const currentPath = window.location.pathname;
+        const routeRole = getRoleFromPath(currentPath);
+        if (routeRole) {
+          token = getTokenForRole(routeRole);
+          tokenSource = `route-based (${routeRole})`;
+        } else {
+          // No role detected, no token
+          token = null;
+          tokenSource = 'none (no role detected)';
+        }
       }
     }
+    
+    // Debug logging
+    console.log('[API Request]', {
+      endpoint,
+      hasToken: !!token,
+      tokenSource,
+      tokenLength: token ? token.length : 0,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
+    });
     
     const config = {
       headers: {
@@ -73,12 +151,46 @@ class ApiService {
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
       const data = await response.json();
 
+      // Debug logging for errors
       if (!response.ok) {
+        // Check for role mismatch errors
+        if (response.status === 403 && data.error === 'INVALID_ROLE') {
+          console.error('[API Error - Role Mismatch]', {
+            endpoint,
+            status: response.status,
+            requiredRole: data.requiredRole,
+            currentRole: data.currentRole,
+            message: data.message,
+            hasToken: !!token,
+            tokenSource
+          });
+          
+          // Show user-friendly error for role mismatch
+          if (data.currentRole && data.requiredRole) {
+            const errorMsg = `You are logged in as '${data.currentRole}' but this feature requires '${data.requiredRole}' role. Please logout and login as a user.`;
+            console.error('[Role Mismatch]', errorMsg);
+            // You can trigger a notification/toast here if needed
+          }
+        } else {
+          console.error('[API Error]', {
+            endpoint,
+            status: response.status,
+            statusText: response.statusText,
+            error: data.message || 'Request failed',
+            hasToken: !!token,
+            responseData: data
+          });
+        }
         throw new Error(data.message || 'Request failed');
       }
 
       return data;
     } catch (error) {
+      console.error('[API Exception]', {
+        endpoint,
+        error: error.message,
+        hasToken: !!token
+      });
       throw error;
     }
   }
@@ -141,6 +253,143 @@ class ApiService {
     return this.request('/auth/user/me', { token });
   }
 
+  // Mobile User Registration (Multi-step with OTP)
+  async mobileUserRegisterStep1(email, password) {
+    return this.request('/mobile/user/register/step1', {
+      method: 'POST',
+      body: { email, password },
+    });
+  }
+
+  async mobileUserRegisterStep1Verify(email, otp) {
+    return this.request('/mobile/user/register/step1/verify', {
+      method: 'POST',
+      body: { email, otp },
+    });
+  }
+
+  async mobileUserRegisterStep2(email, mobile) {
+    return this.request('/mobile/user/register/step2', {
+      method: 'POST',
+      body: { email, mobile },
+    });
+  }
+
+  async mobileUserRegisterStep2Verify(email, otp) {
+    return this.request('/mobile/user/register/step2/verify', {
+      method: 'POST',
+      body: { email, otp },
+    });
+  }
+
+  async mobileUserRegisterStep3(email, profileData, imageFileName, imageContentType) {
+    return this.request('/mobile/user/register/step3', {
+      method: 'POST',
+      body: { 
+        email, 
+        ...profileData,
+        imageFileName,
+        imageContentType
+      },
+    });
+  }
+
+  async resendEmailOTP(email) {
+    return this.request('/mobile/user/register/resend-email-otp', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  async resendMobileOTP(email) {
+    return this.request('/mobile/user/register/resend-mobile-otp', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  // Mobile User Login (after registration is complete)
+  async mobileUserLogin(email, password) {
+    return this.request('/auth/user/login', {
+      method: 'POST',
+      body: { email, password },
+    });
+  }
+
+  // Firebase Authentication endpoints
+  async firebaseSignUp(idToken) {
+    return this.request('/mobile/user/register/firebase', {
+      method: 'POST',
+      body: { idToken },
+    });
+  }
+
+  async firebaseSignIn(idToken) {
+    return this.request('/mobile/user/login/firebase', {
+      method: 'POST',
+      body: { idToken },
+    });
+  }
+
+  // Chat APIs
+  async createChat(token, title = null) {
+    return this.request('/mobile/chat', {
+      method: 'POST',
+      token,
+      body: title ? { title } : {},
+    });
+  }
+
+  async getChats(token) {
+    return this.request('/mobile/chat', {
+      method: 'GET',
+      token,
+    });
+  }
+
+  async getChat(chatId, token) {
+    return this.request(`/mobile/chat/${chatId}`, {
+      method: 'GET',
+      token,
+    });
+  }
+
+  async sendChatMessage(chatId, message, token) {
+    return this.request(`/mobile/chat/${chatId}/message`, {
+      method: 'POST',
+      token,
+      body: { message },
+    });
+  }
+
+  async deleteChat(chatId, token) {
+    return this.request(`/mobile/chat/${chatId}`, {
+      method: 'DELETE',
+      token,
+    });
+  }
+
+  // Voice APIs
+  async startVoiceSession(token, existingChatId = null) {
+    return this.request('/mobile/voice/start', {
+      method: 'POST',
+      token,
+      body: existingChatId ? { chatId: existingChatId } : {},
+    });
+  }
+
+  async processVoice(chatId, audioData, token, audioFormat = 'linear16') {
+    return this.request('/mobile/voice/process', {
+      method: 'POST',
+      token,
+      body: {
+        chatId,
+        audioData,
+        audioFormat,
+      },
+    });
+  }
+
   // Super Admin endpoints
   async getAdmins() {
     return this.request('/super-admin/admins');
@@ -172,6 +421,16 @@ class ApiService {
 
   async getPendingApprovals() {
     return this.request('/super-admin/pending-approvals');
+  }
+
+  async getUsers() {
+    return this.request('/super-admin/users');
+  }
+
+  async deleteUser(userId) {
+    return this.request(`/super-admin/users/${userId}`, {
+      method: 'DELETE',
+    });
   }
 
   async approveLogin(type, userId) {
@@ -283,7 +542,99 @@ class ApiService {
       },
     });
   }
+
+  // Real-time Agent APIs
+  async createRealtimeAgentRoom(token) {
+    return this.request('/mobile/realtime-agent/create-room', {
+      method: 'POST',
+      token,
+    });
+  }
+
+  // Password Reset APIs
+  async forgotPassword(email) {
+    return this.request('/auth/user/forgot-password', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  async verifyResetOTP(email, otp) {
+    return this.request('/auth/user/verify-reset-otp', {
+      method: 'POST',
+      body: { email, otp },
+    });
+  }
+
+  async resetPassword(email, resetToken, newPassword) {
+    return this.request('/auth/user/reset-password', {
+      method: 'POST',
+      body: { email, resetToken, newPassword },
+    });
+  }
+
+  async resendResetOTP(email) {
+    return this.request('/auth/user/resend-reset-otp', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  // Mobile User Registration with Image
+  async registerUserWithImage(formData) {
+    // formData should be FormData object with fields: email, password, name, dob, timeOfBirth, placeOfBirth, gowthra, profession, image (file)
+    return fetch(`${this.baseURL}/mobile/user/register-with-image`, {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+      return data;
+    });
+  }
+
+  // Update User Profile with Image
+  async updateUserProfileWithImage(formData, token) {
+    // formData should be FormData object with optional fields: email, password, profile (JSON string), image (file)
+    return fetch(`${this.baseURL}/mobile/user/profile`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
+      },
+      body: formData,
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Profile update failed');
+      }
+      return data;
+    });
+  }
+
+  // Mobile User Registration - Step 4: Upload Profile Image
+  async mobileUserRegisterStep4UploadImage(formData, token) {
+    // formData should have field: image (file)
+    return fetch(`${this.baseURL}/mobile/user/profile/image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // No Content-Type; browser sets it for multipart/form-data
+      },
+      body: formData,
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Profile image upload failed');
+      }
+      return data;
+    });
+  }
 }
+
 
 const api = new ApiService();
 export default api;

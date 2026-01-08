@@ -50,35 +50,51 @@ export function useAuth() {
   };
 
   // Get current user and token based on role
+  // IMPORTANT: Never mix roles - each role must use its own token
   const getCurrentAuth = (role = null) => {
     const currentRole = role || getCurrentRole();
     
     switch (currentRole) {
       case 'super_admin':
-        return { user: superAdminUser, token: superAdminToken };
+        return { user: superAdminUser, token: superAdminToken, role: 'super_admin' };
       case 'admin':
-        return { user: adminUser, token: adminToken };
+        return { user: adminUser, token: adminToken, role: 'admin' };
       case 'client':
-        return { user: clientUser, token: clientToken };
+        return { user: clientUser, token: clientToken, role: 'client' };
       case 'user':
-        return { user: userUser, token: userToken };
+        return { user: userUser, token: userToken, role: 'user' };
       default:
-        // Try to find any authenticated role
-        if (superAdminToken.value) return { user: superAdminUser, token: superAdminToken, role: 'super_admin' };
-        if (adminToken.value) return { user: adminUser, token: adminToken, role: 'admin' };
-        if (clientToken.value) return { user: clientUser, token: clientToken, role: 'client' };
-        if (userToken.value) return { user: userUser, token: userToken, role: 'user' };
-        return { user: ref(null), token: ref(null) };
+        // For mobile routes (/mobile/*), always return user auth
+        const currentPath = router.currentRoute.value?.path || window.location.pathname;
+        if (currentPath.includes('/mobile/')) {
+          return { user: userUser, token: userToken, role: 'user' };
+        }
+        // For other routes without specific role, return null (don't mix roles)
+        return { user: ref(null), token: ref(null), role: null };
     }
   };
 
   // Computed properties for current role
   const currentAuth = computed(() => getCurrentAuth());
   const user = computed(() => currentAuth.value.user?.value);
-  const token = computed(() => currentAuth.value.token?.value);
+  const token = computed(() => {
+    const auth = currentAuth.value;
+    // For mobile routes, always use user token
+    const currentPath = router.currentRoute.value?.path || window.location.pathname;
+    if (currentPath.includes('/mobile/')) {
+      return userToken.value;
+    }
+    // For other routes, use role-specific token
+    return auth.token?.value;
+  });
   const userRole = computed(() => {
     const role = getCurrentRole();
     if (role) return role;
+    // For mobile routes, default to user
+    const currentPath = router.currentRoute.value?.path || window.location.pathname;
+    if (currentPath.includes('/mobile/')) {
+      return 'user';
+    }
     return user.value?.role || currentAuth.value.role;
   });
   
@@ -144,6 +160,40 @@ export function useAuth() {
           break;
       }
       
+      return response;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // Firebase authentication methods
+  const firebaseLogin = async (idToken, role = 'user') => {
+    loading.value = true;
+    try {
+      const response = await api.firebaseSignIn(idToken);
+      
+      const tokenValue = response.data.token;
+      const userData = response.data.user;
+      
+      if (userData) {
+        userData.role = role;
+      }
+
+      // Store in role-specific state (for user role)
+      userToken.value = tokenValue;
+      userUser.value = userData;
+      localStorage.setItem('token_user', tokenValue);
+      
+      return response;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const firebaseSignUp = async (idToken) => {
+    loading.value = true;
+    try {
+      const response = await api.firebaseSignUp(idToken);
       return response;
     } finally {
       loading.value = false;
@@ -279,8 +329,26 @@ export function useAuth() {
               break;
             case 'user':
               userToken.value = storedToken;
+              // Ensure localStorage and store are in sync
+              if (userToken.value !== storedToken) {
+                console.warn('[Auth Store] Token mismatch detected, syncing...');
+                userToken.value = storedToken;
+              }
               break;
           }
+        }
+      }
+    } else {
+      // Sync specific role token
+      const storedToken = localStorage.getItem(`token_${role}`);
+      if (storedToken) {
+        switch (role) {
+          case 'user':
+            if (userToken.value !== storedToken) {
+              console.log('[Auth Store] Syncing user token from localStorage');
+              userToken.value = storedToken;
+            }
+            break;
         }
       }
     }
@@ -320,6 +388,8 @@ export function useAuth() {
     loading,
     isAuthenticated,
     userRole,
+    firebaseLogin,
+    firebaseSignUp,
     isSuperAdmin,
     isAdmin,
     isClient,
