@@ -256,9 +256,54 @@ const routes = [
         component: () => import('../views/client/Payments.jsx')
       },
       {
-        path: 'notifications',
-        name: 'ClientNotifications',
-        component: () => import('../views/client/Notifications.jsx')
+        path: 'tools',
+        name: 'ClientTools',
+        component: () => import('../views/client/Tools.jsx')
+      },
+      {
+        path: 'tools/testimonial',
+        name: 'ClientTestimonial',
+        component: () => import('../views/client/tools/Testimonial.jsx')
+      },
+      {
+        path: 'tools/founder-message',
+        name: 'ClientFounderMessage',
+        component: () => import('../views/client/tools/FounderMessage.jsx')
+      },
+      {
+        path: 'tools/branding',
+        name: 'ClientBranding',
+        component: () => import('../views/client/tools/Branding.jsx')
+      },
+      {
+        path: 'tools/push-notification',
+        name: 'ClientPushNotification',
+        component: () => import('../views/client/tools/PushNotification.jsx')
+      },
+      {
+        path: 'tools/offers',
+        name: 'ClientOffers',
+        component: () => import('../views/client/tools/Offers.jsx')
+      },
+      {
+        path: 'tools/advertisement',
+        name: 'ClientAdvertisement',
+        component: () => import('../views/client/tools/Advertisement.jsx')
+      },
+      {
+        path: 'tools/survey',
+        name: 'ClientSurvey',
+        component: () => import('../views/client/tools/Survey.jsx')
+      },
+      {
+        path: 'tools/rating',
+        name: 'ClientRating',
+        component: () => import('../views/client/tools/Rating.jsx')
+      },
+      {
+        path: 'tools/tickets',
+        name: 'ClientTickets',
+        component: () => import('../views/client/tools/Tickets.jsx')
       },
       {
         path: 'support',

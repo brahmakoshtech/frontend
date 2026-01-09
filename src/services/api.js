@@ -61,9 +61,11 @@ class ApiService {
       } else if (endpoint.includes('/admin/') || endpoint.includes('/auth/admin/')) {
         token = getTokenForRole('admin');
         tokenSource = 'admin (endpoint match)';
-      } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/')) {
+      } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') || 
+                 endpoint.includes('/testimonials')) {
+        // TESTIMONIALS: Always use client token for testimonial operations
         token = getTokenForRole('client');
-        tokenSource = 'client (endpoint match)';
+        tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 'client (endpoint match)';
       } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') || 
                  endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
         // CRITICAL: Mobile endpoints (chat, voice, user profile) MUST use user token ONLY
@@ -578,6 +580,62 @@ class ApiService {
       method: 'POST',
       body: { email },
     });
+  }
+
+  // Testimonial APIs - Client Bearer Token Required
+  async getTestimonials() {
+    return this.request('/testimonials');
+  }
+
+  async getTestimonial(id) {
+    return this.request(`/testimonials/${id}`);
+  }
+
+  async createTestimonial(testimonialData) {
+    return this.request('/testimonials', {
+      method: 'POST',
+      body: testimonialData,
+    });
+  }
+
+  async updateTestimonial(id, testimonialData) {
+    return this.request(`/testimonials/${id}`, {
+      method: 'PUT',
+      body: testimonialData,
+    });
+  }
+
+  async deleteTestimonial(id) {
+    return this.request(`/testimonials/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async uploadTestimonialImage(id, imageFile) {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    // Get client token for testimonial image upload
+    const token = getTokenForRole('client');
+    
+    return fetch(`${this.baseURL}/testimonials/${id}/image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Don't set Content-Type for FormData - browser sets it with boundary
+      },
+      body: formData,
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Image upload failed');
+      }
+      return data;
+    });
+  }
+
+  async getTestimonialStats() {
+    return this.request('/testimonials/stats/summary');
   }
 
   // Mobile User Registration with Image

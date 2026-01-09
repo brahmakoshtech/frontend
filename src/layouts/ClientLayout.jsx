@@ -8,7 +8,7 @@ export default {
     return () => (
       <div style={{ display: 'flex', minHeight: '100vh' }}>
         <Sidebar />
-        <div style={{ flex: 1, marginLeft: '250px', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+        <div style={{ flex: 1, marginLeft: '250px', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' }}>
           <Header />
           <main style={{ padding: '2rem', flex: 1, minHeight: 'calc(100vh - 70px)' }}>
             <RouterView />

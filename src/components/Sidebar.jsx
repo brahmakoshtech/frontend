@@ -47,7 +47,7 @@ export default {
       { path: '/client/services', label: 'Services', icon: '🎯' },
       { path: '/client/users', label: 'Users', icon: '👥' },
       { path: '/client/payments', label: 'Payments', icon: '💳' },
-      { path: '/client/notifications', label: 'Notifications', icon: '🔔' }
+      { path: '/client/tools', label: 'Tools', icon: '🛠️' }
     ];
 
     const clientFooter = [
