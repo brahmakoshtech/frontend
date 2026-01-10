@@ -1,15 +1,12 @@
 import express from 'express';
 import Testimonial from '../../models/Testimonial.js';
-import { authenticateTestimonial } from '../../middleware/testimonialAuth.js';
 
 const router = express.Router();
 
-// GET /api/testimonials - Get all testimonials for authenticated client
-router.get('/', authenticateTestimonial, async (req, res) => {
+// GET /api/testimonials - Get all testimonials (public access)
+router.get('/', async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
     const testimonials = await Testimonial.find({ 
-      clientId: clientId,
       isActive: true 
     }).sort({ createdAt: -1 });
 
