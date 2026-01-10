@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, h } from 'vue';
 import { useRouter } from 'vue-router';
 import { ArrowLeftIcon, PlusIcon, StarIcon, TrashIcon, PencilIcon } from '@heroicons/vue/24/outline';
 import { useToast } from 'vue-toastification';
@@ -23,6 +23,27 @@ export default {
       };
     };
 
+    const toggleTestimonialStatus = async (id) => {
+      try {
+        const response = await testimonialService.toggleTestimonialStatus(id);
+        if (response.success) {
+          // Update local state
+          const index = testimonials.value.findIndex(t => (t.id || t._id) === id);
+          if (index !== -1) {
+            testimonials.value[index] = {
+              ...testimonials.value[index],
+              isActive: response.data.isActive
+            };
+          }
+          toast.success(`✓ Testimonial ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+        } else {
+          toast.error('❌ ' + (response.error || 'Failed to toggle testimonial status'));
+        }
+      } catch (error) {
+        toast.error('❌ Failed to toggle testimonial status. Please try again.');
+      }
+    };
+
     const newTestimonial = ref({
       name: '',
       rating: 5,
@@ -39,12 +60,29 @@ export default {
       try {
         const response = await testimonialService.getAllTestimonials();
         if (response.success && response.data && response.data.data) {
-          testimonials.value = Array.isArray(response.data.data) ? response.data.data : [];
+          let testimonialsList = Array.isArray(response.data.data) ? response.data.data : [];
+          
+          // Convert S3 URLs to presigned URLs for better access
+          testimonialsList = await Promise.all(
+            testimonialsList.map(async (testimonial) => {
+              if (testimonial.image) {
+                try {
+                  const presignedUrl = await testimonialService.getPresignedImageUrl(testimonial.image);
+                  return { ...testimonial, image: presignedUrl };
+                } catch (error) {
+                  // console.warn('Failed to get presigned URL for testimonial image:', error);
+                  return testimonial;
+                }
+              }
+              return testimonial;
+            })
+          );
+          
+          testimonials.value = testimonialsList;
         } else {
           testimonials.value = [];
         }
       } catch (error) {
-        console.error('Failed to fetch testimonials:', error);
         toast.error('Failed to load testimonials');
         testimonials.value = [];
       } finally {
@@ -55,35 +93,67 @@ export default {
     const addTestimonial = async () => {
       try {
         loading.value = true;
+        toast.info('Creating testimonial...');
         const { image, ...testimonialData } = newTestimonial.value;
         const response = await testimonialService.createTestimonial(testimonialData);
         
-        if (response.success && response.data && response.data.data) {
-          let createdTestimonial = response.data.data;
+        if (response.success && response.data) {
+          let createdTestimonial = response.data;
           
           // Upload image if provided and testimonial ID exists
           if (image && createdTestimonial._id) {
             try {
+              toast.info('Uploading image...');
               const imageResponse = await testimonialService.uploadImage(createdTestimonial._id, image);
-              if (imageResponse.success && imageResponse.data && imageResponse.data.data) {
-                createdTestimonial.image = imageResponse.data.data.imageUrl;
+              
+              if (imageResponse.success && imageResponse.data) {
+                // Backend returns {success: true, data: {imageUrl: "..."}}
+                // testimonialService extracts it: response.data.data = {imageUrl: "..."}
+                // So imageResponse.data = {imageUrl: "..."}
+                let imageUrl = imageResponse.data.imageUrl;
+                
+                if (imageUrl) {
+                  // Get presigned URL for S3 images
+                  try {
+                    const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);
+                    imageUrl = presignedUrl || imageUrl;
+                  } catch (error) {
+                    // console.warn('Failed to get presigned URL, using original:', error);
+                  }
+                  
+                  // Set the image property on the testimonial object
+                  createdTestimonial.image = imageUrl;
+                } else {
+                  // console.error('No imageUrl found in response.data:', imageResponse.data);
+                }
+              } else {
+                toast.error('⚠️ Image upload response invalid');
               }
             } catch (imageError) {
-              console.error('Failed to upload image:', imageError);
-              toast.error('Testimonial created but image upload failed');
+              toast.error('⚠️ Testimonial created but image upload failed');
             }
           }
           
-          testimonials.value.unshift(createdTestimonial);
+          // Ensure image is set before adding to list
+          if (!createdTestimonial.image && image) {
+            // console.warn('Image was not set after upload, testimonial:', createdTestimonial);
+          }
+          
+          // Force Vue reactivity by creating a new object
+          const testimonialToAdd = {
+            ...createdTestimonial,
+            image: createdTestimonial.image || null
+          };
+          
+          testimonials.value.unshift(testimonialToAdd);
           newTestimonial.value = { name: '', rating: 5, message: '', image: null };
           showAddModal.value = false;
-          toast.success('Testimonial added successfully!');
+          toast.success('✓ Testimonial added successfully!');
         } else {
-          toast.error(response.error || 'Failed to create testimonial');
+          toast.error('❌ ' + (response.error || 'Failed to create testimonial'));
         }
       } catch (error) {
-        console.error('Failed to create testimonial:', error);
-        toast.error('Failed to create testimonial. Please try again.');
+        toast.error('❌ Failed to create testimonial. Please try again.');
       } finally {
         loading.value = false;
       }
@@ -97,6 +167,7 @@ export default {
     const updateTestimonial = async () => {
       try {
         loading.value = true;
+        toast.info('Updating testimonial...');
         const { image, ...testimonialData } = editingTestimonial.value;
         const response = await testimonialService.updateTestimonial(
           editingTestimonial.value.id || editingTestimonial.value._id, 
@@ -109,49 +180,64 @@ export default {
           // Upload image if provided
           if (image && typeof image !== 'string') {
             try {
+              toast.info('Uploading new image...');
               const imageResponse = await testimonialService.uploadImage(updatedTestimonial._id, image);
-              if (imageResponse.success) {
-                updatedTestimonial.image = imageResponse.data.imageUrl;
+              if (imageResponse.success && imageResponse.data && imageResponse.data.imageUrl) {
+                // Get presigned URL for S3 images
+                let imageUrl = imageResponse.data.imageUrl;
+                try {
+                  const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);
+                  imageUrl = presignedUrl || imageUrl;
+                } catch (error) {
+                  // console.warn('Failed to get presigned URL, using original:', error);
+                }
+                updatedTestimonial.image = imageUrl;
               }
             } catch (imageError) {
-              console.error('Failed to upload image:', imageError);
-              toast.error('Testimonial updated but image upload failed');
+              toast.error('⚠️ Testimonial updated but image upload failed');
             }
           }
           
           const index = testimonials.value.findIndex(t => (t.id || t._id) === (editingTestimonial.value.id || editingTestimonial.value._id));
           if (index !== -1) {
-            testimonials.value[index] = updatedTestimonial;
+            // Force Vue reactivity by creating a new object
+            testimonials.value[index] = {
+              ...updatedTestimonial,
+              image: updatedTestimonial.image || null
+            };
           }
           showEditModal.value = false;
           editingTestimonial.value = null;
-          toast.success('Testimonial updated successfully!');
+          toast.success('✓ Testimonial updated successfully!');
         }
       } catch (error) {
-        console.error('Failed to update testimonial:', error);
-        toast.error('Failed to update testimonial. Please try again.');
+        toast.error('❌ Failed to update testimonial. Please try again.');
       } finally {
         loading.value = false;
       }
     };
 
     const deleteTestimonial = async (id) => {
-      if (!confirm('Are you sure you want to delete this testimonial?')) return;
+      // Simple confirmation with toast
+      const confirmed = confirm('Are you sure you want to delete this testimonial?');
+      if (!confirmed) {
+        toast.info('Delete cancelled');
+        return;
+      }
       
       try {
         loading.value = true;
-        console.log('Deleting testimonial with ID:', id);
+        toast.info('Deleting testimonial...');
         const response = await testimonialService.deleteTestimonial(id);
         
         if (response.success) {
           testimonials.value = testimonials.value.filter(t => (t.id || t._id) !== id);
-          toast.success('Testimonial deleted successfully!');
+          toast.success('✓ Testimonial deleted successfully!');
         } else {
-          toast.error(response.message || 'Failed to delete testimonial');
+          toast.error('❌ ' + (response.message || 'Failed to delete testimonial'));
         }
       } catch (error) {
-        console.error('Failed to delete testimonial:', error);
-        toast.error('Failed to delete testimonial. Please try again.');
+        toast.error('❌ Failed to delete testimonial. Please try again.');
       } finally {
         loading.value = false;
       }
@@ -161,39 +247,64 @@ export default {
       const file = event.target.files[0];
       if (!file) return;
 
+      if (!file.type.startsWith('image/')) {
+        toast.error('Only image files allowed');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be under 5MB');
+        return;
+      }
+
       try {
         loading.value = true;
+        toast.info('Uploading image...');
         const response = await testimonialService.uploadImage(testimonialId, file);
         
-        if (response.success && response.data && response.data.data) {
+        if (response.success && response.data && response.data.imageUrl) {
+          let imageUrl = response.data.imageUrl;
+          
+          // Get presigned URL for S3 images
+          try {
+            const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);
+            imageUrl = presignedUrl || imageUrl;
+          } catch (error) {
+            // console.warn('Failed to get presigned URL, using original:', error);
+          }
+          
           const index = testimonials.value.findIndex(t => (t.id || t._id) === testimonialId);
           if (index !== -1) {
-            testimonials.value[index].image = response.data.data.imageUrl;
+            // Force Vue reactivity by creating a new object
+            testimonials.value[index] = {
+              ...testimonials.value[index],
+              image: imageUrl
+            };
+            // console.log('Image updated in testimonials array:', testimonials.value[index]);
           }
-          toast.success('Image uploaded successfully!');
+          toast.success('✓ Image uploaded successfully!');
         } else {
-          toast.error('Failed to upload image');
+          toast.error('❌ Failed to upload image');
         }
       } catch (error) {
-        console.error('Failed to upload image:', error);
-        toast.error('Failed to upload image. Please try again.');
+        toast.error('❌ Failed to upload image. Please try again.');
       } finally {
         loading.value = false;
       }
     };
 
     const renderStars = (rating) => {
-      return Array.from({ length: 5 }, (_, i) => (
-        <StarIcon 
-          key={i}
-          style={{ 
-            width: '1rem', 
+      return Array.from({ length: 5 }).map((_, i) =>
+        h(StarIcon, {
+          key: i,
+          style: {
+            width: '1rem',
             height: '1rem',
             color: i < rating ? '#ffc107' : '#e9ecef'
-          }}
-          fill={i < rating ? '#ffc107' : 'none'}
-        />
-      ));
+          },
+          fill: i < rating ? '#ffc107' : 'none'
+        })
+      );
     };
 
     onMounted(() => {
@@ -239,17 +350,61 @@ export default {
             <div class="row g-4">
               {testimonials.value.map(testimonial => (
                 <div key={testimonial._id || testimonial.id} class="col-lg-6 col-md-12">
-                  <div class="card border-0 shadow-sm h-100">
+                  <div 
+                    class={`card border-0 shadow-sm h-100 position-relative overflow-hidden ${!testimonial.isActive ? 'opacity-50' : ''}`}
+                    onClick={() => {
+                      if (!testimonial.isActive) {
+                        toggleTestimonialStatus(testimonial.id || testimonial._id);
+                      }
+                    }}
+                    style={{ cursor: !testimonial.isActive ? 'pointer' : 'default' }}
+                  >
+                    {!testimonial.isActive && (
+                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1 }}>
+                        <span class="badge bg-secondary px-3 py-2">Disabled - Click to Enable</span>
+                      </div>
+                    )}
+                    {/* Quote decoration */}
+                    <div class="position-absolute top-0 end-0 p-3" style={{ opacity: 0.1, fontSize: '3rem', color: '#007bff' }}>"</div>
+                    
                     <div class="card-body p-4">
                       <div class="d-flex align-items-start mb-3">
                         <div class="position-relative me-3">
                           <img 
-                            src={testimonial.image && testimonial.image.trim() ? testimonial.image : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZGVlMmU2Ii8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmM3NTdkIiBmb250LXNpemU9IjEyIj5ObyBJbWFnZTwvdGV4dD4KPHN2Zz4='} 
+                            src={testimonial.image && testimonial.image.trim() ? testimonial.image : `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=007bff&color=fff&size=60`} 
                             alt={testimonial.name}
-                            class="rounded-circle"
+                            class="rounded-circle border border-2 border-light shadow-sm"
                             style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                             onError={(e) => {
-                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZGVlMmU2Ii8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmM3NTdkIiBmb250LXNpemU9IjEyIj5ObyBJbWFnZTwvdGV4dD4KPHN2Zz4=';
+                              const currentSrc = e.target.src;
+                              const isLocalUrl = currentSrc.includes('localhost') || currentSrc.includes('127.0.0.1') || currentSrc.startsWith('/uploads/');
+                              const isS3Url = currentSrc.includes('s3.amazonaws.com') || currentSrc.includes('amazonaws.com');
+                              
+                              // For local URLs (old testimonials), immediately fallback to avatar
+                              if (isLocalUrl) {
+                                // console.warn('Local image URL not accessible (old testimonial):', currentSrc, 'Falling back to avatar');
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=60`;
+                                return;
+                              }
+                              
+                              // For S3 URLs, retry once before falling back (might be CORS or timing issue)
+                              if (isS3Url && !e.target.dataset.retried) {
+                                e.target.dataset.retried = 'true';
+                                // Retry with cache busting
+                                setTimeout(() => {
+                                  e.target.src = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
+                                }, 1000);
+                              } else {
+                                // Final fallback to avatar only if not S3 or retry failed
+                                // console.warn('Image failed to load:', currentSrc, 'Falling back to avatar');
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=60`;
+                              }
+                            }}
+                            onLoad={(e) => {
+                              // Reset retry flag on successful load
+                              if (e.target) {
+                                e.target.dataset.retried = 'false';
+                              }
                             }}
                           />
                           <input 
@@ -261,50 +416,92 @@ export default {
                           />
                           <label 
                             for={`image-upload-${testimonial.id || testimonial._id}`}
-                            class="position-absolute bottom-0 end-0 btn btn-sm btn-primary rounded-circle p-1"
-                            style={{ width: '24px', height: '24px', fontSize: '10px' }}
+                            class="position-absolute bottom-0 end-0 btn btn-sm btn-primary rounded-circle d-flex align-items-center justify-content-center"
+                            style={{ width: '24px', height: '24px', fontSize: '10px', cursor: 'pointer' }}
+                            title="Change photo"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             📷
                           </label>
                         </div>
                         <div class="flex-grow-1">
-                          <h5 class="mb-1">{testimonial.name}</h5>
+                          <h5 class="mb-1 fw-bold text-dark">{testimonial.name}</h5>
                           <div class="d-flex align-items-center mb-2">
-                            {renderStars(testimonial.rating)}
-                            <span class="ms-2 text-muted">({testimonial.rating}/5)</span>
+                            <div class="d-flex me-2">
+                              {renderStars(testimonial.rating)}
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary px-2 py-1 rounded-pill">
+                              {testimonial.rating}/5
+                            </span>
                           </div>
+                          <small class="text-muted d-flex align-items-center">
+                            ✓ Verified Customer
+                          </small>
                         </div>
-                        <div class="dropdown position-relative">
+                        <div class="dropdown">
                           <button 
-                            class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center" 
                             type="button" 
-                            onClick={() => toggleDropdown(testimonial.id || testimonial._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleDropdown(testimonial.id || testimonial._id);
+                            }}
+                            style={{ width: '36px', height: '36px', fontSize: '18px', fontWeight: 'bold' }}
+                            title="More options"
                           >
-                            Actions
+                            ⋮
                           </button>
                           {showDropdown.value[testimonial.id || testimonial._id] && (
-                            <ul class="dropdown-menu show position-absolute" style={{ top: '100%', left: '0', zIndex: 1000 }}>
+                            <ul class="dropdown-menu show position-absolute shadow-lg border-0" style={{ top: '100%', right: '0', zIndex: 1000, minWidth: '140px' }}>
                               <li>
                                 <button 
-                                  class="dropdown-item" 
-                                  onClick={() => {
+                                  class="dropdown-item d-flex align-items-center py-2" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     editTestimonial(testimonial);
                                     toggleDropdown(testimonial.id || testimonial._id);
                                   }}
                                 >
-                                  <PencilIcon style={{ width: '1rem', height: '1rem' }} class="me-2" />
+                                  <PencilIcon style={{ width: '16px', height: '16px' }} class="me-2 text-primary" />
                                   Edit
                                 </button>
                               </li>
                               <li>
                                 <button 
-                                  class="dropdown-item text-danger" 
-                                  onClick={() => {
+                                  class={`dropdown-item d-flex align-items-center py-2 ${!testimonial.isActive ? 'text-success' : 'text-warning'}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleTestimonialStatus(testimonial.id || testimonial._id);
+                                    toggleDropdown(testimonial.id || testimonial._id);
+                                  }}
+                                >
+                                  {!testimonial.isActive ? (
+                                    <>
+                                      <svg style={{ width: '16px', height: '16px' }} class="me-2" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                      </svg>
+                                      Enable
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg style={{ width: '16px', height: '16px' }} class="me-2" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                      </svg>
+                                      Disable
+                                    </>
+                                  )}
+                                </button>
+                              </li>
+                              <li>
+                                <button 
+                                  class="dropdown-item d-flex align-items-center py-2 text-danger" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     deleteTestimonial(testimonial.id || testimonial._id);
                                     toggleDropdown(testimonial.id || testimonial._id);
                                   }}
                                 >
-                                  <TrashIcon style={{ width: '1rem', height: '1rem' }} class="me-2" />
+                                  <TrashIcon style={{ width: '16px', height: '16px' }} class="me-2" />
                                   Delete
                                 </button>
                               </li>
@@ -312,12 +509,35 @@ export default {
                           )}
                         </div>
                       </div>
-                      <blockquote class="mb-3">
-                        <p class="mb-0">"{testimonial.message}"</p>
-                      </blockquote>
-                      <small class="text-muted">
-                        Added on {new Date(testimonial.date || testimonial.createdAt).toLocaleDateString()}
-                      </small>
+                      
+                      <div class="testimonial-content mb-3">
+                        <blockquote class="mb-0 position-relative">
+                          <p class="mb-0 fst-italic text-dark lh-base" style={{ fontSize: '0.95rem' }}>
+                            "{testimonial.message}"
+                          </p>
+                        </blockquote>
+                      </div>
+                      
+                      <div class="d-flex align-items-center justify-content-between pt-2 border-top border-light">
+                        <small class="text-muted d-flex align-items-center">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="me-1">
+                            <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2-7h-3V2h-2v2H8V2H6v2H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H3V8h14v12z"/>
+                          </svg>
+                          {new Date(testimonial.createdAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </small>
+                        <div class="d-flex align-items-center">
+                          <span class="badge bg-success-subtle text-success px-2 py-1 rounded-pill">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="me-1">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            Featured
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -416,7 +636,13 @@ export default {
                   <div class="modal-content">
                     <div class="modal-header">
                       <h5 class="modal-title">Edit Testimonial</h5>
-                      <button class="btn-close" onClick={() => showEditModal.value = false}></button>
+                      <button 
+                        class="btn-close" 
+                        onClick={() => {
+                          showEditModal.value = false;
+                          editingTestimonial.value = null;
+                        }}
+                      ></button>
                     </div>
                     <div class="modal-body">
                       <div class="mb-3">

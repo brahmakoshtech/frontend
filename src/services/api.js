@@ -17,7 +17,7 @@ const getTokenForRole = (role) => {
     const currentPath = window.location.pathname;
     role = getRoleFromPath(currentPath);
   }
-  
+
   if (role) {
     const token = localStorage.getItem(`token_${role}`);
     // Verify token role matches (decode and check)
@@ -37,7 +37,7 @@ const getTokenForRole = (role) => {
     }
     return null;
   }
-  
+
   // NO FALLBACK - return null if role not specified
   // This prevents using wrong tokens
   return null;
@@ -52,7 +52,7 @@ class ApiService {
     // Get token from options or determine from endpoint/context
     let token = options.token;
     let tokenSource = 'provided';
-    
+
     if (!token) {
       // Determine role from endpoint
       if (endpoint.includes('/super-admin/') || endpoint.includes('/auth/super-admin/')) {
@@ -61,18 +61,18 @@ class ApiService {
       } else if (endpoint.includes('/admin/') || endpoint.includes('/auth/admin/')) {
         token = getTokenForRole('admin');
         tokenSource = 'admin (endpoint match)';
-      } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') || 
-                 endpoint.includes('/testimonials')) {
+      } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') ||
+        endpoint.includes('/testimonials')) {
         // TESTIMONIALS: Always use client token for testimonial operations
         token = getTokenForRole('client');
         tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 'client (endpoint match)';
-      } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') || 
-                 endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
+      } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') ||
+        endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
         // CRITICAL: Mobile endpoints (chat, voice, user profile) MUST use user token ONLY
         // These endpoints are ONLY for 'user' role - NEVER use other tokens
         token = getTokenForRole('user');
         tokenSource = 'user (mobile endpoint - user role required)';
-        
+
         // Verify token is actually a user token
         if (token) {
           try {
@@ -91,7 +91,7 @@ class ApiService {
             console.warn('[API Warning] Could not verify token role:', e);
           }
         }
-        
+
         // Warn if no user token found but other tokens exist
         if (!token) {
           const otherTokens = {
@@ -123,7 +123,7 @@ class ApiService {
         }
       }
     }
-    
+
     // Debug logging
     console.log('[API Request]', {
       endpoint,
@@ -132,7 +132,10 @@ class ApiService {
       tokenLength: token ? token.length : 0,
       tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
     });
-    
+    // console.log('Full Token:', token);
+   
+
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -166,7 +169,7 @@ class ApiService {
             hasToken: !!token,
             tokenSource
           });
-          
+
           // Show user-friendly error for role mismatch
           if (data.currentRole && data.requiredRole) {
             const errorMsg = `You are logged in as '${data.currentRole}' but this feature requires '${data.requiredRole}' role. Please logout and login as a user.`;
@@ -287,8 +290,8 @@ class ApiService {
   async mobileUserRegisterStep3(email, profileData, imageFileName, imageContentType) {
     return this.request('/mobile/user/register/step3', {
       method: 'POST',
-      body: { 
-        email, 
+      body: {
+        email,
         ...profileData,
         imageFileName,
         imageContentType
@@ -614,11 +617,11 @@ class ApiService {
   async uploadTestimonialImage(id, imageFile) {
     const formData = new FormData();
     formData.append('image', imageFile);
-    
+
     // Get client token for testimonial image upload
     const token = getTokenForRole('client');
-    
-    return fetch(`${this.baseURL}/testimonials/${id}/image`, {
+
+    return fetch(`${this.baseURL}/testimonials/${id}/upload-image`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
