@@ -7,6 +7,9 @@ export default {
   setup() {
     const router = useRouter();
     
+    // Client ID
+    const clientId = ref('');
+    
     // Step 1: Email OTP
     const step = ref(1);
     const email = ref('');
@@ -18,6 +21,7 @@ export default {
     const mobile = ref('');
     const mobileOtp = ref('');
     const mobileOtpSent = ref(false);
+    const otpMethod = ref('twilio');
     
     // Step 3: Profile
     const profile = ref({
@@ -28,8 +32,6 @@ export default {
       gowthra: ''
     });
     const imageFile = ref(null);
-    const imageFileName = ref('');
-    const imageContentType = ref('');
     const userToken = ref(null);
     
     const loading = ref(false);
@@ -42,9 +44,20 @@ export default {
       error.value = '';
       
       try {
-        const response = await api.mobileUserRegisterStep1(email.value, password.value);
+        const response = await api.request('/mobile/user/register/step1', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            password: password.value,
+            clientId: clientId.value
+          }
+        });
+        
         if (response.success) {
           emailOtpSent.value = true;
+          // Store client info
+          localStorage.setItem('user_client_id', response.data.clientId);
+          localStorage.setItem('user_client_name', response.data.clientName);
           alert('OTP sent to your email. Please check and enter the OTP.');
         }
       } catch (err) {
@@ -61,7 +74,15 @@ export default {
       error.value = '';
       
       try {
-        const response = await api.mobileUserRegisterStep1Verify(email.value, emailOtp.value);
+        const response = await api.request('/mobile/user/register/step1/verify', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            otp: emailOtp.value,
+            clientId: clientId.value
+          }
+        });
+        
         if (response.success) {
           step.value = 2;
           alert('Email verified successfully! Now verify your mobile number.');
@@ -76,7 +97,13 @@ export default {
     // Resend Email OTP
     const resendEmailOTP = async () => {
       try {
-        await api.resendEmailOTP(email.value);
+        await api.request('/mobile/user/register/resend-email-otp', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            clientId: clientId.value
+          }
+        });
         alert('OTP resent to your email');
       } catch (err) {
         error.value = err.message || 'Failed to resend OTP';
@@ -90,7 +117,16 @@ export default {
       error.value = '';
       
       try {
-        const response = await api.mobileUserRegisterStep2(email.value, mobile.value);
+        const response = await api.request('/mobile/user/register/step2', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            mobile: mobile.value,
+            otpMethod: otpMethod.value,
+            clientId: clientId.value
+          }
+        });
+        
         if (response.success) {
           mobileOtpSent.value = true;
           alert('OTP sent to your mobile number. Please check and enter the OTP.');
@@ -109,7 +145,15 @@ export default {
       error.value = '';
       
       try {
-        const response = await api.mobileUserRegisterStep2Verify(email.value, mobileOtp.value);
+        const response = await api.request('/mobile/user/register/step2/verify', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            otp: mobileOtp.value,
+            clientId: clientId.value
+          }
+        });
+        
         if (response.success) {
           step.value = 3;
           alert('Mobile verified successfully! Now complete your profile.');
@@ -124,7 +168,14 @@ export default {
     // Resend Mobile OTP
     const resendMobileOTP = async () => {
       try {
-        await api.resendMobileOTP(email.value);
+        await api.request('/mobile/user/register/resend-mobile-otp', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            otpMethod: otpMethod.value,
+            clientId: clientId.value
+          }
+        });
         alert('OTP resent to your mobile number');
       } catch (err) {
         error.value = err.message || 'Failed to resend OTP';
@@ -138,12 +189,14 @@ export default {
       error.value = '';
       
       try {
-        const response = await api.mobileUserRegisterStep3(
-          email.value,
-          profile.value,
-          null,
-          null
-        );
+        const response = await api.request('/mobile/user/register/step3', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            clientId: clientId.value,
+            ...profile.value
+          }
+        });
         
         if (response.success) {
           userToken.value = response.data?.token || null;
@@ -162,8 +215,6 @@ export default {
       const file = e.target.files[0];
       if (file) {
         imageFile.value = file;
-        imageFileName.value = file.name;
-        imageContentType.value = file.type;
       }
     };
 
@@ -184,10 +235,21 @@ export default {
         const formData = new FormData();
         formData.append('image', imageFile.value);
 
-        const response = await api.mobileUserRegisterStep4UploadImage(formData, userToken.value);
-        if (response.success) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/mobile/user/profile/image`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${userToken.value}`,
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
           alert('Profile image uploaded successfully! You can now login.');
           router.push('/user/login');
+        } else {
+          throw new Error(data.message || 'Failed to upload image');
         }
       } catch (err) {
         error.value = err.message || 'Failed to upload profile image';
@@ -198,16 +260,29 @@ export default {
 
     // Google Sign-In Handler
     const handleGoogleCredential = async (response) => {
+      if (!clientId.value) {
+        error.value = 'Please enter your Client ID first';
+        return;
+      }
+
       loading.value = true;
       error.value = '';
       try {
-        const { data } = await api.post('/api/auth/user/google', {
-          idToken: response.credential,
+        const { data } = await api.request('/mobile/user/register/firebase', {
+          method: 'POST',
+          body: {
+            idToken: response.credential,
+            clientId: clientId.value
+          }
         });
-        localStorage.setItem('token_user', data.data.token);
+        
+        localStorage.setItem('token_user', data.token);
+        localStorage.setItem('user_client_id', data.clientId);
+        localStorage.setItem('user_client_name', data.clientName);
+        
         router.push('/mobile/user/dashboard');
       } catch (e) {
-        error.value = e.response?.data?.message || 'Google registration failed';
+        error.value = e.message || 'Google registration failed';
       } finally {
         loading.value = false;
       }
@@ -215,6 +290,12 @@ export default {
 
     // Load Google Script
     onMounted(() => {
+      // Load saved client ID if exists
+      const savedClientId = localStorage.getItem('user_client_id');
+      if (savedClientId) {
+        clientId.value = savedClientId;
+      }
+
       loadGoogleScript();
     });
     
@@ -310,6 +391,22 @@ export default {
             <>
               <form onSubmit={emailOtpSent.value ? handleStep1Verify : handleStep1}>
                 <div class="mb-3">
+                  <label class="form-label">Client ID</label>
+                  <input
+                    value={clientId.value}
+                    onInput={(e) => clientId.value = e.target.value.toUpperCase()}
+                    type="text"
+                    class="form-control"
+                    required
+                    disabled={emailOtpSent.value}
+                    placeholder="Enter Client ID (e.g., CLI-ABC123)"
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                  <small class="form-text text-muted">
+                    Contact your organization to get your Client ID
+                  </small>
+                </div>
+                <div class="mb-3">
                   <label class="form-label">Email</label>
                   <input
                     value={email.value}
@@ -368,13 +465,15 @@ export default {
               </form>
 
               {/* Google Sign-In - Only show on Step 1 */}
-              <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                <div style={{ textAlign: 'center', marginBottom: '1rem', color: '#6b7280', position: 'relative' }}>
-                  <span style={{ background: 'white', padding: '0 10px', position: 'relative', zIndex: 1 }}>or</span>
-                  <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: '#e5e7eb', zIndex: 0 }}></div>
+              {!emailOtpSent.value && (
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '1rem', color: '#6b7280', position: 'relative' }}>
+                    <span style={{ background: 'white', padding: '0 10px', position: 'relative', zIndex: 1 }}>or</span>
+                    <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: '#e5e7eb', zIndex: 0 }}></div>
+                  </div>
+                  <div id="g_id_signin" style={{ display: 'flex', justifyContent: 'center' }}></div>
                 </div>
-                <div id="g_id_signin" style={{ display: 'flex', justifyContent: 'center' }}></div>
-              </div>
+              )}
             </>
           )}
 
@@ -393,6 +492,20 @@ export default {
                   placeholder="Enter mobile number with country code (e.g., +1234567890)"
                 />
               </div>
+              {!mobileOtpSent.value && (
+                <div class="mb-3">
+                  <label class="form-label">OTP Method</label>
+                  <select
+                    value={otpMethod.value}
+                    onChange={(e) => otpMethod.value = e.target.value}
+                    class="form-control"
+                  >
+                    <option value="twilio">SMS (Twilio)</option>
+                    <option value="gupshup">SMS (Gupshup)</option>
+                    <option value="whatsapp">WhatsApp</option>
+                  </select>
+                </div>
+              )}
               {mobileOtpSent.value && (
                 <>
                   <div class="mb-3">

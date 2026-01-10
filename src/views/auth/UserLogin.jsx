@@ -19,11 +19,24 @@ export default {
       error.value = '';
       
       try {
-        // Login will handle API call and token storage
-        await login(email.value, password.value, 'user');
-        // Redirect to mobile dashboard (chat/voice features)
-        // Token is stored synchronously in login(), so navigation should work immediately
-        router.push('/mobile/user/dashboard');
+        // Login automatically determines client from email
+        const response = await api.request('/mobile/user/login', {
+          method: 'POST',
+          body: {
+            email: email.value,
+            password: password.value
+          }
+        });
+
+        if (response.success) {
+          // Store token
+          localStorage.setItem('token_user', response.data.token);
+          // Store client info for reference
+          localStorage.setItem('user_client_id', response.data.clientId);
+          localStorage.setItem('user_client_name', response.data.clientName);
+          
+          router.push('/mobile/user/dashboard');
+        }
       } catch (err) {
         error.value = err.message || 'Login failed';
       } finally {
@@ -32,7 +45,7 @@ export default {
     };
 
     onMounted(() => {
-      // Only load once
+      // Only load Google script once
       if (!window.google?.accounts?.id) {
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
@@ -40,7 +53,7 @@ export default {
         script.defer = true;
         document.body.appendChild(script);
       }
-      setTimeout(initGoogle, 400); // Delay for script load
+      setTimeout(initGoogle, 400);
     });
  
     function initGoogle() {
@@ -59,10 +72,15 @@ export default {
       loading.value = true;
       error.value = '';
       try {
-        const { data } = await api.post('/api/auth/user/google', {
-          idToken: response.credential,
+        // Google login also auto-determines client
+        const { data } = await api.post('/api/mobile/user/login/firebase', {
+          idToken: response.credential
         });
+        
         localStorage.setItem('token_user', data.data.token);
+        localStorage.setItem('user_client_id', data.data.clientId);
+        localStorage.setItem('user_client_name', data.data.clientName);
+        
         router.push('/mobile/user/dashboard');
       } catch (e) {
         error.value = e.response?.data?.message || 'Google login failed';
@@ -114,12 +132,17 @@ export default {
               </RouterLink>
             </p>
           </form>
-          <div id="g_id_signin"></div>
+          
+          {/* Google Sign-In */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem', color: '#6b7280', position: 'relative' }}>
+              <span style={{ background: 'white', padding: '0 10px', position: 'relative', zIndex: 1 }}>or</span>
+              <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: '#e5e7eb', zIndex: 0 }}></div>
+            </div>
+            <div id="g_id_signin" style={{ display: 'flex', justifyContent: 'center' }}></div>
+          </div>
         </div>
-        
       </div>
     );
   }
 };
-
-
