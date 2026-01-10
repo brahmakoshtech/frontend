@@ -10,9 +10,9 @@ const clientSchema = new mongoose.Schema({
   clientId: {
     type: String,
     unique: true,
-    required: true,
     uppercase: true,
     trim: true
+    // NOT required - will be auto-generated
   },
   email: {
     type: String,
@@ -98,13 +98,14 @@ const clientSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique client ID before saving
-clientSchema.pre('save', async function(next) {
-  // Generate clientId if not exists
+// Generate unique client ID BEFORE validation
+clientSchema.pre('validate', async function(next) {
+  // Only generate clientId if it doesn't exist
   if (!this.clientId) {
     let unique = false;
     let generatedId;
     
+    // Keep trying until we get a unique ID
     while (!unique) {
       generatedId = `CLI-${nanoid()}`;
       const existing = await mongoose.model('Client').findOne({ clientId: generatedId });
@@ -114,9 +115,15 @@ clientSchema.pre('save', async function(next) {
     }
     
     this.clientId = generatedId;
+    console.log('Auto-generated clientId:', generatedId);
   }
   
-  // Hash password
+  next();
+});
+
+// Hash password before saving
+clientSchema.pre('save', async function(next) {
+  // Hash password only if it's modified
   if (this.isModified('password')) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
