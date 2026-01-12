@@ -10,7 +10,8 @@ import {
   ChartBarIcon, 
   StarIcon, 
   TicketIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  ClockIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -93,6 +94,15 @@ export default {
       },
       { 
         id: 9, 
+        name: 'Activity', 
+        icon: ClockIcon, 
+        description: 'Track user activities and engagement metrics', 
+        route: '/client/activity',
+        color: '#14b8a6',
+        category: 'Analytics'
+      },
+      { 
+        id: 10, 
         name: 'Support Tickets', 
         icon: TicketIcon, 
         description: 'Handle customer support requests efficiently', 

@@ -1,6 +1,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { ArrowLeftIcon, PlusIcon, EyeIcon, PencilIcon, TrashIcon, UserIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, PlusIcon, EyeIcon, PencilIcon, TrashIcon, UserIcon, EllipsisVerticalIcon, ChevronLeftIcon, ChevronRightIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, CalendarIcon, ChartBarIcon } from '@heroicons/vue/24/outline';
 import founderMessageService from '../../../services/founderMessageService.js';
 
 export default {
@@ -14,7 +14,7 @@ export default {
     const selectedMessage = ref(null);
     const activeDropdown = ref(null);
     const currentPage = ref(1);
-    const itemsPerPage = 4;
+    const itemsPerPage = 6;
     const editMessage = ref({
       _id: '',
       founderName: '',
@@ -23,6 +23,8 @@ export default {
       founderImage: null,
       status: 'draft'
     });
+    const editImageUploaded = ref(false);
+    const editImageFileName = ref('');
     const newMessage = ref({
       founderName: '',
       position: '',
@@ -30,6 +32,8 @@ export default {
       founderImage: null,
       status: 'draft'
     });
+    const newImageUploaded = ref(false);
+    const newImageFileName = ref('');
 
     const goBack = () => {
       router.push('/client/tools');
@@ -255,17 +259,36 @@ export default {
         const response = await founderMessageService.updateMessage(editMessage.value._id, editMessage.value);
         
         if (response.success) {
+          let updatedMessage = response.data;
+          
+          // Get presigned URL for image if it exists and was updated
+          if (updatedMessage.founderImage && updatedMessage.founderImage.includes('amazonaws.com')) {
+            try {
+              const presignedUrl = await founderMessageService.getPresignedImageUrl(updatedMessage.founderImage);
+              updatedMessage.founderImage = presignedUrl || updatedMessage.founderImage;
+            } catch (error) {
+              console.error('Error getting presigned URL:', error);
+            }
+          }
+          
           const index = messages.value.findIndex(m => m._id === editMessage.value._id);
           if (index !== -1) {
-            messages.value[index] = response.data;
+            messages.value[index] = updatedMessage;
           }
+          
+          // Update selected message if it's the same one
+          if (selectedMessage.value && selectedMessage.value._id === editMessage.value._id) {
+            selectedMessage.value = updatedMessage;
+          }
+          
           showEditModal.value = false;
           editMessage.value = { _id: '', founderName: '', position: '', content: '', founderImage: null, status: 'draft' };
         } else {
           alert('Failed to update message: ' + response.error);
         }
       } catch (error) {
-        alert('Error updating message');
+        console.error('Error updating message:', error);
+        alert('Error updating message: ' + error.message);
       } finally {
         loading.value = false;
       }
@@ -277,111 +300,147 @@ export default {
     });
 
     return () => (
-      <div class="container-fluid">
+      <div class="container-fluid px-3 px-lg-4">
         <div class="row">
           <div class="col-12">
-            <div class="d-flex align-items-center mb-4">
-              <button 
-                class="btn btn-outline-secondary me-3" 
-                onClick={goBack}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <ArrowLeftIcon style={{ width: '1rem', height: '1rem' }} />
-                Back to Tools
-              </button>
-              <div class="flex-grow-1">
-                <h1 class="mb-0 text-primary">Founder Messages</h1>
-                <p class="text-muted mb-0">Create and manage messages from leadership</p>
+            {/* Enhanced Header */}
+            <div class="bg-gradient-primary rounded-4 p-4 mb-4 text-white shadow-lg">
+              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3">
+                <button 
+                  class="btn btn-light btn-sm rounded-pill px-3" 
+                  onClick={goBack}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <ArrowLeftIcon style={{ width: '1rem', height: '1rem' }} />
+                  <span class="d-none d-sm-inline">Back to Tools</span>
+                  <span class="d-sm-none">Back</span>
+                </button>
+                <div class="flex-grow-1">
+                  <h1 class="mb-1 fw-bold fs-2 text-dark">
+                    <ChatBubbleLeftRightIcon style={{ width: '2rem', height: '2rem' }} class="me-2" />
+                    Founder Messages
+                  </h1>
+                  <p class="mb-0 text-dark" style={{ opacity: 0.8 }}>Create and manage messages from leadership</p>
+                  {!loading.value && messages.value.length > 0 && (
+                    <small class="text-dark d-block mt-1" style={{ opacity: 0.8 }}>
+                      <ChartBarIcon style={{ width: '16px', height: '16px' }} class="me-1" />
+                      {messages.value.length} total messages • Page {currentPage.value} of {totalPages.value}
+                    </small>
+                  )}
+                </div>
+                <button 
+                  class="btn btn-light btn-lg rounded-pill px-4 shadow-sm"
+                  onClick={() => showAddModal.value = true}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}
+                >
+                  <PlusIcon style={{ width: '1.2rem', height: '1.2rem' }} />
+                  <span class="d-none d-sm-inline">Create Message</span>
+                  <span class="d-sm-none">Create</span>
+                </button>
               </div>
-              <button 
-                class="btn btn-primary"
-                onClick={() => showAddModal.value = true}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <PlusIcon style={{ width: '1rem', height: '1rem' }} />
-                Create New Message
-              </button>
             </div>
 
             <div class="row">
               <div class="col-lg-8">
-                <div class="card border-0 shadow-sm">
-                  <div class="card-header bg-white">
-                    <h5 class="mb-0">All Messages</h5>
+                <div class="card border-0 shadow-lg rounded-4">
+                  <div class="card-header bg-white border-0 rounded-top-4 p-4">
+                    <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
+                      <DocumentTextIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
+                      All Messages
+                    </h5>
                   </div>
-                  <div class="card-body">
+                  <div class="card-body p-4">
                     {messages.value.length === 0 ? (
                       <div class="text-center py-5">
-                        <UserIcon style={{ width: '4rem', height: '4rem', color: '#dee2e6' }} />
-                        <h4 class="text-muted mt-3">No messages yet</h4>
-                        <p class="text-muted">Create your first founder message</p>
+                        <div class="mb-4 p-4 rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px' }}>
+                          <UserIcon style={{ width: '4rem', height: '4rem', color: '#6c757d' }} />
+                        </div>
+                        <h4 class="text-muted mb-3">
+                          <ChatBubbleLeftRightIcon style={{ width: '3rem', height: '3rem' }} class="me-2" />
+                          No messages yet
+                        </h4>
+                        <p class="text-muted mb-4">Create your first founder message to connect with your audience</p>
+                        <button 
+                          class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm"
+                          onClick={() => showAddModal.value = true}
+                          style={{ fontWeight: '600' }}
+                        >
+                          <PlusIcon style={{ width: '1.2rem', height: '1.2rem' }} class="me-2" />
+                          Create First Message
+                        </button>
                       </div>
                     ) : (
                       <div class="row g-4">
                         {paginatedMessages.value.map(message => (
                           <div key={message._id} class="col-12">
-                            <div class="card border-0 shadow-sm h-100 position-relative" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '16px', overflow: 'hidden' }}>
-                              <div class="position-absolute w-100 h-100" style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)' }}></div>
-                              <div class="card-body position-relative" style={{ zIndex: 2 }}>
+                            <div class="card border-0 shadow-lg h-100 position-relative" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', borderRadius: '16px', transition: 'all 0.3s ease' }}>
+                              <div class="card-body p-4">
                                 <div class="d-flex align-items-start">
-                                  <div class="flex-shrink-0">
+                                  <div class="flex-shrink-0 me-3">
                                     {message.founderImage ? (
                                       <img 
                                         src={message.founderImage} 
                                         alt={message.founderName}
-                                        class="rounded-circle border border-3 border-white shadow-sm"
-                                        style={{ width: '70px', height: '70px', objectFit: 'cover' }}
+                                        class="rounded-circle border border-3 border-white shadow-lg"
+                                        style={{ width: '80px', height: '80px', objectFit: 'cover' }}
                                       />
                                     ) : (
-                                      <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-sm" style={{ width: '70px', height: '70px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                                        <UserIcon style={{ width: '2rem', height: '2rem', color: 'white' }} />
+                                      <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-lg" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                                        <UserIcon style={{ width: '2.5rem', height: '2.5rem', color: 'white' }} />
                                       </div>
                                     )}
                                   </div>
-                                  <div class="flex-grow-1 ms-4">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                  <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
                                       <div>
-                                        <h5 class="mb-1 fw-bold" style={{ color: '#2d3748' }}>{message.founderName}</h5>
-                                        <p class="mb-2 fw-medium" style={{ color: '#667eea', fontSize: '0.9rem' }}>{message.position}</p>
+                                        <h5 class="mb-1 fw-bold text-dark" style={{ fontSize: '1.2rem' }}>{message.founderName}</h5>
+                                        <p class="mb-0 fw-semibold text-primary" style={{ fontSize: '0.95rem' }}>{message.position}</p>
                                       </div>
                                       <div class="d-flex align-items-center gap-3">
-                                        <span class={`badge px-3 py-2 fw-medium ${message.status === 'published' ? 'text-success' : 'text-warning'}`} style={{ background: message.status === 'published' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(251, 191, 36, 0.1)', border: `1px solid ${message.status === 'published' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(251, 191, 36, 0.3)'}`, borderRadius: '8px' }}>
-                                          {message.status === 'published' ? '● Published' : '● Draft'}
+                                        <span class={`badge px-3 py-2 fw-semibold rounded-pill ${message.status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'}`}>
+                                          {message.status === 'published' ? (
+                                            <>
+                                              <div class="d-inline-block rounded-circle bg-success me-1" style={{ width: '8px', height: '8px' }}></div>
+                                              Published
+                                            </>
+                                          ) : (
+                                            <>
+                                              <div class="d-inline-block rounded-circle bg-warning me-1" style={{ width: '8px', height: '8px' }}></div>
+                                              Draft
+                                            </>
+                                          )}
                                         </span>
                                         <div class="dropdown position-relative">
                                           <button 
-                                            class="btn btn-link p-2 text-muted"
+                                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                                             onClick={() => toggleDropdown(message._id)}
-                                            style={{ borderRadius: '8px' }}
+                                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease' }}
                                           >
                                             <EllipsisVerticalIcon style={{ width: '1.2rem', height: '1.2rem' }} />
                                           </button>
                                           {activeDropdown.value === message._id && (
-                                            <div class="dropdown-menu show position-absolute end-0 shadow-lg border-0" style={{ minWidth: '160px', borderRadius: '12px', background: 'white', zIndex: 1000, top: '100%' }}>
+                                            <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '180px', right: '0', top: '100%', zIndex: 1000 }}>
                                               <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
                                                 onClick={() => { openEditModal(message); toggleDropdown(null); }}
                                                 disabled={loading.value}
-                                                style={{ borderRadius: '8px', margin: '4px' }}
                                               >
                                                 <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
                                                 <span class="fw-medium">Edit Message</span>
                                               </button>
                                               <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3"
+                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
                                                 onClick={() => { toggleStatus(message); toggleDropdown(null); }}
                                                 disabled={loading.value}
-                                                style={{ borderRadius: '8px', margin: '4px' }}
                                               >
-                                                <div style={{ width: '1rem', height: '1rem', borderRadius: '50%', background: message.status === 'published' ? '#f59e0b' : '#10b981' }}></div>
+                                                <span class={`rounded-circle ${message.status === 'published' ? 'bg-warning' : 'bg-success'}`} style={{ width: '1rem', height: '1rem' }}></span>
                                                 <span class="fw-medium">{message.status === 'published' ? 'Unpublish' : 'Publish'}</span>
                                               </button>
                                               <hr class="dropdown-divider my-1" />
                                               <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger"
+                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
                                                 onClick={() => { deleteMessage(message._id); toggleDropdown(null); }}
                                                 disabled={loading.value}
-                                                style={{ borderRadius: '8px', margin: '4px' }}
                                               >
                                                 <TrashIcon style={{ width: '1rem', height: '1rem' }} />
                                                 <span class="fw-medium">Delete</span>
@@ -391,22 +450,23 @@ export default {
                                         </div>
                                       </div>
                                     </div>
-                                    <div class="mb-3 p-3 rounded-3" style={{ background: 'rgba(102, 126, 234, 0.05)', border: '1px solid rgba(102, 126, 234, 0.1)' }}>
-                                      <p class="mb-0" style={{ color: '#4a5568', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                                        {message.content.length > 180 ? message.content.substring(0, 180) + '...' : message.content}
+                                    <div class="mb-3 p-3 rounded-3" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                      <p class="mb-0 text-dark lh-base" style={{ fontSize: '0.95rem' }}>
+                                        {message.content.length > 150 ? message.content.substring(0, 150) + '...' : message.content}
                                       </p>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
                                       <small class="text-muted d-flex align-items-center gap-1">
-                                        <div class="rounded-circle" style={{ width: '6px', height: '6px', background: '#cbd5e0' }}></div>
+                                        <CalendarIcon style={{ width: '14px', height: '14px' }} />
                                         Created on {new Date(message.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                       </small>
                                       <button 
-                                        class="btn btn-sm px-4 py-2 fw-medium"
+                                        class="btn btn-primary btn-sm px-4 py-2 fw-semibold rounded-pill"
                                         onClick={() => viewMessage(message)}
                                         disabled={loading.value}
-                                        style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.85rem' }}
+                                        style={{ fontSize: '0.85rem' }}
                                       >
+                                        <EyeIcon style={{ width: '16px', height: '16px' }} class="me-1" />
                                         Read More
                                       </button>
                                     </div>
@@ -419,26 +479,49 @@ export default {
                       </div>
                     )}
                     
-                    {/* Pagination */}
+                    {/* Enhanced Pagination */}
                     {messages.value.length > itemsPerPage && (
-                      <div class="d-flex justify-content-center mt-4">
-                        <nav>
-                          <ul class="pagination pagination-sm">
+                      <div class="d-flex justify-content-center align-items-center mt-5">
+                        <nav aria-label="Messages pagination">
+                          <ul class="pagination mb-0 shadow-sm rounded-pill" style={{ backgroundColor: 'white' }}>
                             <li class={`page-item ${currentPage.value === 1 ? 'disabled' : ''}`}>
-                              <button class="page-link" onClick={() => goToPage(currentPage.value - 1)} disabled={currentPage.value === 1}>
-                                Previous
+                              <button 
+                                class="page-link border-0 rounded-pill px-3 py-2 d-flex align-items-center" 
+                                onClick={() => goToPage(currentPage.value - 1)}
+                                disabled={currentPage.value === 1}
+                                style={{ backgroundColor: 'transparent' }}
+                              >
+                                <ChevronLeftIcon style={{ width: '16px', height: '16px' }} class="me-1" />
+                                <span class="d-none d-sm-inline">Previous</span>
                               </button>
                             </li>
                             {Array.from({ length: totalPages.value }, (_, i) => i + 1).map(page => (
                               <li key={page} class={`page-item ${currentPage.value === page ? 'active' : ''}`}>
-                                <button class="page-link" onClick={() => goToPage(page)}>
+                                <button 
+                                  class={`page-link border-0 rounded-circle mx-1 ${currentPage.value === page ? 'bg-primary text-white shadow-sm' : 'bg-light text-dark'}`}
+                                  onClick={() => goToPage(page)}
+                                  style={{ 
+                                    width: '40px', 
+                                    height: '40px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: '600'
+                                  }}
+                                >
                                   {page}
                                 </button>
                               </li>
                             ))}
                             <li class={`page-item ${currentPage.value === totalPages.value ? 'disabled' : ''}`}>
-                              <button class="page-link" onClick={() => goToPage(currentPage.value + 1)} disabled={currentPage.value === totalPages.value}>
-                                Next
+                              <button 
+                                class="page-link border-0 rounded-pill px-3 py-2 d-flex align-items-center" 
+                                onClick={() => goToPage(currentPage.value + 1)}
+                                disabled={currentPage.value === totalPages.value}
+                                style={{ backgroundColor: 'transparent' }}
+                              >
+                                <span class="d-none d-sm-inline">Next</span>
+                                <ChevronRightIcon style={{ width: '16px', height: '16px' }} class="ms-1" />
                               </button>
                             </li>
                           </ul>
@@ -451,44 +534,62 @@ export default {
 
               <div class="col-lg-4">
                 {selectedMessage.value ? (
-                  <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                      <h5 class="mb-0">Message Preview</h5>
+                  <div class="card border-0 shadow-lg rounded-4">
+                    <div class="card-header bg-primary text-white border-0 rounded-top-4 p-4">
+                      <h5 class="mb-0 fw-bold d-flex align-items-center">
+                        <EyeIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
+                        Message Preview
+                      </h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                       {selectedMessage.value.founderImage && (
-                        <div class="text-center mb-3">
+                        <div class="text-center mb-4">
                           <img 
                             src={selectedMessage.value.founderImage} 
                             alt={selectedMessage.value.founderName}
-                            class="rounded-circle"
-                            style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                            class="rounded-circle border border-3 border-white shadow-lg"
+                            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
                           />
                         </div>
                       )}
-                      <h4 class="mb-1 text-center">{selectedMessage.value.founderName}</h4>
-                      <p class="text-muted text-center mb-3">{selectedMessage.value.position}</p>
-                      <div class="mb-3">
-                        <span class={`badge ${selectedMessage.value.status === 'published' ? 'bg-success' : 'bg-warning'}`}>
-                          {selectedMessage.value.status}
-                        </span>
-                        <span class="ms-2 text-muted">
-                          {selectedMessage.value.views} views
+                      <h4 class="mb-2 text-center fw-bold text-dark">{selectedMessage.value.founderName}</h4>
+                      <p class="text-primary text-center mb-3 fw-semibold">{selectedMessage.value.position}</p>
+                      <div class="mb-4 text-center">
+                        <span class={`badge px-3 py-2 fw-semibold rounded-pill ${selectedMessage.value.status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'}`}>
+                          {selectedMessage.value.status === 'published' ? (
+                            <>
+                              <div class="d-inline-block rounded-circle bg-success me-1" style={{ width: '8px', height: '8px' }}></div>
+                              Published
+                            </>
+                          ) : (
+                            <>
+                              <div class="d-inline-block rounded-circle bg-warning me-1" style={{ width: '8px', height: '8px' }}></div>
+                              Draft
+                            </>
+                          )}
                         </span>
                       </div>
-                      <p class="text-muted">{selectedMessage.value.content}</p>
-                      <hr />
-                      <small class="text-muted">
-                        Created on {new Date(selectedMessage.value.createdAt).toLocaleDateString()}
+                      <div class="p-3 rounded-3 mb-4" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                        <p class="mb-0 text-dark lh-base" style={{ fontSize: '0.95rem' }}>{selectedMessage.value.content}</p>
+                      </div>
+                      <hr class="my-3" />
+                      <small class="text-muted d-flex align-items-center gap-1">
+                        <CalendarIcon style={{ width: '14px', height: '14px' }} />
+                        Created on {new Date(selectedMessage.value.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </small>
                     </div>
                   </div>
                 ) : (
-                  <div class="card border-0 shadow-sm">
+                  <div class="card border-0 shadow-lg rounded-4">
                     <div class="card-body text-center py-5">
-                      <UserIcon style={{ width: '3rem', height: '3rem', color: '#dee2e6' }} />
-                      <h5 class="text-muted mt-3">Select a message</h5>
-                      <p class="text-muted">Click on a message to preview it here</p>
+                      <div class="mb-4 p-4 rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style={{ width: '100px', height: '100px' }}>
+                        <UserIcon style={{ width: '3rem', height: '3rem', color: '#6c757d' }} />
+                      </div>
+                      <h5 class="text-muted mb-3 d-flex align-items-center">
+                        <EyeIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
+                        Select a message
+                      </h5>
+                      <p class="text-muted">Click on "Read More" to preview a message here</p>
                     </div>
                   </div>
                 )}
@@ -512,7 +613,8 @@ export default {
                             <input 
                               type="text" 
                               class="form-control" 
-                              v-model={newMessage.value.founderName}
+                              value={newMessage.value.founderName}
+                              onInput={(e) => newMessage.value.founderName = e.target.value}
                               placeholder="Enter founder name"
                             />
                           </div>
@@ -523,7 +625,8 @@ export default {
                             <input 
                               type="text" 
                               class="form-control" 
-                              v-model={newMessage.value.position}
+                              value={newMessage.value.position}
+                              onInput={(e) => newMessage.value.position = e.target.value}
                               placeholder="Enter position"
                             />
                           </div>
@@ -535,21 +638,40 @@ export default {
                           type="file" 
                           class="form-control" 
                           accept="image/*"
-                          onChange={(e) => newMessage.value.founderImage = e.target.files[0]}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              newMessage.value.founderImage = file;
+                              newImageUploaded.value = true;
+                              newImageFileName.value = file.name;
+                            }
+                          }}
                         />
+                        {newImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-success">
+                              ✓ Image uploaded: {newImageFileName.value}
+                            </small>
+                          </div>
+                        )}
                       </div>
                       <div class="mb-3">
                         <label class="form-label">Message</label>
                         <textarea 
                           class="form-control" 
                           rows="6"
-                          v-model={newMessage.value.content}
+                          value={newMessage.value.content}
+                          onInput={(e) => newMessage.value.content = e.target.value}
                           placeholder="Enter your message content"
                         ></textarea>
                       </div>
                       <div class="mb-3">
                         <label class="form-label">Status</label>
-                        <select class="form-select" v-model={newMessage.value.status}>
+                        <select 
+                          class="form-select" 
+                          value={newMessage.value.status}
+                          onChange={(e) => newMessage.value.status = e.target.value}
+                        >
                           <option value="draft">Draft</option>
                           <option value="published">Published</option>
                         </select>
@@ -584,7 +706,8 @@ export default {
                             <input 
                               type="text" 
                               class="form-control" 
-                              v-model={editMessage.value.founderName}
+                              value={editMessage.value.founderName}
+                              onInput={(e) => editMessage.value.founderName = e.target.value}
                               placeholder="Enter founder name"
                             />
                           </div>
@@ -595,7 +718,8 @@ export default {
                             <input 
                               type="text" 
                               class="form-control" 
-                              v-model={editMessage.value.position}
+                              value={editMessage.value.position}
+                              onInput={(e) => editMessage.value.position = e.target.value}
                               placeholder="Enter position"
                             />
                           </div>
@@ -607,8 +731,22 @@ export default {
                           type="file" 
                           class="form-control" 
                           accept="image/*"
-                          onChange={(e) => editMessage.value.founderImage = e.target.files[0]}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              editMessage.value.founderImage = file;
+                              editImageUploaded.value = true;
+                              editImageFileName.value = file.name;
+                            }
+                          }}
                         />
+                        {editImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-success">
+                              ✓ Image uploaded: {editImageFileName.value}
+                            </small>
+                          </div>
+                        )}
                         <small class="text-muted">Leave empty to keep current image</small>
                       </div>
                       <div class="mb-3">
@@ -616,13 +754,18 @@ export default {
                         <textarea 
                           class="form-control" 
                           rows="6"
-                          v-model={editMessage.value.content}
+                          value={editMessage.value.content}
+                          onInput={(e) => editMessage.value.content = e.target.value}
                           placeholder="Enter your message content"
                         ></textarea>
                       </div>
                       <div class="mb-3">
                         <label class="form-label">Status</label>
-                        <select class="form-select" v-model={editMessage.value.status}>
+                        <select 
+                          class="form-select" 
+                          value={editMessage.value.status}
+                          onChange={(e) => editMessage.value.status = e.target.value}
+                        >
                           <option value="draft">Draft</option>
                           <option value="published">Published</option>
                         </select>

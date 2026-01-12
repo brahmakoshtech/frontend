@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Helper function to get presigned URL for S3 images
 const getPresignedImageUrl = async (imageUrl) => {
@@ -62,8 +62,6 @@ const testimonialService = {
       const response = await axios.post(`${API_BASE_URL}/testimonials`, testimonialData, {
         headers: getAuthHeaders()
       });
-      // Backend returns {success: true, data: testimonial}
-      // Extract the data object directly
       return { success: true, data: response.data.data || response.data };
     } catch (error) {
       return { success: false, error: error.response?.data?.message || error.message };

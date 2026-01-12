@@ -1,6 +1,6 @@
-import { ref, onMounted, h } from 'vue';
+import { ref, onMounted, h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { ArrowLeftIcon, PlusIcon, StarIcon, TrashIcon, PencilIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, PlusIcon, StarIcon, TrashIcon, PencilIcon, ChevronLeftIcon, ChevronRightIcon, ChartBarIcon } from '@heroicons/vue/24/outline';
 import { useToast } from 'vue-toastification';
 import testimonialService from '../../../services/testimonialService.js';
 
@@ -15,12 +15,45 @@ export default {
     const showEditModal = ref(false);
     const showDropdown = ref({});
     const editingTestimonial = ref(null);
+    const editImageUploaded = ref(false);
+    const editImageFileName = ref('');
+    const expandedMessages = ref({});
+    const currentPage = ref(1);
+    const itemsPerPage = ref(12);
 
     const toggleDropdown = (testimonialId) => {
       showDropdown.value = {
         ...showDropdown.value,
         [testimonialId]: !showDropdown.value[testimonialId]
       };
+    };
+
+    const toggleMessage = (testimonialId) => {
+      expandedMessages.value = {
+        ...expandedMessages.value,
+        [testimonialId]: !expandedMessages.value[testimonialId]
+      };
+    };
+
+    const truncateMessage = (message, limit = 120) => {
+      if (message.length <= limit) return message;
+      return message.substring(0, limit) + '...';
+    };
+
+    const paginatedTestimonials = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage.value;
+      const end = start + itemsPerPage.value;
+      return testimonials.value.slice(start, end);
+    });
+
+    const totalPages = computed(() => {
+      return Math.ceil(testimonials.value.length / itemsPerPage.value);
+    });
+
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+      }
     };
 
     const toggleTestimonialStatus = async (id) => {
@@ -50,6 +83,8 @@ export default {
       message: '',
       image: null
     });
+    const newImageUploaded = ref(false);
+    const newImageFileName = ref('');
 
     const goBack = () => {
       router.push('/client/tools');
@@ -312,150 +347,179 @@ export default {
     });
 
     return () => (
-      <div class="container-fluid">
+      <div class="container-fluid px-3 px-lg-4">
         <div class="row">
           <div class="col-12">
-            <div class="d-flex align-items-center mb-4">
-              <button 
-                class="btn btn-outline-secondary me-3" 
-                onClick={goBack}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <ArrowLeftIcon style={{ width: '1rem', height: '1rem' }} />
-                Back to Tools
-              </button>
-              <div class="flex-grow-1">
-                <h1 class="mb-0 text-primary">Testimonials</h1>
-                <p class="text-muted mb-0">Manage customer testimonials and reviews</p>
+            {/* Enhanced Header */}
+            <div class="bg-gradient-primary rounded-4 p-4 mb-4 text-white shadow-lg">
+              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3">
+                <button 
+                  class="btn btn-light btn-sm rounded-pill px-3" 
+                  onClick={goBack}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <ArrowLeftIcon style={{ width: '1rem', height: '1rem' }} />
+                  <span class="d-none d-sm-inline">Back to Tools</span>
+                  <span class="d-sm-none">Back</span>
+                </button>
+                <div class="flex-grow-1">
+                  <h1 class="mb-1 fw-bold fs-2 text-dark">✨ Customer Testimonials</h1>
+                  <p class="mb-0 text-dark" style={{ opacity: 0.8 }}>Showcase your customer success stories</p>
+                  {!loading.value && testimonials.value.length > 0 && (
+                    <small class="text-dark d-block mt-1" style={{ opacity: 0.8 }}>
+                      <ChartBarIcon style={{ width: '16px', height: '16px' }} class="me-1" />
+                      {testimonials.value.length} total testimonials • Page {currentPage.value} of {totalPages.value}
+                    </small>
+                  )}
+                </div>
+                <button 
+                  class="btn btn-light btn-lg rounded-pill px-4 shadow-sm"
+                  onClick={() => showAddModal.value = true}
+                  disabled={loading.value}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}
+                >
+                  <PlusIcon style={{ width: '1.2rem', height: '1.2rem' }} />
+                  <span class="d-none d-sm-inline">Add Testimonial</span>
+                  <span class="d-sm-none">Add</span>
+                </button>
               </div>
-              <button 
-                class="btn btn-primary"
-                onClick={() => showAddModal.value = true}
-                disabled={loading.value}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <PlusIcon style={{ width: '1rem', height: '1rem' }} />
-                Add New Testimonial
-              </button>
             </div>
 
             {loading.value && (
-              <div class="text-center py-4">
-                <div class="spinner-border text-primary" role="status">
+              <div class="text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
                   <span class="visually-hidden">Loading...</span>
                 </div>
+                <p class="text-muted">Loading testimonials...</p>
               </div>
             )}
 
             <div class="row g-4">
-              {testimonials.value.map(testimonial => (
-                <div key={testimonial._id || testimonial.id} class="col-lg-6 col-md-12">
+              {paginatedTestimonials.value.map(testimonial => (
+                <div key={testimonial._id || testimonial.id} class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
                   <div 
-                    class={`card border-0 shadow-sm h-100 position-relative overflow-hidden ${!testimonial.isActive ? 'opacity-50' : ''}`}
+                    class={`card border-0 shadow-lg h-100 position-relative overflow-hidden testimonial-card ${!testimonial.isActive ? 'opacity-50' : ''}`}
                     onClick={() => {
                       if (!testimonial.isActive) {
                         toggleTestimonialStatus(testimonial.id || testimonial._id);
                       }
                     }}
-                    style={{ cursor: !testimonial.isActive ? 'pointer' : 'default' }}
+                    style={{ 
+                      cursor: !testimonial.isActive ? 'pointer' : 'default',
+                      transition: 'all 0.3s ease',
+                      background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+                    }}
                   >
                     {!testimonial.isActive && (
                       <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1 }}>
-                        <span class="badge bg-secondary px-3 py-2">Disabled - Click to Enable</span>
+                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled - Click to Enable</span>
                       </div>
                     )}
-                    {/* Quote decoration */}
-                    <div class="position-absolute top-0 end-0 p-3" style={{ opacity: 0.1, fontSize: '3rem', color: '#007bff' }}>"</div>
+                    
+                    {/* Enhanced Quote decoration */}
+                    <div class="position-absolute top-0 end-0 p-3" style={{ opacity: 0.08, fontSize: '4rem', color: '#007bff', fontFamily: 'serif' }}>❝</div>
                     
                     <div class="card-body p-4">
                       <div class="d-flex align-items-start mb-3">
                         <div class="position-relative me-3">
-                          <img 
-                            src={testimonial.image && testimonial.image.trim() ? testimonial.image : `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=007bff&color=fff&size=60`} 
-                            alt={testimonial.name}
-                            class="rounded-circle border border-2 border-light shadow-sm"
-                            style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                            onError={(e) => {
-                              const currentSrc = e.target.src;
-                              const isLocalUrl = currentSrc.includes('localhost') || currentSrc.includes('127.0.0.1') || currentSrc.startsWith('/uploads/');
-                              const isS3Url = currentSrc.includes('s3.amazonaws.com') || currentSrc.includes('amazonaws.com');
-                              
-                              // For local URLs (old testimonials), immediately fallback to avatar
-                              if (isLocalUrl) {
-                                // console.warn('Local image URL not accessible (old testimonial):', currentSrc, 'Falling back to avatar');
-                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=60`;
-                                return;
-                              }
-                              
-                              // For S3 URLs, retry once before falling back (might be CORS or timing issue)
-                              if (isS3Url && !e.target.dataset.retried) {
-                                e.target.dataset.retried = 'true';
-                                // Retry with cache busting
-                                setTimeout(() => {
-                                  e.target.src = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
-                                }, 1000);
-                              } else {
-                                // Final fallback to avatar only if not S3 or retry failed
-                                // console.warn('Image failed to load:', currentSrc, 'Falling back to avatar');
-                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=60`;
-                              }
-                            }}
-                            onLoad={(e) => {
-                              // Reset retry flag on successful load
-                              if (e.target) {
-                                e.target.dataset.retried = 'false';
-                              }
-                            }}
-                          />
-                          <input 
-                            type="file" 
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            id={`image-upload-${testimonial.id || testimonial._id}`}
-                            onChange={(e) => handleImageUpload(e, testimonial.id || testimonial._id)}
-                          />
-                          <label 
-                            for={`image-upload-${testimonial.id || testimonial._id}`}
-                            class="position-absolute bottom-0 end-0 btn btn-sm btn-primary rounded-circle d-flex align-items-center justify-content-center"
-                            style={{ width: '24px', height: '24px', fontSize: '10px', cursor: 'pointer' }}
-                            title="Change photo"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            📷
-                          </label>
+                          <div class="avatar-container" style={{ position: 'relative' }}>
+                            <img 
+                              src={testimonial.image && testimonial.image.trim() ? testimonial.image : `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=007bff&color=fff&size=70&font-size=0.33`} 
+                              alt={testimonial.name}
+                              class="rounded-circle border border-3 border-white shadow-lg"
+                              style={{ 
+                                width: '70px', 
+                                height: '70px', 
+                                objectFit: 'cover',
+                                transition: 'transform 0.3s ease'
+                              }}
+                              onError={(e) => {
+                                const currentSrc = e.target.src;
+                                const isLocalUrl = currentSrc.includes('localhost') || currentSrc.includes('127.0.0.1') || currentSrc.startsWith('/uploads/');
+                                const isS3Url = currentSrc.includes('s3.amazonaws.com') || currentSrc.includes('amazonaws.com');
+                                
+                                if (isLocalUrl) {
+                                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=70&font-size=0.33`;
+                                  return;
+                                }
+                                
+                                if (isS3Url && !e.target.dataset.retried) {
+                                  e.target.dataset.retried = 'true';
+                                  setTimeout(() => {
+                                    e.target.src = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
+                                  }, 1000);
+                                } else {
+                                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=70&font-size=0.33`;
+                                }
+                              }}
+                              onLoad={(e) => {
+                                if (e.target) {
+                                  e.target.dataset.retried = 'false';
+                                }
+                              }}
+                            />
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              id={`image-upload-${testimonial.id || testimonial._id}`}
+                              onChange={(e) => handleImageUpload(e, testimonial.id || testimonial._id)}
+                            />
+                            <label 
+                              for={`image-upload-${testimonial.id || testimonial._id}`}
+                              class="position-absolute bottom-0 end-0 btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                              style={{ 
+                                width: '28px', 
+                                height: '28px', 
+                                fontSize: '12px', 
+                                cursor: 'pointer',
+                                border: '2px solid white'
+                              }}
+                              title="Change photo"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              📷
+                            </label>
+                          </div>
                         </div>
                         <div class="flex-grow-1">
-                          <h5 class="mb-1 fw-bold text-dark">{testimonial.name}</h5>
+                          <h5 class="mb-2 fw-bold text-dark" style={{ fontSize: '1.1rem' }}>{testimonial.name}</h5>
                           <div class="d-flex align-items-center mb-2">
-                            <div class="d-flex me-2">
+                            <div class="d-flex me-2" style={{ gap: '2px' }}>
                               {renderStars(testimonial.rating)}
                             </div>
-                            <span class="badge bg-primary-subtle text-primary px-2 py-1 rounded-pill">
-                              {testimonial.rating}/5
+                            <span class="badge bg-warning-subtle text-warning px-2 py-1 rounded-pill fw-semibold">
+                              ⭐ {testimonial.rating}/5
                             </span>
                           </div>
-                          <small class="text-muted d-flex align-items-center">
-                            ✓ Verified Customer
+                          <small class="text-success d-flex align-items-center fw-semibold">
+                            ✅ Verified Customer
                           </small>
                         </div>
                         <div class="dropdown">
                           <button 
-                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
                             type="button" 
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleDropdown(testimonial.id || testimonial._id);
                             }}
-                            style={{ width: '36px', height: '36px', fontSize: '18px', fontWeight: 'bold' }}
+                            style={{ 
+                              width: '40px', 
+                              height: '40px', 
+                              fontSize: '18px', 
+                              fontWeight: 'bold',
+                              transition: 'all 0.2s ease'
+                            }}
                             title="More options"
                           >
                             ⋮
                           </button>
                           {showDropdown.value[testimonial.id || testimonial._id] && (
-                            <ul class="dropdown-menu show position-absolute shadow-lg border-0" style={{ top: '100%', right: '0', zIndex: 1000, minWidth: '140px' }}>
+                            <ul class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ top: '100%', right: '0', zIndex: 1000, minWidth: '160px' }}>
                               <li>
                                 <button 
-                                  class="dropdown-item d-flex align-items-center py-2" 
+                                  class="dropdown-item d-flex align-items-center py-2 rounded-2" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     editTestimonial(testimonial);
@@ -468,7 +532,7 @@ export default {
                               </li>
                               <li>
                                 <button 
-                                  class={`dropdown-item d-flex align-items-center py-2 ${!testimonial.isActive ? 'text-success' : 'text-warning'}`}
+                                  class={`dropdown-item d-flex align-items-center py-2 rounded-2 ${!testimonial.isActive ? 'text-success' : 'text-warning'}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     toggleTestimonialStatus(testimonial.id || testimonial._id);
@@ -492,9 +556,10 @@ export default {
                                   )}
                                 </button>
                               </li>
+                              <li><hr class="dropdown-divider" /></li>
                               <li>
                                 <button 
-                                  class="dropdown-item d-flex align-items-center py-2 text-danger" 
+                                  class="dropdown-item d-flex align-items-center py-2 text-danger rounded-2" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     deleteTestimonial(testimonial.id || testimonial._id);
@@ -512,13 +577,26 @@ export default {
                       
                       <div class="testimonial-content mb-3">
                         <blockquote class="mb-0 position-relative">
-                          <p class="mb-0 fst-italic text-dark lh-base" style={{ fontSize: '0.95rem' }}>
-                            "{testimonial.message}"
-                          </p>
+                          <div class="quote-content p-3 rounded-3" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef', minHeight: '120px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <p class="mb-0 fst-italic text-dark lh-base" style={{ fontSize: '0.95rem' }}>
+                              "{expandedMessages.value[testimonial.id || testimonial._id] 
+                                ? testimonial.message 
+                                : truncateMessage(testimonial.message)}"
+                            </p>
+                            {testimonial.message.length > 120 && (
+                              <button 
+                                class="btn btn-link p-0 text-primary fw-semibold mt-2 align-self-start" 
+                                style={{ fontSize: '0.85rem', textDecoration: 'none' }}
+                                onClick={() => toggleMessage(testimonial.id || testimonial._id)}
+                              >
+                                {expandedMessages.value[testimonial.id || testimonial._id] ? '👆 See less' : '👇 See more'}
+                              </button>
+                            )}
+                          </div>
                         </blockquote>
                       </div>
                       
-                      <div class="d-flex align-items-center justify-content-between pt-2 border-top border-light">
+                      <div class="d-flex align-items-center justify-content-between pt-3 border-top border-light">
                         <small class="text-muted d-flex align-items-center">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="me-1">
                             <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2-7h-3V2h-2v2H8V2H6v2H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H3V8h14v12z"/>
@@ -530,7 +608,7 @@ export default {
                           })}
                         </small>
                         <div class="d-flex align-items-center">
-                          <span class="badge bg-success-subtle text-success px-2 py-1 rounded-pill">
+                          <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="me-1">
                               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
@@ -544,17 +622,69 @@ export default {
               ))}
             </div>
 
+            {/* Enhanced Pagination */}
+            {testimonials.value.length > itemsPerPage.value && (
+              <div class="d-flex justify-content-center align-items-center mt-5">
+                <nav aria-label="Testimonials pagination">
+                  <ul class="pagination mb-0 shadow-sm rounded-pill" style={{ backgroundColor: 'white' }}>
+                    <li class={`page-item ${currentPage.value === 1 ? 'disabled' : ''}`}>
+                      <button 
+                        class="page-link border-0 rounded-pill px-3 py-2 d-flex align-items-center" 
+                        onClick={() => goToPage(currentPage.value - 1)}
+                        disabled={currentPage.value === 1}
+                        style={{ backgroundColor: 'transparent' }}
+                      >
+                        <ChevronLeftIcon style={{ width: '16px', height: '16px' }} class="me-1" />
+                        <span class="d-none d-sm-inline">Previous</span>
+                      </button>
+                    </li>
+                    {Array.from({ length: totalPages.value }, (_, i) => i + 1).map(page => (
+                      <li key={page} class={`page-item ${currentPage.value === page ? 'active' : ''}`}>
+                        <button 
+                          class={`page-link border-0 rounded-circle mx-1 ${currentPage.value === page ? 'bg-primary text-white shadow-sm' : 'bg-light text-dark'}`}
+                          onClick={() => goToPage(page)}
+                          style={{ 
+                            width: '40px', 
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '600'
+                          }}
+                        >
+                          {page}
+                        </button>
+                      </li>
+                    ))}
+                    <li class={`page-item ${currentPage.value === totalPages.value ? 'disabled' : ''}`}>
+                      <button 
+                        class="page-link border-0 rounded-pill px-3 py-2 d-flex align-items-center" 
+                        onClick={() => goToPage(currentPage.value + 1)}
+                        disabled={currentPage.value === totalPages.value}
+                        style={{ backgroundColor: 'transparent' }}
+                      >
+                        <span class="d-none d-sm-inline">Next</span>
+                        <ChevronRightIcon style={{ width: '16px', height: '16px' }} class="ms-1" />
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            )}
+
             {testimonials.value.length === 0 && !loading.value && (
               <div class="text-center py-5">
-                <div class="mb-4">
-                  <StarIcon style={{ width: '4rem', height: '4rem', color: '#dee2e6' }} />
+                <div class="mb-4 p-4 rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px' }}>
+                  <StarIcon style={{ width: '4rem', height: '4rem', color: '#6c757d' }} />
                 </div>
-                <h4 class="text-muted">No testimonials yet</h4>
-                <p class="text-muted">Start by adding your first customer testimonial</p>
+                <h4 class="text-muted mb-3">🌟 No testimonials yet</h4>
+                <p class="text-muted mb-4">Start building trust by adding your first customer testimonial</p>
                 <button 
-                  class="btn btn-primary"
+                  class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm"
                   onClick={() => showAddModal.value = true}
+                  style={{ fontWeight: '600' }}
                 >
+                  <PlusIcon style={{ width: '1.2rem', height: '1.2rem' }} class="me-2" />
                   Add First Testimonial
                 </button>
               </div>
@@ -608,9 +738,18 @@ export default {
                             const file = e.target.files[0];
                             if (file) {
                               newTestimonial.value.image = file;
+                              newImageUploaded.value = true;
+                              newImageFileName.value = file.name;
                             }
                           }}
                         />
+                        {newImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-success">
+                              ✓ Image uploaded: {newImageFileName.value}
+                            </small>
+                          </div>
+                        )}
                         <small class="form-text text-muted">Max file size: 5MB (JPG, PNG, GIF)</small>
                       </div>
                     </div>
@@ -683,9 +822,18 @@ export default {
                             const file = e.target.files[0];
                             if (file) {
                               editingTestimonial.value.image = file;
+                              editImageUploaded.value = true;
+                              editImageFileName.value = file.name;
                             }
                           }}
                         />
+                        {editImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-success">
+                              ✓ Image uploaded: {editImageFileName.value}
+                            </small>
+                          </div>
+                        )}
                         <small class="form-text text-muted">Max file size: 5MB (JPG, PNG, GIF)</small>
                       </div>
                     </div>

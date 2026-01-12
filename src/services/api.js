@@ -62,10 +62,15 @@ class ApiService {
         token = getTokenForRole('admin');
         tokenSource = 'admin (endpoint match)';
       } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') ||
-        endpoint.includes('/testimonials')) {
-        // TESTIMONIALS: Always use client token for testimonial operations
+        endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || endpoint.includes('/brand-assets') ||
+        endpoint.includes('/meditations')) {
+        // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS & MEDITATIONS: Always use client token
         token = getTokenForRole('client');
-        tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 'client (endpoint match)';
+        tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 
+                     endpoint.includes('/founder-messages') ? 'client (founder-messages endpoint)' : 
+                     endpoint.includes('/brand-assets') ? 'client (brand-assets endpoint)' :
+                     endpoint.includes('/meditations') ? 'client (meditations endpoint)' :
+                     'client (endpoint match)';
       } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
         // CRITICAL: Mobile endpoints (chat, voice, user profile) MUST use user token ONLY
@@ -132,17 +137,29 @@ class ApiService {
       tokenLength: token ? token.length : 0,
       tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
     });
-    // console.log('Full Token:', token);
+    console.log('Full Token:', token);
+    
+    // Decode and log client ID if token exists
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Client ID:', payload.clientId || payload.id);
+        console.log('Token Payload:', payload);
+      } catch (e) {
+        console.log('Could not decode token:', e);
+      }
+    }
    
 
 
+    // Merge headers without dropping Authorization when options.headers is provided
     const config = {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
+        ...(options.headers || {}),
       },
-      ...options,
     };
 
     // Remove token from options to avoid sending it in body
@@ -177,16 +194,25 @@ class ApiService {
             // You can trigger a notification/toast here if needed
           }
         } else {
+          // Include detailed error message if available (for development)
+          const errorMessage = data.error && data.message 
+            ? `${data.message} (${data.error})` 
+            : data.error || data.message || 'Request failed';
+          
           console.error('[API Error]', {
             endpoint,
             status: response.status,
             statusText: response.statusText,
-            error: data.message || 'Request failed',
+            error: errorMessage,
             hasToken: !!token,
             responseData: data
           });
+          
+          const error = new Error(errorMessage);
+          error.status = response.status;
+          error.responseData = data;
+          throw error;
         }
-        throw new Error(data.message || 'Request failed');
       }
 
       return data;
@@ -697,5 +723,113 @@ class ApiService {
 }
 
 
-const api = new ApiService();
+const apiService = new ApiService();
+
+// Create axios-like interface
+const api = {
+  get: async (url, config = {}) => {
+    const response = await apiService.request(url, { method: 'GET', ...config });
+    return { data: response };
+  },
+  post: async (url, data, config = {}) => {
+    const response = await apiService.request(url, { method: 'POST', body: data, ...config });
+    return { data: response };
+  },
+  put: async (url, data, config = {}) => {
+    const response = await apiService.request(url, { method: 'PUT', body: data, ...config });
+    return { data: response };
+  },
+  delete: async (url, config = {}) => {
+    const response = await apiService.request(url, { method: 'DELETE', ...config });
+    return { data: response };
+  },
+  patch: async (url, data, config = {}) => {
+    const response = await apiService.request(url, { method: 'PATCH', body: data, ...config });
+    return { data: response };
+  },
+  // Auth methods
+  superAdminLogin: apiService.superAdminLogin.bind(apiService),
+  adminLogin: apiService.adminLogin.bind(apiService),
+  getCurrentAdmin: apiService.getCurrentAdmin.bind(apiService),
+  clientLogin: apiService.clientLogin.bind(apiService),
+  clientRegister: apiService.clientRegister.bind(apiService),
+  getCurrentClient: apiService.getCurrentClient.bind(apiService),
+  userLogin: apiService.userLogin.bind(apiService),
+  userRegister: apiService.userRegister.bind(apiService),
+  getCurrentUser: apiService.getCurrentUser.bind(apiService),
+  // Mobile registration methods
+  mobileUserRegisterStep1: apiService.mobileUserRegisterStep1.bind(apiService),
+  mobileUserRegisterStep1Verify: apiService.mobileUserRegisterStep1Verify.bind(apiService),
+  mobileUserRegisterStep2: apiService.mobileUserRegisterStep2.bind(apiService),
+  mobileUserRegisterStep2Verify: apiService.mobileUserRegisterStep2Verify.bind(apiService),
+  mobileUserRegisterStep3: apiService.mobileUserRegisterStep3.bind(apiService),
+  resendEmailOTP: apiService.resendEmailOTP.bind(apiService),
+  resendMobileOTP: apiService.resendMobileOTP.bind(apiService),
+  mobileUserLogin: apiService.mobileUserLogin.bind(apiService),
+  // Firebase methods
+  firebaseSignUp: apiService.firebaseSignUp.bind(apiService),
+  firebaseSignIn: apiService.firebaseSignIn.bind(apiService),
+  // Chat methods
+  createChat: apiService.createChat.bind(apiService),
+  getChats: apiService.getChats.bind(apiService),
+  getChat: apiService.getChat.bind(apiService),
+  sendChatMessage: apiService.sendChatMessage.bind(apiService),
+  deleteChat: apiService.deleteChat.bind(apiService),
+  // Voice methods
+  startVoiceSession: apiService.startVoiceSession.bind(apiService),
+  processVoice: apiService.processVoice.bind(apiService),
+  // Super Admin methods
+  getAdmins: apiService.getAdmins.bind(apiService),
+  createAdmin: apiService.createAdmin.bind(apiService),
+  updateAdmin: apiService.updateAdmin.bind(apiService),
+  deleteAdmin: apiService.deleteAdmin.bind(apiService),
+  getSuperAdminDashboard: apiService.getSuperAdminDashboard.bind(apiService),
+  getPendingApprovals: apiService.getPendingApprovals.bind(apiService),
+  getUsers: apiService.getUsers.bind(apiService),
+  deleteUser: apiService.deleteUser.bind(apiService),
+  approveLogin: apiService.approveLogin.bind(apiService),
+  rejectLogin: apiService.rejectLogin.bind(apiService),
+  // Admin methods
+  getClients: apiService.getClients.bind(apiService),
+  createClient: apiService.createClient.bind(apiService),
+  getClientLoginToken: apiService.getClientLoginToken.bind(apiService),
+  updateClient: apiService.updateClient.bind(apiService),
+  deleteClient: apiService.deleteClient.bind(apiService),
+  getAdminUsers: apiService.getAdminUsers.bind(apiService),
+  getAdminDashboard: apiService.getAdminDashboard.bind(apiService),
+  // Client methods
+  getClientUsers: apiService.getClientUsers.bind(apiService),
+  createClientUser: apiService.createClientUser.bind(apiService),
+  updateClientUser: apiService.updateClientUser.bind(apiService),
+  deleteClientUser: apiService.deleteClientUser.bind(apiService),
+  getClientDashboard: apiService.getClientDashboard.bind(apiService),
+  // User methods
+  getUserProfile: apiService.getUserProfile.bind(apiService),
+  updateUserProfile: apiService.updateUserProfile.bind(apiService),
+  // Upload methods
+  getPresignedUrl: apiService.getPresignedUrl.bind(apiService),
+  uploadToS3: apiService.uploadToS3.bind(apiService),
+  // Realtime agent
+  createRealtimeAgentRoom: apiService.createRealtimeAgentRoom.bind(apiService),
+  // Password reset
+  forgotPassword: apiService.forgotPassword.bind(apiService),
+  verifyResetOTP: apiService.verifyResetOTP.bind(apiService),
+  resetPassword: apiService.resetPassword.bind(apiService),
+  resendResetOTP: apiService.resendResetOTP.bind(apiService),
+  // Testimonials
+  getTestimonials: apiService.getTestimonials.bind(apiService),
+  getTestimonial: apiService.getTestimonial.bind(apiService),
+  createTestimonial: apiService.createTestimonial.bind(apiService),
+  updateTestimonial: apiService.updateTestimonial.bind(apiService),
+  deleteTestimonial: apiService.deleteTestimonial.bind(apiService),
+  uploadTestimonialImage: apiService.uploadTestimonialImage.bind(apiService),
+  getTestimonialStats: apiService.getTestimonialStats.bind(apiService),
+  // Mobile user registration with image
+  registerUserWithImage: apiService.registerUserWithImage.bind(apiService),
+  updateUserProfileWithImage: apiService.updateUserProfileWithImage.bind(apiService),
+  mobileUserRegisterStep4UploadImage: apiService.mobileUserRegisterStep4UploadImage.bind(apiService),
+  // Direct request method
+  request: apiService.request.bind(apiService)
+};
+
 export default api;

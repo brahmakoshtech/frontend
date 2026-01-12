@@ -276,6 +276,61 @@ const routes = [
         component: () => import('../views/client/tools/Branding.jsx')
       },
       {
+        path: 'activity',
+        name: 'ClientActivity',
+        component: () => import('../views/client/activity/Activity.jsx')
+      },
+      {
+        path: 'activity/meditation',
+        name: 'ClientMeditation',
+        component: () => import('../views/client/activity/activityTools/Meditation.jsx')
+      },
+      {
+        path: 'activity/chanting',
+        name: 'ClientChanting',
+        component: () => import('../views/client/activity/activityTools/Chanting.jsx')
+      },
+      {
+        path: 'activity/prathana',
+        name: 'ClientPrathana',
+        component: () => import('../views/client/activity/activityTools/Prathana.jsx')
+      },
+      {
+        path: 'activity/prayanam',
+        name: 'ClientPrayanam',
+        component: () => import('../views/client/activity/activityTools/Prayanam.jsx')
+      },
+      {
+        path: 'activity/wisdom',
+        name: 'ClientWisdom',
+        component: () => import('../views/client/activity/activityTools/Wisdom.jsx')
+      },
+      {
+        path: 'activity/soul-music',
+        name: 'ClientSoulMusic',
+        component: () => import('../views/client/activity/activityTools/SoulMusic.jsx')
+      },
+      {
+        path: 'activity/yoga',
+        name: 'ClientYoga',
+        component: () => import('../views/client/activity/activityTools/Yoga.jsx')
+      },
+      {
+        path: 'activity/mindfulness',
+        name: 'ClientMindfulness',
+        component: () => import('../views/client/activity/activityTools/Mindfulness.jsx')
+      },
+      {
+        path: 'activity/gratitude',
+        name: 'ClientGratitude',
+        component: () => import('../views/client/activity/activityTools/Gratitude.jsx')
+      },
+      {
+        path: 'activity/self-reflection',
+        name: 'ClientSelfReflection',
+        component: () => import('../views/client/activity/activityTools/SelfReflection.jsx')
+      },
+      {
         path: 'tools/push-notification',
         name: 'ClientPushNotification',
         component: () => import('../views/client/tools/PushNotification.jsx')

@@ -1,62 +1,84 @@
-import axios from 'axios';
+import api from './api.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Helper function to get client token
+// Helper to get client token for founder messages
 const getClientToken = () => {
   const token = localStorage.getItem('token_client');
-  return token;
-};
-
-// Helper function to get auth headers for client
-const getAuthHeaders = () => {
-  const token = getClientToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.role === 'client') {
+        return token;
+      }
+    } catch (e) {
+      return token;
+    }
+  }
+  return null;
 };
 
 const founderMessageService = {
-  // Get all founder messages
+  // Get all founder messages (temporary - no auth)
   async getAllMessages() {
     try {
-      console.log('Frontend: Getting all messages from:', `${API_BASE_URL}/founder-messages`);
-      
-      const response = await axios.get(`${API_BASE_URL}/founder-messages`, {
-        headers: getAuthHeaders()
-      });
-      
-      console.log('Frontend: Messages received:', response.data);
-      return { success: true, data: response.data.data };
+      const response = await api.request('/founder-messages');
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('Frontend: Error getting messages:', error);
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   // Get single founder message
   async getMessage(id) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/founder-messages/${id}`, {
-        headers: getAuthHeaders()
-      });
-      return { success: true, data: response.data.data };
+      const response = await api.request(`/founder-messages/${id}`);
+      return { success: true, data: response.data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   // Create new founder message (without image)
   async createMessage(messageData) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/founder-messages`, messageData, {
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
+      const clientToken = localStorage.getItem('token_client');
+      
+      if (!clientToken) {
+        return { 
+          success: false, 
+          error: 'You must be logged in as a client to create founder messages. Please login first.' 
+        };
+      }
+      
+      // Verify token role
+      try {
+        const payload = JSON.parse(atob(clientToken.split('.')[1]));
+        
+        if (payload.role !== 'client') {
+          return { 
+            success: false, 
+            error: `Invalid token role: ${payload.role}. Expected 'client'. Please logout and login as a client.` 
+          };
         }
+      } catch (decodeError) {
+        return { 
+          success: false, 
+          error: 'Invalid token format. Please logout and login again.' 
+        };
+      }
+      
+      const response = await api.request('/founder-messages', {
+        method: 'POST',
+        body: messageData
       });
       
-      return { success: true, data: response.data.data };
+      return { success: true, data: response.data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { 
+        success: false, 
+        error: error.message || 'Failed to create message' 
+      };
     }
   },
 
@@ -66,77 +88,103 @@ const founderMessageService = {
       const formData = new FormData();
       formData.append('founderImage', imageFile);
       
-      const response = await axios.post(`${API_BASE_URL}/founder-messages/${messageId}/upload-image`, formData, {
+      // Get client token for authenticated upload
+      const token = getClientToken();
+      
+      const response = await fetch(`${API_BASE_URL}/founder-messages/${messageId}/upload-image`, {
+        method: 'POST',
         headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'multipart/form-data'
-        }
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
+        body: formData
       });
       
-      return { success: true, data: response.data.data };
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Image upload failed');
+      }
+      
+      return { success: true, data: data.data || data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   // Update founder message
   async updateMessage(id, messageData) {
     try {
+      // Get client token for authenticated update
+      const token = getClientToken();
+      
+      // Always use FormData since backend uses multer's upload.single()
       const formData = new FormData();
       formData.append('founderName', messageData.founderName);
       formData.append('position', messageData.position);
       formData.append('content', messageData.content);
       formData.append('status', messageData.status);
       
-      if (messageData.founderImage) {
+      // Only append image if it's a File (new image selected)
+      if (messageData.founderImage && messageData.founderImage instanceof File) {
         formData.append('founderImage', messageData.founderImage);
       }
       
-      const response = await axios.put(`${API_BASE_URL}/founder-messages/${id}`, formData, {
+      const response = await fetch(`${API_BASE_URL}/founder-messages/${id}`, {
+        method: 'PUT',
         headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'multipart/form-data'
-        }
+          ...(token && { Authorization: `Bearer ${token}` })
+          // Don't set Content-Type for FormData - browser sets it with boundary
+        },
+        body: formData
       });
-      return { success: true, data: response.data.data };
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Update failed');
+      }
+      
+      return { success: true, data: data.data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   // Delete founder message
   async deleteMessage(id) {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/founder-messages/${id}`, {
-        headers: getAuthHeaders()
+      const response = await api.request(`/founder-messages/${id}`, {
+        method: 'DELETE'
       });
-      return { success: true, data: response.data };
+      return { success: true, data: response };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   // Toggle message status (publish/unpublish)
   async toggleStatus(id) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/founder-messages/${id}/toggle`, {}, {
-        headers: getAuthHeaders()
+      const response = await api.request(`/founder-messages/${id}/toggle`, {
+        method: 'PATCH',
+        body: {}
       });
-      return { success: true, data: response.data.data };
+      return { success: true, data: response.data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   // Increment views
   async incrementViews(id) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/founder-messages/${id}/view`, {}, {
-        headers: getAuthHeaders()
+      const response = await api.request(`/founder-messages/${id}/view`, {
+        method: 'PATCH',
+        body: {}
       });
-      return { success: true, data: response.data.data };
+      return { success: true, data: response.data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || error.message };
+      return { success: false, error: error.message };
     }
   },
 
@@ -162,11 +210,12 @@ const founderMessageService = {
       const key = url.pathname.substring(1); // Remove leading slash
       
       // Get presigned URL from backend with authentication
-      const response = await axios.get(`${API_BASE_URL}/upload/presigned-url/${encodeURIComponent(key)}`, {
-        headers: getAuthHeaders()
+      const response = await api.request(`/upload/presigned-url/${encodeURIComponent(key)}`, {
+        method: 'GET'
       });
-      if (response.data.success && response.data.data.presignedUrl) {
-        return response.data.data.presignedUrl;
+      
+      if (response.success && response.data?.presignedUrl) {
+        return response.data.presignedUrl;
       }
     } catch (error) {
       // If auth fails, return original URL (might work if bucket is public)
