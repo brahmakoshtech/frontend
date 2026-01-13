@@ -1,7 +1,11 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+<<<<<<< HEAD
 import { ArrowLeftIcon, PlayIcon, PauseIcon, ClockIcon, EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/vue/24/outline';
 import meditationService from '../../../../services/meditationService';
+=======
+import { ArrowLeftIcon, PlayIcon, PauseIcon, ClockIcon } from '@heroicons/vue/24/outline';
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
 
 export default {
   name: 'MeditationActivity',
@@ -11,6 +15,7 @@ export default {
     const currentTime = ref(0);
     const selectedDuration = ref(5); // minutes
     const sessionStarted = ref(false);
+<<<<<<< HEAD
     const showModal = ref(false);
     const showAddModal = ref(false);
     const selectedMeditation = ref(null);
@@ -23,6 +28,8 @@ export default {
       link: '',
       image: null
     });
+=======
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
     let timer = null;
 
     const durations = [
@@ -32,6 +39,7 @@ export default {
       { value: 30, label: '30 min' }
     ];
 
+<<<<<<< HEAD
     const meditationTypes = [];
 
     // Load meditations from API
@@ -87,6 +95,8 @@ export default {
       }
     ];
 
+=======
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
     const goBack = () => {
       if (timer) clearInterval(timer);
       router.push('/client/activity');
@@ -143,6 +153,7 @@ export default {
       return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+<<<<<<< HEAD
     const openModal = (meditation) => {
       selectedMeditation.value = meditation;
       showModal.value = true;
@@ -223,6 +234,8 @@ export default {
       loadMeditations();
     });
 
+=======
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
     onUnmounted(() => {
       if (timer) clearInterval(timer);
     });
@@ -246,6 +259,7 @@ export default {
                   <p class="text-muted mb-0">Find your inner peace</p>
                 </div>
               </div>
+<<<<<<< HEAD
               <button 
                 class="btn btn-primary rounded-pill px-4"
                 onClick={openAddModal}
@@ -253,6 +267,8 @@ export default {
                 <PlusIcon style={{ width: '1rem', height: '1rem' }} class="me-2" />
                 Add Meditation
               </button>
+=======
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
             </div>
 
             <div class="row g-4">
@@ -387,6 +403,7 @@ export default {
                   </div>
                 </div>
 
+<<<<<<< HEAD
                 {/* Meditation Types */}
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                   <div class="card-body p-4">
@@ -438,6 +455,8 @@ export default {
                   </div>
                 </div>
 
+=======
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
                 {/* Benefits */}
                 <div class="card border-0 shadow-sm rounded-4">
                   <div class="card-body p-4">
@@ -468,6 +487,7 @@ export default {
                 </div>
               </div>
             </div>
+<<<<<<< HEAD
 
             {/* View Modal */}
             {showModal.value && selectedMeditation.value && (
@@ -615,6 +635,8 @@ export default {
                 </div>
               </div>
             )}
+=======
+>>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
           </div>
         </div>
       </div>
