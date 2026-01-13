@@ -97,16 +97,23 @@ export default {
         if (response.success && response.data && response.data.data) {
           let testimonialsList = Array.isArray(response.data.data) ? response.data.data : [];
           
-          // Convert S3 URLs to presigned URLs for better access
+          // Convert S3 URLs to presigned URLs with error handling
           testimonialsList = await Promise.all(
             testimonialsList.map(async (testimonial) => {
               if (testimonial.image) {
                 try {
                   const presignedUrl = await testimonialService.getPresignedImageUrl(testimonial.image);
-                  return { ...testimonial, image: presignedUrl };
+                  // Validate presigned URL before using
+                  if (presignedUrl && presignedUrl.startsWith('http')) {
+                    return { ...testimonial, image: presignedUrl };
+                  } else {
+                    // Fallback to original URL or placeholder
+                    return { ...testimonial, image: null };
+                  }
                 } catch (error) {
-                  // console.warn('Failed to get presigned URL for testimonial image:', error);
-                  return testimonial;
+                  console.warn('Failed to get presigned URL for testimonial image:', error);
+                  // Return testimonial with null image to use placeholder
+                  return { ...testimonial, image: null };
                 }
               }
               return testimonial;
@@ -343,6 +350,55 @@ export default {
     };
 
     onMounted(() => {
+      // Console log all tokens for debugging
+      const clientToken = localStorage.getItem('token_client');
+      const userToken = localStorage.getItem('token_user');
+      const adminToken = localStorage.getItem('token_admin');
+      const superAdminToken = localStorage.getItem('token_super_admin');
+      
+      console.log('=== TESTIMONIAL TOKEN DEBUG ===');
+      console.log('Client Token:', clientToken);
+      console.log('User Token:', userToken);
+      console.log('Admin Token:', adminToken);
+      console.log('Super Admin Token:', superAdminToken);
+      console.log('Current URL:', window.location.href);
+      console.log('Testimonial Context: CLIENT DASHBOARD');
+      
+      // Decode and validate client token
+      if (clientToken && clientToken.startsWith('eyJ')) {
+        try {
+          const payload = JSON.parse(atob(clientToken.split('.')[1]));
+          console.log('✅ Client Token Payload:', payload);
+          console.log('🕐 Token Expires:', new Date(payload.exp * 1000));
+          console.log('⏰ Current Time:', new Date());
+          console.log('🔑 Token Valid:', payload.exp * 1000 > Date.now());
+          
+          // Copy token for Postman
+          console.log('📋 COPY THIS TOKEN FOR POSTMAN:');
+          console.log(clientToken);
+        } catch (e) {
+          console.log('❌ Could not decode client token:', e);
+        }
+      }
+      
+      // Check if user token is real or test
+      if (userToken === 'your_user_token_here') {
+        console.log('⚠️ User token is a test value, not real token');
+        console.log('💡 To get real user token: Login as user role');
+      } else if (userToken && userToken.startsWith('eyJ')) {
+        console.log('✅ User token appears to be real JWT');
+        try {
+          const payload = JSON.parse(atob(userToken.split('.')[1]));
+          console.log('User Token Payload:', payload);
+        } catch (e) {
+          console.log('❌ Could not decode user token');
+        }
+      } else {
+        console.log('❌ No valid user token found');
+      }
+      
+      console.log('===============================');
+      
       fetchTestimonials();
     });
 

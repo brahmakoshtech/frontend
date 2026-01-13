@@ -130,25 +130,11 @@ class ApiService {
     }
 
     // Debug logging
-    console.log('[API Request]', {
-      endpoint,
-      hasToken: !!token,
-      tokenSource,
-      tokenLength: token ? token.length : 0,
-      tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
-    });
-    console.log('Full Token:', token);
-    
-    // Decode and log client ID if token exists
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('Client ID:', payload.clientId || payload.id);
-        console.log('Token Payload:', payload);
-      } catch (e) {
-        console.log('Could not decode token:', e);
-      }
-    }
+    // console.log('[API Request]', {
+    //   endpoint,
+    //   hasToken: !!token,
+    //   tokenSource
+    // });
    
 
 

@@ -127,7 +127,7 @@ const testimonialService = {
     }
   },
 
-  // Get presigned URL for S3 image
+  // Get presigned URL for S3 image with retry logic
   async getPresignedImageUrl(imageUrl) {
     if (!imageUrl) return null;
     
@@ -144,24 +144,30 @@ const testimonialService = {
     
     try {
       // Extract key from S3 URL
-      // Format: https://bucket.s3.region.amazonaws.com/key
       const url = new URL(imageUrl);
       const key = url.pathname.substring(1); // Remove leading slash
       
-      // Get presigned URL from backend with authentication
+      // Get presigned URL from backend with timeout
       const response = await axios.get(`${API_BASE_URL}/upload/presigned-url/${encodeURIComponent(key)}`, {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
+        timeout: 5000 // 5 second timeout
       });
+      
       if (response.data.success && response.data.data.presignedUrl) {
-        return response.data.data.presignedUrl;
+        const presignedUrl = response.data.data.presignedUrl;
+        // Validate the presigned URL
+        if (presignedUrl && presignedUrl.startsWith('http')) {
+          return presignedUrl;
+        }
       }
     } catch (error) {
-      // console.warn('Failed to get presigned URL, using original:', error);
-      // If auth fails, return original URL (might work if bucket is public)
+      console.warn('Failed to get presigned URL:', error.message);
+      // Return null to use placeholder image instead of broken URL
+      return null;
     }
     
-    // Fallback to original URL
-    return imageUrl;
+    // Return null to use placeholder instead of potentially broken URL
+    return null;
   }
 };
 

@@ -1,5 +1,7 @@
 import api from './api.js';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const brandAssetService = {
   // Get all brand assets for authenticated client
   getAllBrandAssets: async () => {
@@ -103,7 +105,7 @@ const brandAssetService = {
       // Get client token for brand asset image upload
       const token = localStorage.getItem('token_client');
 
-      const response = await fetch(`${api.baseURL}/brand-assets/${id}/upload-image`, {
+      const response = await fetch(`${API_BASE_URL}/brand-assets/${id}/upload-image`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -111,11 +113,12 @@ const brandAssetService = {
         body: formData,
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || 'Image upload failed');
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
+      const data = await response.json();
       return {
         success: true,
         data: data.data
@@ -148,7 +151,7 @@ const brandAssetService = {
     }
   },
 
-  // Get presigned URL for S3 image (similar to testimonial service)
+  // Get presigned URL for S3 image with timeout and error handling
   getPresignedImageUrl: async (imageUrl) => {
     try {
       if (!imageUrl || !imageUrl.includes('amazonaws.com')) {
@@ -159,11 +162,22 @@ const brandAssetService = {
       const url = new URL(imageUrl);
       const key = url.pathname.substring(1);
 
-      const response = await api.request(`/upload/presigned-url?key=${encodeURIComponent(key)}`);
-      return response.url || imageUrl;
+      // Use GET method with timeout
+      const response = await api.request(`/upload/presigned-url/${encodeURIComponent(key)}`, {
+        timeout: 5000 // 5 second timeout
+      });
+      
+      const presignedUrl = response.data?.presignedUrl;
+      if (presignedUrl && presignedUrl.startsWith('http')) {
+        return presignedUrl;
+      }
+      
+      // Return null to use placeholder instead of broken URL
+      return null;
     } catch (error) {
-      console.error('Error getting presigned URL:', error);
-      return imageUrl;
+      console.warn('Error getting presigned URL:', error.message);
+      // Return null to use placeholder image
+      return null;
     }
   }
 };

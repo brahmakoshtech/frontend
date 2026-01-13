@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ArrowLeftIcon, PlusIcon, PhotoIcon, TrashIcon, EyeIcon, PencilIcon, EllipsisVerticalIcon, CalendarIcon, ChartBarIcon, SwatchIcon, GlobeAltIcon, ShareIcon } from '@heroicons/vue/24/outline';
 import brandAssetService from '../../../services/brandAssetService.js';
@@ -34,24 +34,49 @@ export default {
     const editImageUploaded = ref(false);
     const editImageFileName = ref('');
 
-    // Load all brand assets
+    // Generate placeholder image as data URL
+    const generatePlaceholder = (text, bgColor = '007bff', textColor = 'ffffff') => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 100;
+      canvas.height = 100;
+      const ctx = canvas.getContext('2d');
+      
+      // Fill background
+      ctx.fillStyle = `#${bgColor}`;
+      ctx.fillRect(0, 0, 100, 100);
+      
+      // Add text
+      ctx.fillStyle = `#${textColor}`;
+      ctx.font = 'bold 40px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text.charAt(0).toUpperCase(), 50, 50);
+      
+      return canvas.toDataURL();
+    };
     const loadBrandAssets = async () => {
       loading.value = true;
       try {
         const response = await brandAssetService.getAllBrandAssets();
         if (response.success) {
           let assetsList = response.data.data || [];
-          console.log('Loaded brand assets:', assetsList);
           
-          // Convert S3 URLs to presigned URLs for better access
+          // Convert S3 URLs to presigned URLs with better error handling
           assetsList = await Promise.all(
             assetsList.map(async (asset) => {
               if (asset.brandLogoImage) {
                 try {
                   const presignedUrl = await brandAssetService.getPresignedImageUrl(asset.brandLogoImage);
-                  return { ...asset, brandLogoImage: presignedUrl };
+                  // Only use presigned URL if it's valid
+                  if (presignedUrl && presignedUrl.startsWith('http')) {
+                    return { ...asset, brandLogoImage: presignedUrl };
+                  } else {
+                    // Use null to show placeholder instead of broken image
+                    return { ...asset, brandLogoImage: null };
+                  }
                 } catch (error) {
-                  return asset;
+                  // Keep original URL as fallback
+                  return { ...asset, brandLogoImage: null };
                 }
               }
               return asset;
@@ -60,10 +85,10 @@ export default {
           
           brandAssets.value = assetsList;
         } else {
-          console.error('Failed to load brand assets:', response.error);
+          // Failed to load brand assets
         }
       } catch (error) {
-        console.error('Error loading brand assets:', error);
+        // Error loading brand assets
       } finally {
         loading.value = false;
       }
@@ -191,7 +216,6 @@ export default {
                 }
               }
             } catch (imageError) {
-              console.error('Image upload failed:', imageError);
               alert('Asset updated but image upload failed');
             }
           }
@@ -235,12 +259,13 @@ export default {
       }
     };
 
-    const toggleDropdown = (assetId) => {
-      activeDropdown.value = activeDropdown.value === assetId ? null : assetId;
-    };
-
+    // Simple functions to prevent rerenders
     const goBack = () => {
       router.push('/client/tools');
+    };
+
+    const toggleDropdown = (assetId) => {
+      activeDropdown.value = activeDropdown.value === assetId ? null : assetId;
     };
 
     const viewAsset = (asset) => {
@@ -249,6 +274,21 @@ export default {
 
     // Load brand assets on component mount
     onMounted(() => {
+      // Console log all tokens for debugging
+      const clientToken = localStorage.getItem('token_client');
+      const userToken = localStorage.getItem('token_user');
+      const adminToken = localStorage.getItem('token_admin');
+      const superAdminToken = localStorage.getItem('token_super_admin');
+      
+      console.log('=== TOKEN DEBUG ===');
+      console.log('Client Token:', clientToken);
+      console.log('User Token:', userToken);
+      console.log('Admin Token:', adminToken);
+      console.log('Super Admin Token:', superAdminToken);
+      console.log('Current URL:', window.location.href);
+      console.log('Current Role Context:', window.location.pathname.includes('/client') ? 'CLIENT' : 'OTHER');
+      console.log('==================');
+      
       loadBrandAssets();
     });
 
@@ -317,13 +357,12 @@ export default {
                     
                     <div class="card-img-top bg-light d-flex align-items-center justify-content-center position-relative" style={{ height: '120px', borderRadius: '16px 16px 0 0' }}>
                       <img 
-                        src={asset.brandLogoImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(asset.brandLogoName || 'Brand')}&background=007bff&color=fff&size=100&font-size=0.33`} 
+                        src={asset.brandLogoImage || generatePlaceholder(asset.brandLogoName || 'Brand')} 
                         alt={asset.brandLogoName || 'Brand Asset'}
                         class="img-fluid rounded-3 shadow-sm" 
                         style={{ maxHeight: '100px', maxWidth: '90%', objectFit: 'contain' }}
                         onError={(e) => {
-                          console.log('Image failed to load:', asset.brandLogoImage);
-                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(asset.brandLogoName || 'Brand')}&background=dc3545&color=fff&size=100&font-size=0.33`;
+                          e.target.src = generatePlaceholder(asset.brandLogoName || 'B', 'dc3545');
                         }}
                       />
                     </div>
@@ -661,7 +700,7 @@ export default {
                         <div class="col-md-6">
                           <div class="text-center mb-4">
                             <img 
-                              src={selectedAsset.value.brandLogoImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedAsset.value.brandLogoName || 'Brand')}&background=007bff&color=fff&size=200&font-size=0.33`}
+                              src={selectedAsset.value.brandLogoImage || generatePlaceholder(selectedAsset.value.brandLogoName || 'Brand', '007bff')}
                               alt={selectedAsset.value.brandLogoName}
                               class="img-fluid rounded-3 shadow"
                               style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain' }}

@@ -1,11 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-<<<<<<< HEAD
 import { ArrowLeftIcon, PlayIcon, PauseIcon, ClockIcon, EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/vue/24/outline';
 import meditationService from '../../../../services/meditationService';
-=======
-import { ArrowLeftIcon, PlayIcon, PauseIcon, ClockIcon } from '@heroicons/vue/24/outline';
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
 
 export default {
   name: 'MeditationActivity',
@@ -15,7 +11,6 @@ export default {
     const currentTime = ref(0);
     const selectedDuration = ref(5); // minutes
     const sessionStarted = ref(false);
-<<<<<<< HEAD
     const showModal = ref(false);
     const showAddModal = ref(false);
     const selectedMeditation = ref(null);
@@ -28,8 +23,6 @@ export default {
       link: '',
       image: null
     });
-=======
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
     let timer = null;
 
     const durations = [
@@ -38,9 +31,6 @@ export default {
       { value: 15, label: '15 min' },
       { value: 30, label: '30 min' }
     ];
-
-<<<<<<< HEAD
-    const meditationTypes = [];
 
     // Load meditations from API
     const loadMeditations = async () => {
@@ -55,48 +45,7 @@ export default {
         loading.value = false;
       }
     };
-    [
-      {
-        
-        id: 1,
-        name: 'Mindfulness Meditation',
-        description: 'Focus on the present moment and observe your thoughts without judgment.',
-        benefits: ['Reduces stress', 'Improves focus', 'Enhances emotional regulation'],
-        duration: '10-30 minutes',
-        difficulty: 'Beginner',
-        instructions: 'Sit comfortably, close your eyes, and focus on your breath. When thoughts arise, acknowledge them and gently return to your breathing.'
-      },
-      {
-        id: 2,
-        name: 'Loving-Kindness Meditation',
-        description: 'Cultivate compassion and love for yourself and others.',
-        benefits: ['Increases empathy', 'Reduces negative emotions', 'Improves relationships'],
-        duration: '15-25 minutes',
-        difficulty: 'Intermediate',
-        instructions: 'Begin by sending loving thoughts to yourself, then extend these feelings to loved ones, neutral people, and even difficult people.'
-      },
-      {
-        id: 3,
-        name: 'Body Scan Meditation',
-        description: 'Systematically focus on different parts of your body to release tension.',
-        benefits: ['Reduces physical tension', 'Improves body awareness', 'Promotes relaxation'],
-        duration: '20-45 minutes',
-        difficulty: 'Beginner',
-        instructions: 'Lie down comfortably and slowly move your attention through each part of your body, from toes to head, noticing sensations without trying to change them.'
-      },
-      {
-        id: 4,
-        name: 'Transcendental Meditation',
-        description: 'Use a personal mantra to transcend ordinary thinking and reach deep rest.',
-        benefits: ['Deep relaxation', 'Reduces anxiety', 'Improves creativity'],
-        duration: '20 minutes',
-        difficulty: 'Advanced',
-        instructions: 'Sit with eyes closed and silently repeat your personal mantra. Allow thoughts to come and go naturally without forcing concentration.'
-      }
-    ];
 
-=======
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
     const goBack = () => {
       if (timer) clearInterval(timer);
       router.push('/client/activity');
@@ -153,7 +102,6 @@ export default {
       return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-<<<<<<< HEAD
     const openModal = (meditation) => {
       selectedMeditation.value = meditation;
       showModal.value = true;
@@ -234,8 +182,6 @@ export default {
       loadMeditations();
     });
 
-=======
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
     onUnmounted(() => {
       if (timer) clearInterval(timer);
     });
@@ -259,7 +205,6 @@ export default {
                   <p class="text-muted mb-0">Find your inner peace</p>
                 </div>
               </div>
-<<<<<<< HEAD
               <button 
                 class="btn btn-primary rounded-pill px-4"
                 onClick={openAddModal}
@@ -267,8 +212,6 @@ export default {
                 <PlusIcon style={{ width: '1rem', height: '1rem' }} class="me-2" />
                 Add Meditation
               </button>
-=======
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
             </div>
 
             <div class="row g-4">
@@ -403,8 +346,7 @@ export default {
                   </div>
                 </div>
 
-<<<<<<< HEAD
-                {/* Meditation Types */}
+                {/* My Meditations */}
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                   <div class="card-body p-4">
                     <h5 class="fw-bold mb-3">My Meditations</h5>
@@ -455,8 +397,6 @@ export default {
                   </div>
                 </div>
 
-=======
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
                 {/* Benefits */}
                 <div class="card border-0 shadow-sm rounded-4">
                   <div class="card-body p-4">
@@ -487,7 +427,6 @@ export default {
                 </div>
               </div>
             </div>
-<<<<<<< HEAD
 
             {/* View Modal */}
             {showModal.value && selectedMeditation.value && (
@@ -635,8 +574,6 @@ export default {
                 </div>
               </div>
             )}
-=======
->>>>>>> c736c14b8f58dedbba903a2cfa06fd5828862d3c
           </div>
         </div>
       </div>
