@@ -1,6 +1,6 @@
 import express from 'express';
 import Testimonial from '../../models/Testimonial.js';
-import { authenticateTestimonial } from '../../middleware/testimonialAuth.js';
+import { authenticate } from '../../middleware/auth.js';
 import multer from 'multer';
 import { uploadToS3, deleteFromS3 } from '../../utils/s3.js';
 
@@ -22,7 +22,7 @@ const upload = multer({
 });
 
 // POST /api/testimonials/:id/image - Upload image for testimonial
-router.post('/:id/image', authenticateTestimonial, upload.single('image'), async (req, res) => {
+router.post('/:id/image', authenticate, upload.single('image'), async (req, res) => {
   try {
     const clientId = req.user._id || req.user.id;
     

@@ -2,7 +2,7 @@ import express from 'express';
 import BrandAsset from '../../models/BrandAsset.js';
 import multer from 'multer';
 import { uploadToS3, deleteFromS3 } from '../../utils/s3.js';
-import { authenticateTestimonial } from '../../middleware/testimonialAuth.js';
+import { authenticate } from '../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ const upload = multer({
   }
 });
 
-router.get('/', authenticateTestimonial, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const clientId = req.user?._id || req.user?.id || null;
     console.log('[Brand Assets GET]', {
@@ -51,7 +51,7 @@ router.get('/', authenticateTestimonial, async (req, res) => {
   }
 });
 
-router.post('/', authenticateTestimonial, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { headingText, brandLogoName, webLinkUrl, socialLink } = req.body;
     const clientId = req.user?._id || req.user?.id || null;
@@ -102,7 +102,7 @@ router.post('/', authenticateTestimonial, async (req, res) => {
   }
 });
 
-router.put('/:id', authenticateTestimonial, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { headingText, brandLogoName, webLinkUrl, socialLink } = req.body;
     const clientId = req.user?._id || req.user?.id || null;
@@ -146,7 +146,7 @@ router.put('/:id', authenticateTestimonial, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticateTestimonial, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const clientId = req.user?._id || req.user?.id || null;
     console.log('[Brand Assets DELETE]', {
@@ -191,7 +191,7 @@ router.delete('/:id', authenticateTestimonial, async (req, res) => {
 });
 
 // Upload image for brand asset
-router.post('/:id/upload-image', authenticateTestimonial, upload.single('brandLogoImage'), async (req, res) => {
+router.post('/:id/upload-image', authenticate, upload.single('brandLogoImage'), async (req, res) => {
   try {
     const clientId = req.user?._id || req.user?.id || null;
     console.log('[Brand Assets Upload Image]', {

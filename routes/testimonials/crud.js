@@ -1,11 +1,11 @@
 import express from 'express';
 import Testimonial from '../../models/Testimonial.js';
-import { authenticateTestimonial } from '../../middleware/testimonialAuth.js';
+import { authenticate } from '../../middleware/auth.js';
 
 const router = express.Router();
 
 // GET /api/testimonials - Get all testimonials for authenticated client
-router.get('/', authenticateTestimonial, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const clientId = req.user._id || req.user.id;
     const testimonials = await Testimonial.find({ 
@@ -29,7 +29,7 @@ router.get('/', authenticateTestimonial, async (req, res) => {
 });
 
 // GET /api/testimonials/:id - Get single testimonial
-router.get('/:id', authenticateTestimonial, async (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   try {
     const clientId = req.user._id || req.user.id;
     const testimonial = await Testimonial.findOne({
@@ -60,7 +60,7 @@ router.get('/:id', authenticateTestimonial, async (req, res) => {
 });
 
 // POST /api/testimonials - Create new testimonial
-router.post('/', authenticateTestimonial, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { name, rating, message } = req.body;
     const clientId = req.user._id || req.user.id;
@@ -105,7 +105,7 @@ router.post('/', authenticateTestimonial, async (req, res) => {
 });
 
 // PUT /api/testimonials/:id - Update testimonial
-router.put('/:id', authenticateTestimonial, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { name, rating, message } = req.body;
     const clientId = req.user._id || req.user.id;
@@ -162,7 +162,7 @@ router.put('/:id', authenticateTestimonial, async (req, res) => {
 });
 
 // DELETE /api/testimonials/:id - Delete testimonial (soft delete)
-router.delete('/:id', authenticateTestimonial, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const clientId = req.user._id || req.user.id;
     const testimonial = await Testimonial.findOneAndUpdate(

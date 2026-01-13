@@ -3,6 +3,11 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import superAdminAuthRoutes from './routes/auth/superAdminAuth.js';
 import adminAuthRoutes from './routes/auth/adminAuth.js';
 import clientAuthRoutes from './routes/auth/clientAuth.js';
@@ -20,6 +25,7 @@ import uploadRoutes from './routes/upload.js';
 import testimonialRoutes from './routes/testimonials.js';
 import founderMessageRoutes from './routes/founderMessages/index.js';
 import brandAssetRoutes from './routes/brandAssets/index.js';
+import meditationRoutes from './routes/meditations.js';
 import { initializeSuperAdmin } from './config/initSuperAdmin.js';
 import realtimeAgentRoutes from './routes/mobile/realtimeAgent.js';
 import { setupVoiceAgentWebSocket } from './routes/mobile/voiceAgent.js';
@@ -51,6 +57,9 @@ app.use((req, res, next) => {
 // Increase body parser limit for audio data (50MB)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/brahmakosh';
@@ -94,6 +103,9 @@ app.use('/api/upload', uploadRoutes);
 
 // Testimonial Routes
 app.use('/api/testimonials', testimonialRoutes);
+
+// Meditation Routes
+app.use('/api/meditations', meditationRoutes);
 
 // Founder Message Routes
 app.use('/api/founder-messages', founderMessageRoutes);

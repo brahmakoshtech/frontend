@@ -1,11 +1,11 @@
 import express from 'express';
 import Testimonial from '../../models/Testimonial.js';
-import { authenticateTestimonial } from '../../middleware/testimonialAuth.js';
+import { authenticate } from '../../middleware/auth.js';
 
 const router = express.Router();
 
 // GET /api/testimonials/stats/summary - Get testimonials statistics
-router.get('/summary', authenticateTestimonial, async (req, res) => {
+router.get('/summary', authenticate, async (req, res) => {
   try {
     const clientId = req.user._id || req.user.id;
     const stats = await Testimonial.aggregate([
