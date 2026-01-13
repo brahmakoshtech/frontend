@@ -48,7 +48,22 @@ router.get('/presigned-url/:key(*)', async (req, res) => {
   try {
     const { key } = req.params;
     
-    const presignedUrl = await getobject(key);
+    // Debug logging - detailed user info
+    const clientId = req.user?._id || req.user?.id || null;
+    console.log('[Upload GET Presigned URL]', {
+      key: decodeURIComponent(key),
+      userRole: req.user?.role,
+      userId: req.user?._id?.toString(),
+      userIdAlt: req.user?.id,
+      clientId: clientId?.toString(),
+      userEmail: req.user?.email,
+      hasUser: !!req.user,
+      userType: req.user?.constructor?.name,
+      userKeys: req.user ? Object.keys(req.user) : [],
+      fullUser: req.user ? JSON.stringify(req.user, null, 2) : 'No user'
+    });
+    
+    const presignedUrl = await getobject(decodeURIComponent(key));
 
     res.json({
       success: true,

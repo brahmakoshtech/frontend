@@ -3,7 +3,7 @@ import Admin from '../models/Admin.js';
 import Client from '../models/Client.js';
 import User from '../models/User.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+export const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Authentication middleware - works with all models
 export const authenticate = async (req, res, next) => {
@@ -57,7 +57,20 @@ export const authenticate = async (req, res, next) => {
       if (user) user.role = decoded.role; // Ensure role is set
     } else if (decoded.role === 'client') {
       user = await Client.findById(decoded.userId).select('-password');
-      if (user) user.role = 'client';
+      if (user) {
+        user.role = 'client';
+        // Ensure _id is available
+        if (!user._id && decoded.userId) {
+          user._id = decoded.userId;
+        }
+        console.log('[Auth Middleware] Client user loaded:', {
+          _id: user._id?.toString(),
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive
+        });
+      }
     } else if (decoded.role === 'user') {
       user = await User.findById(decoded.userId)
         .select('-password')

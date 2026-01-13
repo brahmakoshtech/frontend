@@ -342,3 +342,13 @@ Features:
 All APIs documented in API.txt file with examples, request/response formats, and error codes.
 
 Total: 7 Complete APIs for testimonial management!
+
+
+ User token set from super admin page
+VM238:5 🎯 User ID: 6965bd3d85ce01522cd7e98b
+VM238:6 👤 Role: user
+VM238:9 All tokens:
+VM238:10 Client: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTVmNmVlYWUzYWRkMGJlNjAwZjNhNDYiLCJyb2xlIjoiY2xpZW50IiwiaWF0IjoxNzY4Mjc0NTcyLCJleHAiOjE3Njg4NzkzNzJ9.-H1b9Al-lUP6v89qwOH0RYPyz7JUii2hJlDTXEX3Pgo
+VM238:11 User: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTY1YmQzZDg1Y2UwMTUyMmNkN2U5OGIiLCJyb2xlIjoidXNlciIsImlhdCI6MTczNjczODY2MSwiZXhwIjoxNzM3MzQzNDYxfQ.test_signature
+VM238:12 Admin: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTVmNjk4ODQ2ZDY5OTRkZWMxMGExMmIiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NjgyNzM1MTgsImV4cCI6MTc2ODg3ODMxOH0.POjp28R7EioY9zN0USgFLdvPy48atjakKViKBy1wXV8
+VM238:13 Super Admin: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTUzNWNiODZkNjJlODZjNjY1ZGJjNTciLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJpYXQiOjE3Njc4OTE4NTAsImV4cCI6MTc2ODQ5NjY1MH0.rPUiSfMBbSYvU9PcRf1m2o4p1146igeVI-PzkIK6PNY
