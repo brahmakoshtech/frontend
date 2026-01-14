@@ -7,8 +7,8 @@ export default {
   setup() {
     const router = useRouter();
     
-    // Client ID
-    const clientId = ref('');
+    // Client ID with default value
+    const clientId = ref('CLI-KBHUMT');
     
     // Step 1: Email OTP
     const step = ref(1);
@@ -49,7 +49,7 @@ export default {
           body: {
             email: email.value,
             password: password.value,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         
@@ -79,7 +79,7 @@ export default {
           body: {
             email: email.value,
             otp: emailOtp.value,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         
@@ -101,7 +101,7 @@ export default {
           method: 'POST',
           body: {
             email: email.value,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         alert('OTP resent to your email');
@@ -123,7 +123,7 @@ export default {
             email: email.value,
             mobile: mobile.value,
             otpMethod: otpMethod.value,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         
@@ -150,7 +150,7 @@ export default {
           body: {
             email: email.value,
             otp: mobileOtp.value,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         
@@ -173,7 +173,7 @@ export default {
           body: {
             email: email.value,
             otpMethod: otpMethod.value,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         alert('OTP resent to your mobile number');
@@ -193,7 +193,7 @@ export default {
           method: 'POST',
           body: {
             email: email.value,
-            clientId: clientId.value,
+            clientId: clientId.value || 'CLI-KBHUMT',
             ...profile.value
           }
         });
@@ -272,7 +272,7 @@ export default {
           method: 'POST',
           body: {
             idToken: response.credential,
-            clientId: clientId.value
+            clientId: clientId.value || 'CLI-KBHUMT'
           }
         });
         
@@ -290,10 +290,13 @@ export default {
 
     // Load Google Script
     onMounted(() => {
-      // Load saved client ID if exists
+      // Load saved client ID if exists, otherwise use default
       const savedClientId = localStorage.getItem('user_client_id');
       if (savedClientId) {
         clientId.value = savedClientId;
+      } else {
+        // Default client ID is already set above
+        clientId.value = 'CLI-KBHUMT';
       }
 
       loadGoogleScript();
@@ -399,11 +402,11 @@ export default {
                     class="form-control"
                     required
                     disabled={emailOtpSent.value}
-                    placeholder="Enter Client ID (e.g., CLI-ABC123)"
+                    placeholder="Enter Client ID (e.g., CLI-KBHUMT)"
                     style={{ textTransform: 'uppercase' }}
                   />
                   <small class="form-text text-muted">
-                    Contact your organization to get your Client ID
+                    Default: CLI-KBHUMT | Contact your organization to get your Client ID
                   </small>
                 </div>
                 <div class="mb-3">
