@@ -263,7 +263,7 @@ export default {
       loading.value = true;
       error.value = '';
       try {
-        const { data } = await api.request('/mobile/user/register/firebase', {
+        const { data } = await api.request('/mobile/user/register/user', {
           method: 'POST',
           body: {
             idToken: response.credential,
