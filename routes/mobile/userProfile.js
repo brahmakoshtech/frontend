@@ -3,6 +3,7 @@ import multer from 'multer';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../../models/User.js';
+import { OAuth2Client } from 'google-auth-library';
 import Client from '../../models/Client.js';
 import { generateToken, authenticate } from '../../middleware/auth.js';
 import {
