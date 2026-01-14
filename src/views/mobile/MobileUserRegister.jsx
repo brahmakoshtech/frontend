@@ -7,8 +7,8 @@ export default {
   setup() {
     const router = useRouter();
     
-    // Client ID with default value
-    const clientId = ref('CLI-KBHUMT');
+    // Client ID - hidden, always sent as CLI-KBHUMT
+    const DEFAULT_CLIENT_ID = 'CLI-KBHUMT';
     
     // Step 1: Email OTP
     const step = ref(1);
@@ -49,7 +49,7 @@ export default {
           body: {
             email: email.value,
             password: password.value,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         
@@ -79,7 +79,7 @@ export default {
           body: {
             email: email.value,
             otp: emailOtp.value,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         
@@ -101,7 +101,7 @@ export default {
           method: 'POST',
           body: {
             email: email.value,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         alert('OTP resent to your email');
@@ -123,7 +123,7 @@ export default {
             email: email.value,
             mobile: mobile.value,
             otpMethod: otpMethod.value,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         
@@ -150,7 +150,7 @@ export default {
           body: {
             email: email.value,
             otp: mobileOtp.value,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         
@@ -173,7 +173,7 @@ export default {
           body: {
             email: email.value,
             otpMethod: otpMethod.value,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         alert('OTP resent to your mobile number');
@@ -193,7 +193,7 @@ export default {
           method: 'POST',
           body: {
             email: email.value,
-            clientId: clientId.value || 'CLI-KBHUMT',
+            clientId: DEFAULT_CLIENT_ID,
             ...profile.value
           }
         });
@@ -260,11 +260,6 @@ export default {
 
     // Google Sign-In Handler
     const handleGoogleCredential = async (response) => {
-      if (!clientId.value) {
-        error.value = 'Please enter your Client ID first';
-        return;
-      }
-
       loading.value = true;
       error.value = '';
       try {
@@ -272,7 +267,7 @@ export default {
           method: 'POST',
           body: {
             idToken: response.credential,
-            clientId: clientId.value || 'CLI-KBHUMT'
+            clientId: DEFAULT_CLIENT_ID
           }
         });
         
@@ -290,15 +285,6 @@ export default {
 
     // Load Google Script
     onMounted(() => {
-      // Load saved client ID if exists, otherwise use default
-      const savedClientId = localStorage.getItem('user_client_id');
-      if (savedClientId) {
-        clientId.value = savedClientId;
-      } else {
-        // Default client ID is already set above
-        clientId.value = 'CLI-KBHUMT';
-      }
-
       loadGoogleScript();
     });
     
@@ -393,22 +379,6 @@ export default {
           {step.value === 1 && (
             <>
               <form onSubmit={emailOtpSent.value ? handleStep1Verify : handleStep1}>
-                <div class="mb-3">
-                  <label class="form-label">Client ID</label>
-                  <input
-                    value={clientId.value}
-                    onInput={(e) => clientId.value = e.target.value.toUpperCase()}
-                    type="text"
-                    class="form-control"
-                    required
-                    disabled={emailOtpSent.value}
-                    placeholder="Enter Client ID (e.g., CLI-KBHUMT)"
-                    style={{ textTransform: 'uppercase' }}
-                  />
-                  <small class="form-text text-muted">
-                    Default: CLI-KBHUMT | Contact your organization to get your Client ID
-                  </small>
-                </div>
                 <div class="mb-3">
                   <label class="form-label">Email</label>
                   <input
