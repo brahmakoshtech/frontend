@@ -263,10 +263,10 @@ export default {
       loading.value = true;
       error.value = '';
       try {
-        const { data } = await api.request('/register/user', {
+        const { data } = await api.request('/mobile/user/register/google', {
           method: 'POST',
           body: {
-            googleToken: response.credential,
+            credential: response.credential,
             clientId: DEFAULT_CLIENT_ID
           }
         });
