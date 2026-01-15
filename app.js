@@ -22,7 +22,8 @@ import userProfileMobileRoutes from './routes/mobile/userProfile.js';
 import chatRoutes from './routes/mobile/chat.js';
 import voiceRoutes from './routes/mobile/voice.js';
 import uploadRoutes from './routes/upload.js';
-import testimonialRoutes from './routes/testimonials.js';
+// import testimonialRoutes from './routes/testimonials.js'; // Using organized routes instead
+import testimonialRoutes from './routes/testimonials/index.js';
 import founderMessageRoutes from './routes/founderMessages/index.js';
 import brandAssetRoutes from './routes/brandAssets/index.js';
 import meditationRoutes from './routes/meditations.js';

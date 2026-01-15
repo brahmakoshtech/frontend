@@ -1,21 +1,75 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Testimonial from '../../models/Testimonial.js';
+import Client from '../../models/Client.js';
 import { authenticate } from '../../middleware/auth.js';
 
 const router = express.Router();
 
+const resolveClientObjectId = async (candidate) => {
+  if (!candidate) return null;
+  if (mongoose.Types.ObjectId.isValid(candidate)) return candidate;
+  const client = await Client.findOne({ clientId: candidate }).select('_id');
+  return client?._id || null;
+};
+
+const withClientIdString = (doc) => {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  
+  // If clientId is populated with Client document, extract the clientId field
+  if (obj.clientId && typeof obj.clientId === 'object' && obj.clientId.clientId) {
+    return { ...obj, clientId: obj.clientId.clientId };
+  }
+  
+  // If clientId is just an ObjectId, keep it as is (will be handled by populate)
+  return obj;
+};
+
+// Helper function to extract clientId from request (supports both client and user tokens)
+const getClientId = async (req) => {
+  if (req.user.role === 'user') {
+    const rawClientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId || req.user.clientId?.clientId;
+    const clientId = await resolveClientObjectId(rawClientId);
+    if (!clientId) {
+      throw new Error('Client ID not found for user token. Please ensure your token includes clientId.');
+    }
+    return clientId;
+  }
+  const rawClientId = req.user._id || req.user.id || req.user.clientId;
+  const clientId = await resolveClientObjectId(rawClientId);
+  if (!clientId) {
+    throw new Error('Client ID not found. Please login again.');
+  }
+  return clientId;
+};
+
 // GET /api/testimonials - Get all testimonials for authenticated client
 router.get('/', authenticate, async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
-    const testimonials = await Testimonial.find({ 
-      clientId: clientId,
-      isActive: true 
-    }).sort({ createdAt: -1 });
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    // Build query - exclude deleted items, optionally include inactive items
+    const query = { clientId: clientId, isDeleted: false };
+    if (req.query.includeInactive !== 'true') {
+      query.isActive = true;
+    }
+    
+    const testimonials = await Testimonial.find(query)
+      .populate('clientId', 'clientId')
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      data: testimonials,
+      data: testimonials.map(withClientIdString),
       count: testimonials.length
     });
   } catch (error) {
@@ -31,12 +85,21 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/testimonials/:id - Get single testimonial
 router.get('/:id', authenticate, async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
     const testimonial = await Testimonial.findOne({
       _id: req.params.id,
       clientId: clientId,
+      isDeleted: false,
       isActive: true
-    });
+    }).populate('clientId', 'clientId');
 
     if (!testimonial) {
       return res.status(404).json({
@@ -45,9 +108,14 @@ router.get('/:id', authenticate, async (req, res) => {
       });
     }
 
+    const obj = testimonial.toObject();
+    if (obj.clientId && typeof obj.clientId === 'object') {
+      obj.clientId = obj.clientId.clientId; // Extract CLI-ABC123
+    }
+
     res.json({
       success: true,
-      data: testimonial
+      data: obj
     });
   } catch (error) {
     console.error('Error fetching testimonial:', error);
@@ -63,7 +131,15 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const { name, rating, message } = req.body;
-    const clientId = req.user._id || req.user.id;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
 
     // Validation
     if (!name || !rating || !message) {
@@ -89,10 +165,16 @@ router.post('/', authenticate, async (req, res) => {
 
     await testimonial.save();
 
+    const populated = await testimonial.populate('clientId', 'clientId');
+    const obj = populated.toObject();
+    if (obj.clientId && typeof obj.clientId === 'object') {
+      obj.clientId = obj.clientId.clientId; // Extract CLI-ABC123
+    }
+
     res.status(201).json({
       success: true,
       message: 'Testimonial created successfully',
-      data: testimonial
+      data: obj
     });
   } catch (error) {
     console.error('Error creating testimonial:', error);
@@ -108,7 +190,15 @@ router.post('/', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { name, rating, message } = req.body;
-    const clientId = req.user._id || req.user.id;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
 
     // Validation
     if (!name || !rating || !message) {
@@ -129,6 +219,7 @@ router.put('/:id', authenticate, async (req, res) => {
       {
         _id: req.params.id,
         clientId: clientId,
+        isDeleted: false,
         isActive: true
       },
       {
@@ -137,7 +228,7 @@ router.put('/:id', authenticate, async (req, res) => {
         message: message.trim()
       },
       { new: true, runValidators: true }
-    );
+    ).populate('clientId', 'clientId');
 
     if (!testimonial) {
       return res.status(404).json({
@@ -146,10 +237,16 @@ router.put('/:id', authenticate, async (req, res) => {
       });
     }
 
+    const populated = await testimonial.populate('clientId', 'clientId');
+    const obj = populated.toObject();
+    if (obj.clientId && typeof obj.clientId === 'object') {
+      obj.clientId = obj.clientId.clientId; // Extract CLI-ABC123
+    }
+
     res.json({
       success: true,
       message: 'Testimonial updated successfully',
-      data: testimonial
+      data: obj
     });
   } catch (error) {
     console.error('Error updating testimonial:', error);
@@ -164,14 +261,22 @@ router.put('/:id', authenticate, async (req, res) => {
 // DELETE /api/testimonials/:id - Delete testimonial (soft delete)
 router.delete('/:id', authenticate, async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
     const testimonial = await Testimonial.findOneAndUpdate(
       {
         _id: req.params.id,
         clientId: clientId,
-        isActive: true
+        isDeleted: false
       },
-      { isActive: false },
+      { isDeleted: true },
       { new: true }
     );
 
@@ -191,6 +296,55 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete testimonial',
+      error: error.message
+    });
+  }
+});
+
+// PATCH /api/testimonials/:id/toggle - Toggle testimonial status
+router.patch('/:id/toggle', authenticate, async (req, res) => {
+  try {
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    const testimonial = await Testimonial.findOne({
+      _id: req.params.id,
+      clientId: clientId,
+      isDeleted: false
+    });
+
+    if (!testimonial) {
+      return res.status(404).json({
+        success: false,
+        message: 'Testimonial not found'
+      });
+    }
+
+    testimonial.isActive = !testimonial.isActive;
+    await testimonial.save();
+
+    const obj = testimonial.toObject();
+    if (obj.clientId && typeof obj.clientId === 'object') {
+      obj.clientId = obj.clientId.clientId; // Extract CLI-ABC123
+    }
+
+    res.json({
+      success: true,
+      data: obj,
+      message: `Testimonial ${testimonial.isActive ? 'enabled' : 'disabled'} successfully`
+    });
+  } catch (error) {
+    console.error('Toggle testimonial error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle testimonial status',
       error: error.message
     });
   }

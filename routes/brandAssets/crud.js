@@ -1,10 +1,60 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import BrandAsset from '../../models/BrandAsset.js';
+import Client from '../../models/Client.js';
 import multer from 'multer';
 import { uploadToS3, deleteFromS3 } from '../../utils/s3.js';
 import { authenticate } from '../../middleware/auth.js';
 
 const router = express.Router();
+
+// Resolve a client identifier that could be:
+// - Mongo ObjectId (preferred)
+// - clientId string like "CLI-XXXXXX" (legacy)
+const resolveClientObjectId = async (candidate) => {
+  if (!candidate) return null;
+  if (mongoose.Types.ObjectId.isValid(candidate)) return candidate;
+  const client = await Client.findOne({ clientId: candidate }).select('_id');
+  return client?._id || null;
+};
+
+const withClientIdString = (doc) => {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  
+  // If clientId is populated with Client document
+  if (obj.clientId && typeof obj.clientId === 'object') {
+    // Extract clientId string field (CLI-ABC123 format)
+    if (obj.clientId.clientId) {
+      return { ...obj, clientId: obj.clientId.clientId };
+    }
+    // Fallback: If clientId field missing in Client document
+    console.warn('Client document missing clientId field:', obj.clientId._id);
+    return { ...obj, clientId: null };
+  }
+  
+  return obj;
+};
+
+// Helper function to extract clientId from request (supports both client and user tokens)
+const getClientId = async (req) => {
+  // If user role, get clientId from decoded token first (most reliable), then populated user object
+  if (req.user.role === 'user') {
+    const rawClientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId || req.user.clientId?.clientId;
+    const clientId = await resolveClientObjectId(rawClientId);
+    if (!clientId) {
+      throw new Error('Client ID not found for user token. Please ensure your token includes clientId.');
+    }
+    return clientId;
+  }
+  // For client role, use user._id (which is the client's MongoDB _id) or fallback to clientId string
+  const rawClientId = req.user._id || req.user.id || req.user.clientId;
+  const clientId = await resolveClientObjectId(rawClientId);
+  if (!clientId) {
+    throw new Error('Client ID not found. Please login again.');
+  }
+  return clientId;
+};
 
 const storage = multer.memoryStorage();
 const upload = multer({ 
@@ -21,7 +71,15 @@ const upload = multer({
 
 router.get('/', authenticate, async (req, res) => {
   try {
-    const clientId = req.user?._id || req.user?.id || null;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
     console.log('[Brand Assets GET]', {
       clientId: clientId?.toString(),
       userId: req.user?._id?.toString(),
@@ -30,16 +88,23 @@ router.get('/', authenticate, async (req, res) => {
       userEmail: req.user?.email,
       hasUser: !!req.user,
       userType: req.user?.constructor?.name,
-      userKeys: req.user ? Object.keys(req.user).slice(0, 10) : []
+      userKeys: req.user ? Object.keys(req.user).slice(0, 10) : [],
+      includeInactive: req.query.includeInactive === 'true'
     });
-    const brandAssets = await BrandAsset.find({ 
-      clientId: clientId,
-      isActive: true 
-    }).sort({ createdAt: -1 });
+    
+    // Build query - exclude deleted items, optionally include inactive items
+    const query = { clientId: clientId, isDeleted: false };
+    if (req.query.includeInactive !== 'true') {
+      query.isActive = true;
+    }
+    
+    const brandAssets = await BrandAsset.find(query)
+      .populate('clientId', 'clientId')
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      data: brandAssets,
+      data: brandAssets.map(withClientIdString),
       count: brandAssets.length
     });
   } catch (error) {
@@ -54,7 +119,23 @@ router.get('/', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const { headingText, brandLogoName, webLinkUrl, socialLink } = req.body;
-    const clientId = req.user?._id || req.user?.id || null;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    // Ensure user has permission (client or user role)
+    if (!['client', 'user'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Client or user role required.'
+      });
+    }
     console.log('[Brand Assets POST]', {
       clientId: clientId?.toString(),
       userId: req.user?._id?.toString(),
@@ -87,11 +168,12 @@ router.post('/', authenticate, async (req, res) => {
     });
 
     const savedBrandAsset = await newBrandAsset.save();
+    await savedBrandAsset.populate('clientId', 'clientId');
 
     res.status(201).json({
       success: true,
       message: 'Brand asset created successfully',
-      data: savedBrandAsset
+      data: withClientIdString(savedBrandAsset)
     });
   } catch (error) {
     res.status(400).json({
@@ -105,7 +187,23 @@ router.post('/', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { headingText, brandLogoName, webLinkUrl, socialLink } = req.body;
-    const clientId = req.user?._id || req.user?.id || null;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    // Ensure user has permission (client or user role)
+    if (!['client', 'user'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Client or user role required.'
+      });
+    }
     console.log('[Brand Assets PUT]', {
       clientId: clientId?.toString(),
       userId: req.user?._id?.toString(),
@@ -120,10 +218,10 @@ router.put('/:id', authenticate, async (req, res) => {
     }
 
     const brandAsset = await BrandAsset.findOneAndUpdate(
-      { _id: req.params.id, clientId: clientId, isActive: true },
+      { _id: req.params.id, clientId: clientId, isDeleted: false, isActive: true },
       { headingText, brandLogoName, webLinkUrl, socialLink },
       { new: true, runValidators: true }
-    );
+    ).populate('clientId', 'clientId');
 
     if (!brandAsset) {
       return res.status(404).json({
@@ -135,7 +233,7 @@ router.put('/:id', authenticate, async (req, res) => {
     res.json({
       success: true,
       message: 'Brand asset updated successfully',
-      data: brandAsset
+      data: withClientIdString(brandAsset)
     });
   } catch (error) {
     res.status(400).json({
@@ -148,7 +246,23 @@ router.put('/:id', authenticate, async (req, res) => {
 
 router.delete('/:id', authenticate, async (req, res) => {
   try {
-    const clientId = req.user?._id || req.user?.id || null;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    // Ensure user has permission (client or user role)
+    if (!['client', 'user'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Client or user role required.'
+      });
+    }
     console.log('[Brand Assets DELETE]', {
       clientId: clientId?.toString(),
       userId: req.user?._id?.toString(),
@@ -164,8 +278,8 @@ router.delete('/:id', authenticate, async (req, res) => {
     const brandAsset = await BrandAsset.findOne({
       _id: req.params.id,
       clientId: clientId,
-      isActive: true
-    });
+      isDeleted: false
+    }).populate('clientId', 'clientId');
 
     if (!brandAsset) {
       return res.status(404).json({
@@ -174,12 +288,13 @@ router.delete('/:id', authenticate, async (req, res) => {
       });
     }
 
-    brandAsset.isActive = false;
+    brandAsset.isDeleted = true;
     await brandAsset.save();
 
     res.json({
       success: true,
-      message: 'Brand asset deleted successfully'
+      message: 'Brand asset deleted successfully',
+      data: withClientIdString(brandAsset)
     });
   } catch (error) {
     res.status(500).json({
@@ -190,10 +305,90 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
+// PATCH /api/brand-assets/:id/toggle - Toggle brand asset status (enable/disable)
+router.patch('/:id/toggle', authenticate, async (req, res) => {
+  try {
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    // Ensure user has permission (client or user role)
+    if (!['client', 'user'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Client or user role required.'
+      });
+    }
+    console.log('[Brand Assets TOGGLE]', {
+      clientId: clientId?.toString(),
+      userId: req.user?._id?.toString(),
+      userRole: req.user?.role
+    });
+    
+    if (!clientId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Client ID not found. Please login again.'
+      });
+    }
+    
+    const brandAsset = await BrandAsset.findOne({
+      _id: req.params.id,
+      clientId: clientId,
+      isDeleted: false
+    }).populate('clientId', 'clientId');
+
+    if (!brandAsset) {
+      return res.status(404).json({
+        success: false,
+        message: 'Brand asset not found'
+      });
+    }
+
+    brandAsset.isActive = !brandAsset.isActive;
+    await brandAsset.save();
+
+    res.json({
+      success: true,
+      data: withClientIdString(brandAsset),
+      message: `Brand asset ${brandAsset.isActive ? 'enabled' : 'disabled'} successfully`
+    });
+  } catch (error) {
+    console.error('Toggle brand asset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle brand asset status',
+      error: error.message
+    });
+  }
+});
+
 // Upload image for brand asset
 router.post('/:id/upload-image', authenticate, upload.single('brandLogoImage'), async (req, res) => {
   try {
-    const clientId = req.user?._id || req.user?.id || null;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+    
+    // Ensure user has permission (client or user role)
+    if (!['client', 'user'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Client or user role required.'
+      });
+    }
     console.log('[Brand Assets Upload Image]', {
       clientId: clientId?.toString(),
       userId: req.user?._id?.toString(),
@@ -209,8 +404,9 @@ router.post('/:id/upload-image', authenticate, upload.single('brandLogoImage'), 
     const brandAsset = await BrandAsset.findOne({
       _id: req.params.id,
       clientId: clientId,
+      isDeleted: false,
       isActive: true
-    });
+    }).populate('clientId', 'clientId');
 
     if (!brandAsset) {
       return res.status(404).json({
@@ -246,8 +442,9 @@ router.post('/:id/upload-image', authenticate, upload.single('brandLogoImage'), 
       success: true,
       message: 'Image uploaded successfully',
       data: {
-        brandAsset: updatedBrandAsset,
-        imageUrl: imageUrl
+        brandAsset: withClientIdString(updatedBrandAsset),
+        imageUrl: imageUrl,
+        clientId: brandAsset.clientId?.clientId || brandAsset.clientId
       }
     });
   } catch (error) {

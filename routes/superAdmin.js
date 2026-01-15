@@ -340,5 +340,60 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// Assign user to client
+router.post('/assign-user-to-client', async (req, res) => {
+  try {
+    const { userId, clientId } = req.body;
+    
+    if (!userId || !clientId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID and Client ID are required' 
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Client not found' 
+      });
+    }
+
+    // Assign user to client
+    user.clientId = clientId;
+    await user.save();
+
+    // Populate client info
+    await user.populate('clientId', 'clientId businessName email');
+
+    res.json({
+      success: true,
+      message: 'User assigned to client successfully',
+      data: {
+        user: {
+          _id: user._id,
+          email: user.email,
+          clientId: user.clientId.clientId,
+          clientName: user.clientId.businessName
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
 export default router;
 

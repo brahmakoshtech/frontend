@@ -65,7 +65,7 @@ export const authenticate = async (req, res, next) => {
         }
         console.log('[Auth Middleware] Client user loaded:', {
           _id: user._id?.toString(),
-          id: user.id,
+          clientId: user.clientId, // CLI-ABC123 format
           email: user.email,
           role: user.role,
           isActive: user.isActive
@@ -92,7 +92,7 @@ export const authenticate = async (req, res, next) => {
       userId: user?._id,
       role: user?.role,
       email: user?.email,
-      clientId: user?.clientId?._id || user?.tokenClientId,
+      clientId: user?.role === 'client' ? user?.clientId : (user?.clientId?._id || user?.tokenClientId),
       isActive: user?.isActive,
       path: req.path
     });
@@ -146,7 +146,7 @@ export const authenticate = async (req, res, next) => {
       userId: user._id?.toString(),
       role: user.role,
       tokenRole: decoded.role,
-      clientId: decoded.clientId,
+      clientId: user.role === 'client' ? user.clientId : decoded.clientId,
       roleMatch: user.role === decoded.role,
       roleType: typeof user.role,
       path: req.path,

@@ -1,5 +1,7 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Testimonial from '../models/Testimonial.js';
+import Client from '../models/Client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import multer from 'multer';
 import { uploadToS3, deleteFromS3 } from '../utils/s3.js';
@@ -50,14 +52,51 @@ const handleMulterError = (err, req, res, next) => {
   next(err);
 };
 
+const resolveClientObjectId = async (candidate) => {
+  if (!candidate) return null;
+  if (mongoose.Types.ObjectId.isValid(candidate)) return candidate;
+  const client = await Client.findOne({ clientId: candidate }).select('_id');
+  return client?._id || null;
+};
+
+// Helper function to extract clientId (supports both client and user tokens)
+const getClientId = async (req) => {
+  if (req.user.role === 'user') {
+    const rawClientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId || req.user.clientId?.clientId;
+    const clientId = await resolveClientObjectId(rawClientId);
+    if (!clientId) {
+      throw new Error('Client ID not found for user token. Please ensure your token includes clientId.');
+    }
+    return clientId;
+  }
+  const rawClientId = req.user._id || req.user.id || req.user.clientId;
+  const clientId = await resolveClientObjectId(rawClientId);
+  if (!clientId) {
+    throw new Error('Client ID not found. Please login again.');
+  }
+  return clientId;
+};
+
 // GET /api/testimonials - Get all testimonials for authenticated client
-router.get('/', authenticate, authorize('client'), async (req, res) => {
+router.get('/', authenticate, authorize('client','user'), async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
     
-    const testimonials = await Testimonial.find({ 
-      clientId: clientId
-    }).sort({ createdAt: -1 });
+    // Build query - optionally include inactive items
+    const query = { clientId: clientId };
+    if (req.query.includeInactive !== 'true') {
+      query.isActive = true;
+    }
+    
+    const testimonials = await Testimonial.find(query).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -75,7 +114,7 @@ router.get('/', authenticate, authorize('client'), async (req, res) => {
 });
 
 // POST /api/testimonials - Create new testimonial with image
-router.post('/', authenticate, authorize('client'), upload.single('image'), handleMulterError, async (req, res) => {
+router.post('/', authenticate, authorize('client','user'), upload.single('image'), handleMulterError, async (req, res) => {
   console.log('=== TESTIMONIAL CREATE REQUEST ===');
   console.log('Body:', req.body);
   console.log('File:', req.file ? {
@@ -87,7 +126,20 @@ router.post('/', authenticate, authorize('client'), upload.single('image'), hand
   
   try {
     const { name, rating, message } = req.body;
-    const clientId = req.user._id || req.user.id;
+    
+    // Helper function to extract clientId (supports both client and user tokens)
+    let clientId;
+    if (req.user.role === 'user') {
+      clientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId;
+      if (!clientId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Client ID not found for user token. Please ensure your token includes clientId.'
+        });
+      }
+    } else {
+      clientId = req.user._id || req.user.id;
+    }
 
     console.log('Extracted data:', { name, rating, message, clientId });
 
@@ -163,10 +215,23 @@ router.post('/', authenticate, authorize('client'), upload.single('image'), hand
 });
 
 // PUT /api/testimonials/:id - Update testimonial
-router.put('/:id', authenticate, authorize('client'), upload.single('image'), handleMulterError, async (req, res) => {
+router.put('/:id', authenticate, authorize('client','user'), upload.single('image'), handleMulterError, async (req, res) => {
   try {
     const { name, rating, message } = req.body;
-    const clientId = req.user._id || req.user.id;
+    
+    // Helper function to extract clientId (supports both client and user tokens)
+    let clientId;
+    if (req.user.role === 'user') {
+      clientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId;
+      if (!clientId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Client ID not found for user token. Please ensure your token includes clientId.'
+        });
+      }
+    } else {
+      clientId = req.user._id || req.user.id;
+    }
 
     // Validation
     if (!name || !rating || !message) {
@@ -238,9 +303,21 @@ router.put('/:id', authenticate, authorize('client'), upload.single('image'), ha
 });
 
 // DELETE /api/testimonials/:id - Delete testimonial (hard delete)
-router.delete('/:id', authenticate, authorize('client'), async (req, res) => {
+router.delete('/:id', authenticate, authorize('client','user'), async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
+    // Helper function to extract clientId (supports both client and user tokens)
+    let clientId;
+    if (req.user.role === 'user') {
+      clientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId;
+      if (!clientId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Client ID not found for user token. Please ensure your token includes clientId.'
+        });
+      }
+    } else {
+      clientId = req.user._id || req.user.id;
+    }
     const testimonial = await Testimonial.findOneAndDelete({
       _id: req.params.id,
       clientId: clientId
@@ -277,9 +354,21 @@ router.delete('/:id', authenticate, authorize('client'), async (req, res) => {
 });
 
 // POST /api/testimonials/:id/upload-image - Upload image for existing testimonial
-router.post('/:id/upload-image', authenticate, authorize('client'), upload.single('image'), handleMulterError, async (req, res) => {
+router.post('/:id/upload-image', authenticate, authorize('client','user'), upload.single('image'), handleMulterError, async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
+    // Helper function to extract clientId (supports both client and user tokens)
+    let clientId;
+    if (req.user.role === 'user') {
+      clientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId;
+      if (!clientId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Client ID not found for user token. Please ensure your token includes clientId.'
+        });
+      }
+    } else {
+      clientId = req.user._id || req.user.id;
+    }
     
     if (!req.file) {
       return res.status(400).json({
@@ -333,9 +422,21 @@ router.post('/:id/upload-image', authenticate, authorize('client'), upload.singl
 });
 
 // PATCH /api/testimonials/:id/toggle - Toggle testimonial status (enable/disable)
-router.patch('/:id/toggle', authenticate, authorize('client'), async (req, res) => {
+router.patch('/:id/toggle', authenticate, authorize('client','user'), async (req, res) => {
   try {
-    const clientId = req.user._id || req.user.id;
+    // Helper function to extract clientId (supports both client and user tokens)
+    let clientId;
+    if (req.user.role === 'user') {
+      clientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId;
+      if (!clientId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Client ID not found for user token. Please ensure your token includes clientId.'
+        });
+      }
+    } else {
+      clientId = req.user._id || req.user.id;
+    }
     const testimonial = await Testimonial.findOne({
       _id: req.params.id,
       clientId: clientId

@@ -90,7 +90,13 @@ router.post('/google', async (req, res) => {
       }
     }
 
-    const token = generateToken(user._id, 'user');
+    // Populate clientId if exists
+    if (user.clientId) {
+      await user.populate('clientId', 'clientId businessName email');
+    }
+
+    // Generate token with clientId if available
+    const token = generateToken(user._id, 'user', user.clientId?._id || user.clientId);
     
     res.json({
       success: true,
@@ -100,7 +106,9 @@ router.post('/google', async (req, res) => {
           ...user.toObject(), 
           role: 'user' 
         }, 
-        token 
+        token,
+        clientId: user.clientId?.clientId || null,
+        clientName: user.clientId?.businessName || null
       },
     });
   } catch (error) {
@@ -124,7 +132,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ 
         success: false, 
@@ -156,14 +164,22 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const token = generateToken(user._id, 'user');
+    // Populate clientId if exists
+    if (user.clientId) {
+      await user.populate('clientId', 'clientId businessName email');
+    }
+
+    // Generate token with clientId if available
+    const token = generateToken(user._id, 'user', user.clientId?._id || user.clientId);
 
     res.json({
       success: true,
       message: 'Login successful',
       data: {
         user: { ...user.toObject(), role: 'user' },
-        token
+        token,
+        clientId: user.clientId?.clientId || null,
+        clientName: user.clientId?.businessName || null
       }
     });
   } catch (error) {

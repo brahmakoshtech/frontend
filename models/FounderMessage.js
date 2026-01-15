@@ -29,6 +29,19 @@ const founderMessageSchema = new mongoose.Schema({
   views: {
     type: Number,
     default: 0
+  },
+  clientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client',
+    required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

@@ -43,6 +43,10 @@ const brandAssetSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
   clientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client',

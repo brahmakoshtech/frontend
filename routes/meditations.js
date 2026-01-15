@@ -1,41 +1,18 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import Meditation from '../models/Meditation.js';
+import Client from '../models/Client.js';
 import { authenticate } from '../middleware/auth.js';
+import { uploadToS3, deleteFromS3, generateUploadUrl } from '../utils/s3.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const router = express.Router();
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '../uploads/meditations');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer for local file storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const subDir = file.fieldname === 'video' ? 'videos' : 'images';
-    const fullPath = path.join(uploadsDir, subDir);
-    if (!fs.existsSync(fullPath)) {
-      fs.mkdirSync(fullPath, { recursive: true });
-    }
-    cb(null, fullPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Configure multer for file upload
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fileSize: 200 * 1024 * 1024 // 200MB limit (supports ~5 min HD video)
   },
   fileFilter: (req, file, cb) => {
     if (file.fieldname === 'video') {
@@ -56,18 +33,242 @@ const upload = multer({
   }
 });
 
+// Error handling middleware for multer
+const handleMulterError = (err, req, res, next) => {
+  console.log('=== MULTER ERROR HANDLER ===');
+  console.log('Error type:', err.constructor.name);
+  console.log('Error message:', err.message);
+  console.log('Error code:', err.code);
+  
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File too large. Maximum size is 200MB'
+      });
+    }
+  }
+  if (err.message.includes('Only') && err.message.includes('files are allowed')) {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  next(err);
+};
+
+// Helper functions
+const resolveClientObjectId = async (candidate) => {
+  if (!candidate) return null;
+  if (mongoose.Types.ObjectId.isValid(candidate)) return candidate;
+  const client = await Client.findOne({ clientId: candidate }).select('_id');
+  return client?._id || null;
+};
+
+const withClientIdString = (doc) => {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  
+  // If clientId is populated with Client document
+  if (obj.clientId && typeof obj.clientId === 'object') {
+    // Extract clientId string field (CLI-ABC123 format)
+    if (obj.clientId.clientId) {
+      return { ...obj, clientId: obj.clientId.clientId };
+    }
+    // Fallback: If clientId field missing in Client document
+    console.warn('Client document missing clientId field:', obj.clientId._id);
+    return { ...obj, clientId: null };
+  }
+  
+  return obj;
+};
+
+const getClientId = async (req) => {
+  if (req.user.role === 'user') {
+    const rawClientId = req.decodedClientId || req.user.clientId?._id || req.user.clientId || req.user.tokenClientId || req.user.clientId?.clientId;
+    const clientId = await resolveClientObjectId(rawClientId);
+    if (!clientId) {
+      throw new Error('Client ID not found for user token. Please ensure your token includes clientId.');
+    }
+    return clientId;
+  }
+  
+  // For client role, their _id IS the clientId (no need to resolve)
+  if (req.user.role === 'client') {
+    const clientId = req.user._id || req.user.id;
+    if (!clientId) {
+      throw new Error('Client ID not found. Please login again.');
+    }
+    return clientId; // Return the ObjectId directly
+  }
+  
+  throw new Error('Invalid role for this operation.');
+};
+
+// POST /api/meditations/upload-url - Generate presigned URL for direct S3 upload
+router.post('/upload-url', authenticate, async (req, res) => {
+  try {
+    const { fileName, contentType, fileType } = req.body;
+    
+    if (!fileName || !contentType) {
+      return res.status(400).json({
+        success: false,
+        message: 'fileName and contentType are required'
+      });
+    }
+    
+    const folder = fileType === 'video' ? 'meditations/videos' : 'meditations/images';
+    const { uploadUrl, fileUrl, key } = await generateUploadUrl(fileName, contentType, folder);
+    
+    res.json({
+      success: true,
+      data: { uploadUrl, fileUrl, key }
+    });
+  } catch (error) {
+    console.error('Error generating upload URL:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate upload URL',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/meditations/direct - Create meditation with direct S3 URLs
+router.post('/direct', authenticate, async (req, res) => {
+  try {
+    const { name, description, link, videoUrl, imageUrl } = req.body;
+    
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message
+      });
+    }
+    
+    if (!name || name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Name is required'
+      });
+    }
+    
+    if (!description || description.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
+      });
+    }
+    
+    const meditationData = {
+      name: name.trim(),
+      description: description.trim(),
+      link: link ? link.trim() : '',
+      clientId: clientId,
+      videoUrl: videoUrl || undefined,
+      imageUrl: imageUrl || undefined
+    };
+    
+    const meditation = new Meditation(meditationData);
+    await meditation.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'Meditation created successfully',
+      data: withClientIdString(await meditation.populate('clientId', 'clientId'))
+    });
+  } catch (error) {
+    console.error('Error creating meditation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create meditation',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/meditations - Get all meditations for authenticated client
 router.get('/', authenticate, async (req, res) => {
   try {
-    const meditations = await Meditation.find({ 
-      clientId: req.user.userId,
-      isActive: true 
-    }).sort({ createdAt: -1 });
+    console.log('=== MEDITATION GET REQUEST START ===');
+    console.log('User info:', {
+      id: req.user?._id?.toString(),
+      role: req.user?.role,
+      email: req.user?.email
+    });
+    
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+      console.log('Resolved client ID for query:', clientId?.toString());
+    } catch (clientIdError) {
+      console.error('Client ID resolution error in GET:', clientIdError);
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+
+    const query = { clientId: clientId };
+    // Don't filter by isActive - show all meditations
+    console.log('MongoDB query:', query);
+
+    const meditations = await Meditation.find(query)
+      .populate('clientId', 'clientId')
+      .sort({ createdAt: -1 });
+    
+    console.log('Found meditations:', meditations.length);
+    console.log('Meditation details:', meditations.map(m => ({
+      id: m._id.toString(),
+      name: m.name,
+      hasVideo: !!m.videoUrl,
+      hasImage: !!m.imageUrl,
+      clientId: m.clientId?.toString()
+    })));
+
+    // Generate presigned URLs for videos and images
+    const { getobject } = await import('../utils/s3.js');
+    const meditationsWithUrls = await Promise.all(
+      meditations.map(async (meditation) => {
+        const meditationObj = withClientIdString(meditation);
+        
+        // Generate presigned URL for video if exists
+        if (meditationObj.videoUrl) {
+          try {
+            // Extract S3 key from URL
+            const videoKey = meditationObj.videoUrl.split('.com/')[1];
+            if (videoKey) {
+              meditationObj.videoUrl = await getobject(videoKey);
+            }
+          } catch (error) {
+            console.error('Error generating video presigned URL:', error);
+          }
+        }
+        
+        // Generate presigned URL for image if exists
+        if (meditationObj.imageUrl) {
+          try {
+            // Extract S3 key from URL
+            const imageKey = meditationObj.imageUrl.split('.com/')[1];
+            if (imageKey) {
+              meditationObj.imageUrl = await getobject(imageKey);
+            }
+          } catch (error) {
+            console.error('Error generating image presigned URL:', error);
+          }
+        }
+        
+        return meditationObj;
+      })
+    );
 
     res.json({
       success: true,
-      data: meditations,
-      count: meditations.length
+      data: meditationsWithUrls,
+      count: meditationsWithUrls.length
     });
   } catch (error) {
     console.error('Error fetching meditations:', error);
@@ -82,11 +283,21 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/meditations/:id - Get single meditation
 router.get('/:id', authenticate, async (req, res) => {
   try {
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+
     const meditation = await Meditation.findOne({
       _id: req.params.id,
-      clientId: req.user.userId,
+      clientId: clientId,
       isActive: true
-    });
+    }).populate('clientId', 'clientId');
 
     if (!meditation) {
       return res.status(404).json({
@@ -95,9 +306,36 @@ router.get('/:id', authenticate, async (req, res) => {
       });
     }
 
+    const meditationObj = withClientIdString(meditation);
+    
+    // Generate presigned URLs
+    const { getobject } = await import('../utils/s3.js');
+    
+    if (meditationObj.videoUrl) {
+      try {
+        const videoKey = meditationObj.videoUrl.split('.com/')[1];
+        if (videoKey) {
+          meditationObj.videoUrl = await getobject(videoKey);
+        }
+      } catch (error) {
+        console.error('Error generating video presigned URL:', error);
+      }
+    }
+    
+    if (meditationObj.imageUrl) {
+      try {
+        const imageKey = meditationObj.imageUrl.split('.com/')[1];
+        if (imageKey) {
+          meditationObj.imageUrl = await getobject(imageKey);
+        }
+      } catch (error) {
+        console.error('Error generating image presigned URL:', error);
+      }
+    }
+
     res.json({
       success: true,
-      data: meditation
+      data: meditationObj
     });
   } catch (error) {
     console.error('Error fetching meditation:', error);
@@ -113,15 +351,74 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'image', maxCount: 1 }
-]), async (req, res) => {
+]), handleMulterError, async (req, res) => {
+  console.log('=== MEDITATION CREATE REQUEST START ===');
+  console.log('User info:', {
+    id: req.user?._id?.toString(),
+    role: req.user?.role,
+    email: req.user?.email
+  });
+  console.log('Request body:', req.body);
+  console.log('Request files received:', {
+    hasFiles: !!req.files,
+    fileKeys: req.files ? Object.keys(req.files) : [],
+    videoCount: req.files?.video?.length || 0,
+    imageCount: req.files?.image?.length || 0
+  });
+  
+  // CRITICAL: Check if files are actually received
+  if (req.files) {
+    console.log('Files details:');
+    Object.keys(req.files).forEach(fieldName => {
+      const files = req.files[fieldName];
+      files.forEach((file, index) => {
+        console.log(`  ${fieldName}[${index}]:`, {
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          hasBuffer: !!file.buffer,
+          bufferSize: file.buffer?.length
+        });
+      });
+    });
+  } else {
+    console.log('❌ NO FILES RECEIVED IN REQUEST');
+  }
+  
   try {
     const { name, description, link } = req.body;
 
+    // Get client ID with detailed logging
+    let clientId;
+    try {
+      console.log('Getting client ID for user:', {
+        userId: req.user._id?.toString(),
+        userRole: req.user.role,
+        decodedClientId: req.decodedClientId
+      });
+      
+      clientId = await getClientId(req);
+      console.log('Final client ID:', clientId?.toString());
+    } catch (clientIdError) {
+      console.error('Client ID resolution error:', clientIdError);
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message
+      });
+    }
+
     // Validation
-    if (!name || !description) {
+    if (!name || name.trim() === '') {
       return res.status(400).json({
         success: false,
-        message: 'Name and description are required'
+        message: 'Name is required'
+      });
+    }
+    
+    if (!description || description.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
       });
     }
 
@@ -129,34 +426,177 @@ router.post('/', authenticate, upload.fields([
       name: name.trim(),
       description: description.trim(),
       link: link ? link.trim() : '',
-      clientId: req.user.userId
+      clientId: clientId
     };
 
-    // Handle video upload - local storage
-    if (req.files && req.files.video) {
-      const videoFile = req.files.video[0];
-      meditationData.videoUrl = `/uploads/meditations/videos/${videoFile.filename}`;
-    }
+    // Upload files to S3 with proper error handling
+    console.log('=== FILE UPLOAD SECTION ===');
+    let uploadedVideoUrl = null;
+    let uploadedImageUrl = null;
+    
+    try {
+      if (req.files && req.files.video) {
+        console.log('Processing video upload...');
+        const videoFile = req.files.video[0];
+        console.log('Video file details:', {
+          originalname: videoFile.originalname,
+          mimetype: videoFile.mimetype,
+          size: videoFile.size,
+          hasBuffer: !!videoFile.buffer
+        });
+        
+        uploadedVideoUrl = await uploadToS3(videoFile, 'meditations/videos');
+        console.log('Video uploaded successfully:', uploadedVideoUrl);
+        meditationData.videoUrl = uploadedVideoUrl;
+      } else {
+        console.log('No video file provided');
+      }
 
-    // Handle image upload - local storage
-    if (req.files && req.files.image) {
-      const imageFile = req.files.image[0];
-      meditationData.imageUrl = `/uploads/meditations/images/${imageFile.filename}`;
+      if (req.files && req.files.image) {
+        console.log('Processing image upload...');
+        const imageFile = req.files.image[0];
+        console.log('Image file details:', {
+          originalname: imageFile.originalname,
+          mimetype: imageFile.mimetype,
+          size: imageFile.size,
+          hasBuffer: !!imageFile.buffer
+        });
+        
+        uploadedImageUrl = await uploadToS3(imageFile, 'meditations/images');
+        console.log('Image uploaded successfully:', uploadedImageUrl);
+        meditationData.imageUrl = uploadedImageUrl;
+      } else {
+        console.log('No image file provided');
+      }
+    } catch (uploadError) {
+      console.error('File upload failed:', uploadError);
+      
+      // Cleanup any successfully uploaded files
+      if (uploadedVideoUrl) {
+        try {
+          await deleteFromS3(uploadedVideoUrl);
+          console.log('Cleaned up uploaded video after error');
+        } catch (cleanupError) {
+          console.error('Failed to cleanup video:', cleanupError);
+        }
+      }
+      if (uploadedImageUrl) {
+        try {
+          await deleteFromS3(uploadedImageUrl);
+          console.log('Cleaned up uploaded image after error');
+        } catch (cleanupError) {
+          console.error('Failed to cleanup image:', cleanupError);
+        }
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: 'File upload failed: ' + uploadError.message
+      });
     }
-
+    
+    console.log('=== CREATING MEDITATION IN DATABASE ===');
+    console.log('Final meditation data:', {
+      name: meditationData.name,
+      description: meditationData.description,
+      link: meditationData.link,
+      clientId: meditationData.clientId?.toString(),
+      hasVideoUrl: !!meditationData.videoUrl,
+      hasImageUrl: !!meditationData.imageUrl,
+      videoUrl: meditationData.videoUrl,
+      imageUrl: meditationData.imageUrl
+    });
+    
     const meditation = new Meditation(meditationData);
     await meditation.save();
+    console.log('Meditation saved successfully with ID:', meditation._id.toString());
 
     res.status(201).json({
       success: true,
       message: 'Meditation created successfully',
-      data: meditation
+      data: withClientIdString(await meditation.populate('clientId', 'clientId'))
     });
+    
   } catch (error) {
-    console.error('Error creating meditation:', error);
+    console.error('=== MEDITATION CREATE ERROR ===');
+    console.error('Error:', error.message);
+    
     res.status(500).json({
       success: false,
       message: 'Failed to create meditation',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/meditations/:id/direct - Update meditation with direct S3 URLs
+router.put('/:id/direct', authenticate, async (req, res) => {
+  try {
+    const { name, description, link, videoUrl, imageUrl } = req.body;
+    
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message
+      });
+    }
+    
+    const meditation = await Meditation.findOne({
+      _id: req.params.id,
+      clientId: clientId,
+      isActive: true
+    });
+    
+    if (!meditation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meditation not found'
+      });
+    }
+    
+    if (name) meditation.name = name.trim();
+    if (description) meditation.description = description.trim();
+    if (link !== undefined) meditation.link = link.trim();
+    
+    // Update video URL if provided
+    if (videoUrl) {
+      if (meditation.videoUrl && meditation.videoUrl !== videoUrl) {
+        try {
+          await deleteFromS3(meditation.videoUrl);
+        } catch (error) {
+          console.error('Failed to delete old video:', error);
+        }
+      }
+      meditation.videoUrl = videoUrl;
+    }
+    
+    // Update image URL if provided
+    if (imageUrl) {
+      if (meditation.imageUrl && meditation.imageUrl !== imageUrl) {
+        try {
+          await deleteFromS3(meditation.imageUrl);
+        } catch (error) {
+          console.error('Failed to delete old image:', error);
+        }
+      }
+      meditation.imageUrl = imageUrl;
+    }
+    
+    await meditation.save();
+    
+    res.json({
+      success: true,
+      message: 'Meditation updated successfully',
+      data: withClientIdString(await meditation.populate('clientId', 'clientId'))
+    });
+  } catch (error) {
+    console.error('Error updating meditation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update meditation',
       error: error.message
     });
   }
@@ -166,13 +606,30 @@ router.post('/', authenticate, upload.fields([
 router.put('/:id', authenticate, upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'image', maxCount: 1 }
-]), async (req, res) => {
+]), handleMulterError, async (req, res) => {
+  console.log('=== MEDITATION UPDATE REQUEST START ===');
+  console.log('Request body:', req.body);
+  console.log('Files:', req.files ? {
+    video: req.files.video ? req.files.video[0].originalname : 'No video',
+    image: req.files.image ? req.files.image[0].originalname : 'No image'
+  } : 'No files');
+  
   try {
     const { name, description, link } = req.body;
 
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+
     const meditation = await Meditation.findOne({
       _id: req.params.id,
-      clientId: req.user.userId,
+      clientId: clientId,
       isActive: true
     });
 
@@ -188,43 +645,68 @@ router.put('/:id', authenticate, upload.fields([
     if (description) meditation.description = description.trim();
     if (link !== undefined) meditation.link = link.trim();
 
-    // Handle video upload
+    // Upload new video to S3 if provided
     if (req.files && req.files.video) {
-      // Delete old video file if exists
-      if (meditation.videoUrl) {
-        const oldVideoPath = path.join(__dirname, '..', meditation.videoUrl);
-        if (fs.existsSync(oldVideoPath)) {
-          fs.unlinkSync(oldVideoPath);
+      console.log('Uploading new video to S3...');
+      try {
+        const videoFile = req.files.video[0];
+        const videoUrl = await uploadToS3(videoFile, 'meditations/videos');
+        
+        // Delete old video if exists
+        if (meditation.videoUrl) {
+          await deleteFromS3(meditation.videoUrl);
         }
+        
+        meditation.videoUrl = videoUrl;
+        console.log('Video updated in S3:', videoUrl);
+      } catch (error) {
+        console.error('Video upload failed:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Video upload failed',
+          error: error.message
+        });
       }
-
-      const videoFile = req.files.video[0];
-      meditation.videoUrl = `/uploads/meditations/videos/${videoFile.filename}`;
     }
 
-    // Handle image upload
+    // Upload new image to S3 if provided
     if (req.files && req.files.image) {
-      // Delete old image file if exists
-      if (meditation.imageUrl) {
-        const oldImagePath = path.join(__dirname, '..', meditation.imageUrl);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
+      console.log('Uploading new image to S3...');
+      try {
+        const imageFile = req.files.image[0];
+        const imageUrl = await uploadToS3(imageFile, 'meditations/images');
+        
+        // Delete old image if exists
+        if (meditation.imageUrl) {
+          await deleteFromS3(meditation.imageUrl);
         }
+        
+        meditation.imageUrl = imageUrl;
+        console.log('Image updated in S3:', imageUrl);
+      } catch (error) {
+        console.error('Image upload failed:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Image upload failed',
+          error: error.message
+        });
       }
-
-      const imageFile = req.files.image[0];
-      meditation.imageUrl = `/uploads/meditations/images/${imageFile.filename}`;
     }
 
     await meditation.save();
+    console.log('Meditation updated successfully:', meditation._id);
 
     res.json({
       success: true,
       message: 'Meditation updated successfully',
-      data: meditation
+      data: withClientIdString(await meditation.populate('clientId', 'clientId'))
     });
   } catch (error) {
-    console.error('Error updating meditation:', error);
+    console.error('=== MEDITATION UPDATE ERROR ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     res.status(500).json({
       success: false,
       message: 'Failed to update meditation',
@@ -236,11 +718,25 @@ router.put('/:id', authenticate, upload.fields([
 // DELETE /api/meditations/:id - Delete meditation (soft delete)
 router.delete('/:id', authenticate, async (req, res) => {
   try {
-    const meditation = await Meditation.findOne({
-      _id: req.params.id,
-      clientId: req.user.userId,
-      isActive: true
-    });
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
+      });
+    }
+
+    const meditation = await Meditation.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        clientId: clientId,
+        isActive: true
+      },
+      { isActive: false },
+      { new: true }
+    );
 
     if (!meditation) {
       return res.status(404).json({
@@ -248,10 +744,6 @@ router.delete('/:id', authenticate, async (req, res) => {
         message: 'Meditation not found'
       });
     }
-
-    // Soft delete
-    meditation.isActive = false;
-    await meditation.save();
 
     res.json({
       success: true,
@@ -262,6 +754,49 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete meditation',
+      error: error.message
+    });
+  }
+});
+
+// PATCH /api/meditations/:id/toggle-status - Toggle meditation status
+router.patch('/:id/toggle-status', authenticate, async (req, res) => {
+  try {
+    let clientId;
+    try {
+      clientId = await getClientId(req);
+    } catch (clientIdError) {
+      return res.status(401).json({
+        success: false,
+        message: clientIdError.message
+      });
+    }
+
+    const meditation = await Meditation.findOne({
+      _id: req.params.id,
+      clientId: clientId
+    });
+
+    if (!meditation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meditation not found'
+      });
+    }
+
+    meditation.isActive = !meditation.isActive;
+    await meditation.save();
+
+    res.json({
+      success: true,
+      message: `Meditation ${meditation.isActive ? 'enabled' : 'disabled'} successfully`,
+      data: { isActive: meditation.isActive }
+    });
+  } catch (error) {
+    console.error('Error toggling meditation status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle meditation status',
       error: error.message
     });
   }

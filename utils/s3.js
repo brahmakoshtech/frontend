@@ -30,10 +30,36 @@ export const putobject = async (key, contentType) => {
       ContentType: contentType,
     });
 
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 604800 });
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // 1 hour
     return signedUrl;
   } catch (error) {
     console.error('Error generating presigned URL:', error);
+    throw error;
+  }
+};
+
+// Generate presigned URL for direct browser upload
+export const generateUploadUrl = async (fileName, contentType, folder = '') => {
+  try {
+    const cleanFileName = fileName
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '')
+      .toLowerCase();
+    
+    const key = folder ? `${folder}/${Date.now()}-${cleanFileName}` : `${Date.now()}-${cleanFileName}`;
+    
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    
+    return { uploadUrl, fileUrl, key };
+  } catch (error) {
+    console.error('Error generating upload URL:', error);
     throw error;
   }
 };
@@ -130,6 +156,19 @@ export const uploadToS3 = async (file, folder = '') => {
   });
   
   try {
+    // Validate required fields
+    if (!file || !file.buffer) {
+      throw new Error('Invalid file: missing file buffer');
+    }
+    
+    if (!process.env.AWS_BUCKET_NAME) {
+      throw new Error('AWS_BUCKET_NAME not configured');
+    }
+    
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      throw new Error('AWS credentials not configured');
+    }
+    
     // Clean filename - remove spaces and special characters
     const cleanFileName = file.originalname
       .replace(/\s+/g, '_')  // Replace spaces with underscores
@@ -144,6 +183,7 @@ export const uploadToS3 = async (file, folder = '') => {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype
+      // Remove ACL - bucket policy should handle public access
     });
     console.log('S3 command created, sending...');
 
