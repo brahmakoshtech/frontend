@@ -6,7 +6,7 @@ const brandAssetService = {
   // Get all brand assets for authenticated client
   getAllBrandAssets: async () => {
     try {
-      const response = await api.request('/brand-assets');
+      const response = await api.request('/brand-assets?includeInactive=true');
       return {
         success: true,
         data: response

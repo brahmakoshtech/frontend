@@ -20,8 +20,7 @@ export default {
       founderName: '',
       position: '',
       content: '',
-      founderImage: null,
-      status: 'draft'
+      founderImage: null
     });
     const editImageUploaded = ref(false);
     const editImageFileName = ref('');
@@ -29,8 +28,7 @@ export default {
       founderName: '',
       position: '',
       content: '',
-      founderImage: null,
-      status: 'draft'
+      founderImage: null
     });
     const newImageUploaded = ref(false);
     const newImageFileName = ref('');
@@ -112,7 +110,7 @@ export default {
           }
           
           messages.value.unshift(createdMessage);
-          newMessage.value = { founderName: '', position: '', content: '', founderImage: null, status: 'draft' };
+          newMessage.value = { founderName: '', position: '', content: '', founderImage: null };
           showAddModal.value = false;
         } else {
           alert('Failed to create message: ' + response.error);
@@ -153,27 +151,24 @@ export default {
 
     // Toggle status
     const toggleStatus = async (message) => {
-      loading.value = true;
       try {
         const response = await founderMessageService.toggleStatus(message._id);
         if (response.success) {
-          // Update in main messages array
           const index = messages.value.findIndex(m => m._id === message._id);
           if (index !== -1) {
-            messages.value[index] = { ...messages.value[index], ...response.data };
+            messages.value[index] = { ...messages.value[index], isActive: response.data.isActive };
           }
-          // Update selected message if it's the same
           if (selectedMessage.value && selectedMessage.value._id === message._id) {
-            selectedMessage.value = { ...selectedMessage.value, ...response.data };
+            selectedMessage.value = { ...selectedMessage.value, isActive: response.data.isActive };
           }
+          activeDropdown.value = null;
+          alert(`Message ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
         } else {
           alert('Failed to toggle status: ' + response.error);
         }
       } catch (error) {
         console.error('Error toggling status:', error);
         alert('Error toggling status');
-      } finally {
-        loading.value = false;
       }
     };
 
@@ -198,21 +193,6 @@ export default {
       }
       
       selectedMessage.value = messageToShow;
-      
-      if (message.status === 'published') {
-        try {
-          const response = await founderMessageService.incrementViews(message._id);
-          if (response.success) {
-            const index = messages.value.findIndex(m => m._id === message._id);
-            if (index !== -1) {
-              messages.value[index] = { ...messages.value[index], views: response.data.views };
-            }
-            selectedMessage.value = { ...messageToShow, views: response.data.views };
-          }
-        } catch (error) {
-          console.error('Error incrementing views:', error);
-        }
-      }
     };
 
     // Toggle dropdown
@@ -241,8 +221,7 @@ export default {
         founderName: message.founderName,
         position: message.position,
         content: message.content,
-        founderImage: null,
-        status: message.status
+        founderImage: null
       };
       showEditModal.value = true;
     };
@@ -282,7 +261,7 @@ export default {
           }
           
           showEditModal.value = false;
-          editMessage.value = { _id: '', founderName: '', position: '', content: '', founderImage: null, status: 'draft' };
+          editMessage.value = { _id: '', founderName: '', position: '', content: '', founderImage: null };
         } else {
           alert('Failed to update message: ' + response.error);
         }
@@ -373,7 +352,12 @@ export default {
                       <div class="row g-4">
                         {paginatedMessages.value.map(message => (
                           <div key={message._id} class="col-12">
-                            <div class="card border-0 shadow-lg h-100 position-relative" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', borderRadius: '16px', transition: 'all 0.3s ease' }}>
+                            <div class={`card border-0 shadow-lg h-100 position-relative ${!message.isActive ? 'opacity-50' : ''}`} style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', borderRadius: '16px', transition: 'all 0.3s ease' }}>
+                              {!message.isActive && (
+                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1, pointerEvents: 'none' }}>
+                                  <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled</span>
+                                </div>
+                              )}
                               <div class="card-body p-4">
                                 <div class="d-flex align-items-start">
                                   <div class="flex-shrink-0 me-3">
@@ -397,54 +381,45 @@ export default {
                                         <p class="mb-0 fw-semibold text-primary" style={{ fontSize: '0.95rem' }}>{message.position}</p>
                                       </div>
                                       <div class="d-flex align-items-center gap-3">
-                                        <span class={`badge px-3 py-2 fw-semibold rounded-pill ${message.status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'}`}>
-                                          {message.status === 'published' ? (
-                                            <>
-                                              <div class="d-inline-block rounded-circle bg-success me-1" style={{ width: '8px', height: '8px' }}></div>
-                                              Published
-                                            </>
-                                          ) : (
-                                            <>
-                                              <div class="d-inline-block rounded-circle bg-warning me-1" style={{ width: '8px', height: '8px' }}></div>
-                                              Draft
-                                            </>
-                                          )}
-                                        </span>
                                         <div class="dropdown position-relative">
                                           <button 
                                             class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                                             onClick={() => toggleDropdown(message._id)}
-                                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease' }}
+                                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease', position: 'relative', zIndex: 10 }}
                                           >
                                             <EllipsisVerticalIcon style={{ width: '1.2rem', height: '1.2rem' }} />
                                           </button>
                                           {activeDropdown.value === message._id && (
                                             <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '180px', right: '0', top: '100%', zIndex: 1000 }}>
-                                              <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                                onClick={() => { openEditModal(message); toggleDropdown(null); }}
-                                                disabled={loading.value}
-                                              >
-                                                <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
-                                                <span class="fw-medium">Edit Message</span>
-                                              </button>
+                                              {message.isActive && (
+                                                <>
+                                                  <button 
+                                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                                    onClick={() => { openEditModal(message); toggleDropdown(null); }}
+                                                  >
+                                                    <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
+                                                    <span class="fw-medium">Edit Message</span>
+                                                  </button>
+                                                </>
+                                              )}
                                               <button 
                                                 class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
                                                 onClick={() => { toggleStatus(message); toggleDropdown(null); }}
-                                                disabled={loading.value}
                                               >
-                                                <span class={`rounded-circle ${message.status === 'published' ? 'bg-warning' : 'bg-success'}`} style={{ width: '1rem', height: '1rem' }}></span>
-                                                <span class="fw-medium">{message.status === 'published' ? 'Unpublish' : 'Publish'}</span>
+                                                <span>{message.isActive ? '🔴' : '🟢'}</span> {message.isActive ? 'Disable' : 'Enable'}
                                               </button>
-                                              <hr class="dropdown-divider my-1" />
-                                              <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
-                                                onClick={() => { deleteMessage(message._id); toggleDropdown(null); }}
-                                                disabled={loading.value}
-                                              >
-                                                <TrashIcon style={{ width: '1rem', height: '1rem' }} />
-                                                <span class="fw-medium">Delete</span>
-                                              </button>
+                                              {message.isActive && (
+                                                <>
+                                                  <div class="dropdown-divider"></div>
+                                                  <button 
+                                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
+                                                    onClick={() => { deleteMessage(message._id); toggleDropdown(null); }}
+                                                  >
+                                                    <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                                    <span class="fw-medium">Delete</span>
+                                                  </button>
+                                                </>
+                                              )}
                                             </div>
                                           )}
                                         </div>
@@ -463,8 +438,9 @@ export default {
                                       <button 
                                         class="btn btn-primary btn-sm px-4 py-2 fw-semibold rounded-pill"
                                         onClick={() => viewMessage(message)}
-                                        disabled={loading.value}
-                                        style={{ fontSize: '0.85rem' }}
+                                        disabled={loading.value || !message.isActive}
+                                        style={{ fontSize: '0.85rem', cursor: message.isActive ? 'pointer' : 'not-allowed' }}
+                                        title={message.isActive ? 'Read message' : 'Message is disabled'}
                                       >
                                         <EyeIcon style={{ width: '16px', height: '16px' }} class="me-1" />
                                         Read More
@@ -554,21 +530,7 @@ export default {
                       )}
                       <h4 class="mb-2 text-center fw-bold text-dark">{selectedMessage.value.founderName}</h4>
                       <p class="text-primary text-center mb-3 fw-semibold">{selectedMessage.value.position}</p>
-                      <div class="mb-4 text-center">
-                        <span class={`badge px-3 py-2 fw-semibold rounded-pill ${selectedMessage.value.status === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'}`}>
-                          {selectedMessage.value.status === 'published' ? (
-                            <>
-                              <div class="d-inline-block rounded-circle bg-success me-1" style={{ width: '8px', height: '8px' }}></div>
-                              Published
-                            </>
-                          ) : (
-                            <>
-                              <div class="d-inline-block rounded-circle bg-warning me-1" style={{ width: '8px', height: '8px' }}></div>
-                              Draft
-                            </>
-                          )}
-                        </span>
-                      </div>
+
                       <div class="p-3 rounded-3 mb-4" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
                         <p class="mb-0 text-dark lh-base" style={{ fontSize: '0.95rem' }}>{selectedMessage.value.content}</p>
                       </div>
@@ -665,17 +627,7 @@ export default {
                           placeholder="Enter your message content"
                         ></textarea>
                       </div>
-                      <div class="mb-3">
-                        <label class="form-label">Status</label>
-                        <select 
-                          class="form-select" 
-                          value={newMessage.value.status}
-                          onChange={(e) => newMessage.value.status = e.target.value}
-                        >
-                          <option value="draft">Draft</option>
-                          <option value="published">Published</option>
-                        </select>
-                      </div>
+
                     </div>
                     <div class="modal-footer">
                       <button class="btn btn-secondary" onClick={() => showAddModal.value = false} disabled={loading.value}>
@@ -759,17 +711,7 @@ export default {
                           placeholder="Enter your message content"
                         ></textarea>
                       </div>
-                      <div class="mb-3">
-                        <label class="form-label">Status</label>
-                        <select 
-                          class="form-select" 
-                          value={editMessage.value.status}
-                          onChange={(e) => editMessage.value.status = e.target.value}
-                        >
-                          <option value="draft">Draft</option>
-                          <option value="published">Published</option>
-                        </select>
-                      </div>
+
                     </div>
                     <div class="modal-footer">
                       <button class="btn btn-secondary" onClick={() => showEditModal.value = false} disabled={loading.value}>

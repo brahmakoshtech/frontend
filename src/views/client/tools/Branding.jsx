@@ -239,6 +239,26 @@ export default {
       }
     };
 
+    // Toggle brand asset status
+    const toggleAssetStatus = async (asset) => {
+      try {
+        const response = await brandAssetService.toggleBrandAssetStatus(asset._id || asset.id);
+        if (response.success) {
+          const index = brandAssets.value.findIndex(a => (a._id || a.id) === (asset._id || asset.id));
+          if (index !== -1) {
+            brandAssets.value[index] = { ...brandAssets.value[index], isActive: response.data.isActive };
+          }
+          activeDropdown.value = null;
+          alert(`Brand asset ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+        } else {
+          alert('Failed to toggle status: ' + response.error);
+        }
+      } catch (error) {
+        console.error('Error toggling status:', error);
+        alert('Error toggling status');
+      }
+    };
+
     // Delete brand asset
     const deleteAsset = async (id) => {
       if (!confirm('Are you sure you want to delete this brand asset?')) return;
@@ -346,13 +366,20 @@ export default {
               {brandAssets.value.map(asset => (
                 <div key={asset._id || asset.id} class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
                   <div 
-                    class="card border-0 shadow-lg h-100 position-relative overflow-hidden"
+                    class={`card border-0 shadow-lg h-100 position-relative overflow-hidden ${!asset.isActive ? 'opacity-50' : ''}`}
                     style={{ 
                       transition: 'all 0.3s ease',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-                      borderRadius: '16px'
+                      borderRadius: '16px',
+                      cursor: 'default'
                     }}
                   >
+                    {!asset.isActive && (
+                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1, pointerEvents: 'none' }}>
+                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled</span>
+                      </div>
+                    )}
+                    
                     <div class="position-absolute top-0 end-0 p-3" style={{ opacity: 0.08, fontSize: '3rem', color: '#007bff' }}>🎨</div>
                     
                     <div class="card-img-top bg-light d-flex align-items-center justify-content-center position-relative" style={{ height: '120px', borderRadius: '16px 16px 0 0' }}>
@@ -374,57 +401,74 @@ export default {
                           <p class="mb-2 text-primary fw-semibold" style={{ fontSize: '0.9rem' }}>{asset.brandLogoName || 'Logo Name'}</p>
                           <div class="d-flex align-items-center gap-1 mb-2">
                             <a 
-                              href={asset.webLinkUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              class="badge bg-primary-subtle text-primary px-2 py-1 rounded-pill fw-semibold text-decoration-none d-flex align-items-center gap-1" 
-                              style={{ fontSize: '0.7rem', cursor: 'pointer' }}
-                              title="Visit Website"
+                              href={asset.isActive ? asset.webLinkUrl : '#'} 
+                              target={asset.isActive ? '_blank' : '_self'}
+                              rel={asset.isActive ? 'noopener noreferrer' : ''}
+                              class={`badge bg-primary-subtle text-primary px-2 py-1 rounded-pill fw-semibold text-decoration-none d-flex align-items-center gap-1 ${!asset.isActive ? 'disabled' : ''}`}
+                              style={{ fontSize: '0.7rem', cursor: asset.isActive ? 'pointer' : 'not-allowed', opacity: asset.isActive ? 1 : 0.5 }}
+                              title={asset.isActive ? "Visit Website" : "Disabled"}
+                              onClick={(e) => !asset.isActive && e.preventDefault()}
                             >
                               <GlobeAltIcon style={{ width: '12px', height: '12px' }} />
                               Website
                             </a>
                             <a 
-                              href={asset.socialLink} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              class="badge bg-info-subtle text-info px-2 py-1 rounded-pill fw-semibold text-decoration-none d-flex align-items-center gap-1" 
-                              style={{ fontSize: '0.7rem', cursor: 'pointer' }}
-                              title="Visit Social Profile"
+                              href={asset.isActive ? asset.socialLink : '#'}
+                              target={asset.isActive ? '_blank' : '_self'}
+                              rel={asset.isActive ? 'noopener noreferrer' : ''}
+                              class={`badge bg-info-subtle text-info px-2 py-1 rounded-pill fw-semibold text-decoration-none d-flex align-items-center gap-1 ${!asset.isActive ? 'disabled' : ''}`}
+                              style={{ fontSize: '0.7rem', cursor: asset.isActive ? 'pointer' : 'not-allowed', opacity: asset.isActive ? 1 : 0.5 }}
+                              title={asset.isActive ? "Visit Social Profile" : "Disabled"}
+                              onClick={(e) => !asset.isActive && e.preventDefault()}
                             >
                               <ShareIcon style={{ width: '12px', height: '12px' }} />
                               Social
                             </a>
                           </div>
-                          <span class="badge bg-success-subtle text-success px-2 py-1 rounded-pill fw-semibold" style={{ fontSize: '0.75rem' }}>
-                            ✅ {asset.isActive ? 'Active' : 'Inactive'}
+                          <span class={`badge px-2 py-1 rounded-pill fw-semibold ${asset.isActive ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`} style={{ fontSize: '0.75rem' }}>
+                            {asset.isActive ? '✅ Active' : '🔒 Disabled'}
                           </span>
                         </div>
                         <div class="dropdown position-relative">
                           <button 
                             class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                             onClick={() => toggleDropdown(asset._id || asset.id)}
-                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease' }}
+                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease', position: 'relative', zIndex: 10 }}
                           >
                             <EllipsisVerticalIcon style={{ width: '2rem', height: '2rem' }} />
                           </button>
                           {activeDropdown.value === (asset._id || asset.id) && (
                             <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
-                              <button 
-                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                onClick={() => { editAsset(asset); toggleDropdown(null); }}
-                              >
-                                <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
-                                <span class="fw-medium">Edit Asset</span>
-                              </button>
-                              <hr class="dropdown-divider my-1" />
-                              <button 
-                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
-                                onClick={() => { deleteAsset(asset._id || asset.id); toggleDropdown(null); }}
-                              >
-                                <TrashIcon style={{ width: '1rem', height: '1rem' }} />
-                                <span class="fw-medium">Delete</span>
-                              </button>
+                              {asset.isActive && (
+                                <>
+                                  <button 
+                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                    onClick={() => { editAsset(asset); toggleDropdown(null); }}
+                                  >
+                                    <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
+                                    <span class="fw-medium">Edit Asset</span>
+                                  </button>
+                                </>
+                              )}
+                                              <button 
+                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                                onClick={() => { toggleAssetStatus(asset); toggleDropdown(null); }}
+                                              >
+                                                <span class={`rounded-circle ${asset.isActive ? 'bg-warning' : 'bg-success'}`} style={{ width: '1rem', height: '1rem' }}></span>
+                                                <span class="fw-medium">{asset.isActive ? 'Disable' : 'Enable'}</span>
+                                              </button>
+                              {asset.isActive && (
+                                <>
+                                  <hr class="dropdown-divider my-1" />
+                                  <button 
+                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
+                                    onClick={() => { deleteAsset(asset._id || asset.id); toggleDropdown(null); }}
+                                  >
+                                    <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                    <span class="fw-medium">Delete</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -443,6 +487,7 @@ export default {
                           class="btn btn-primary btn-sm px-2 py-1 fw-semibold rounded-pill"
                           onClick={() => viewAsset(asset)}
                           style={{ fontSize: '0.75rem' }}
+                          disabled={!asset.isActive}
                         >
                           <EyeIcon style={{ width: '12px', height: '12px' }} class="me-1" />
                           View

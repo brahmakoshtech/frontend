@@ -56,18 +56,18 @@ export default {
       }
     };
 
-    const toggleTestimonialStatus = async (id) => {
+    const toggleTestimonialStatus = async (testimonial) => {
       try {
-        const response = await testimonialService.toggleTestimonialStatus(id);
+        const response = await testimonialService.toggleTestimonialStatus(testimonial._id || testimonial.id);
         if (response.success) {
-          // Update local state
-          const index = testimonials.value.findIndex(t => (t.id || t._id) === id);
+          const index = testimonials.value.findIndex(t => (t.id || t._id) === (testimonial._id || testimonial.id));
           if (index !== -1) {
             testimonials.value[index] = {
               ...testimonials.value[index],
               isActive: response.data.isActive
             };
           }
+          showDropdown.value = {};
           toast.success(`✓ Testimonial ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
         } else {
           toast.error('❌ ' + (response.error || 'Failed to toggle testimonial status'));
@@ -94,7 +94,7 @@ export default {
       loading.value = true;
       try {
         const response = await testimonialService.getAllTestimonials();
-        if (response.success && response.data && response.data.data) {
+        if (response.success && response.data) {
           let testimonialsList = Array.isArray(response.data.data) ? response.data.data : [];
           
           // Convert S3 URLs to presigned URLs with error handling
@@ -455,20 +455,15 @@ export default {
                 <div key={testimonial._id || testimonial.id} class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
                   <div 
                     class={`card border-0 shadow-lg h-100 position-relative overflow-hidden testimonial-card ${!testimonial.isActive ? 'opacity-50' : ''}`}
-                    onClick={() => {
-                      if (!testimonial.isActive) {
-                        toggleTestimonialStatus(testimonial.id || testimonial._id);
-                      }
-                    }}
                     style={{ 
-                      cursor: !testimonial.isActive ? 'pointer' : 'default',
+                      cursor: 'default',
                       transition: 'all 0.3s ease',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
                     }}
                   >
                     {!testimonial.isActive && (
-                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1 }}>
-                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled - Click to Enable</span>
+                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1, pointerEvents: 'none' }}>
+                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled</span>
                       </div>
                     )}
                     
@@ -565,7 +560,9 @@ export default {
                               height: '40px', 
                               fontSize: '18px', 
                               fontWeight: 'bold',
-                              transition: 'all 0.2s ease'
+                              transition: 'all 0.2s ease',
+                              position: 'relative',
+                              zIndex: 10
                             }}
                             title="More options"
                           >
@@ -573,59 +570,53 @@ export default {
                           </button>
                           {showDropdown.value[testimonial.id || testimonial._id] && (
                             <ul class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ top: '100%', right: '0', zIndex: 1000, minWidth: '160px' }}>
+                              {testimonial.isActive && (
+                                <>
+                                  <li>
+                                    <button 
+                                      class="dropdown-item d-flex align-items-center py-2 rounded-2" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        editTestimonial(testimonial);
+                                        toggleDropdown(testimonial.id || testimonial._id);
+                                      }}
+                                    >
+                                      <PencilIcon style={{ width: '16px', height: '16px' }} class="me-2 text-primary" />
+                                      Edit
+                                    </button>
+                                  </li>
+                                </>
+                              )}
                               <li>
-                                <button 
-                                  class="dropdown-item d-flex align-items-center py-2 rounded-2" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    editTestimonial(testimonial);
-                                    toggleDropdown(testimonial.id || testimonial._id);
-                                  }}
-                                >
-                                  <PencilIcon style={{ width: '16px', height: '16px' }} class="me-2 text-primary" />
-                                  Edit
-                                </button>
+                              <button 
+                                class="dropdown-item d-flex align-items-center py-2 rounded-2" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTestimonialStatus(testimonial);
+                                  toggleDropdown(testimonial.id || testimonial._id);
+                                }}
+                              >
+                                <span>{testimonial.isActive ? '🔴' : '🟢'}</span> {testimonial.isActive ? 'Disable' : 'Enable'}
+                              </button>
                               </li>
-                              <li>
-                                <button 
-                                  class={`dropdown-item d-flex align-items-center py-2 rounded-2 ${!testimonial.isActive ? 'text-success' : 'text-warning'}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleTestimonialStatus(testimonial.id || testimonial._id);
-                                    toggleDropdown(testimonial.id || testimonial._id);
-                                  }}
-                                >
-                                  {!testimonial.isActive ? (
-                                    <>
-                                      <svg style={{ width: '16px', height: '16px' }} class="me-2" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                      </svg>
-                                      Enable
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg style={{ width: '16px', height: '16px' }} class="me-2" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                      </svg>
-                                      Disable
-                                    </>
-                                  )}
-                                </button>
-                              </li>
-                              <li><hr class="dropdown-divider" /></li>
-                              <li>
-                                <button 
-                                  class="dropdown-item d-flex align-items-center py-2 text-danger rounded-2" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteTestimonial(testimonial.id || testimonial._id);
-                                    toggleDropdown(testimonial.id || testimonial._id);
-                                  }}
-                                >
-                                  <TrashIcon style={{ width: '16px', height: '16px' }} class="me-2" />
-                                  Delete
-                                </button>
-                              </li>
+                              {testimonial.isActive && (
+                                <>
+                                  <div class="dropdown-divider"></div>
+                                  <li>
+                                    <button 
+                                      class="dropdown-item d-flex align-items-center py-2 text-danger rounded-2" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteTestimonial(testimonial.id || testimonial._id);
+                                        toggleDropdown(testimonial.id || testimonial._id);
+                                      }}
+                                    >
+                                      <TrashIcon style={{ width: '16px', height: '16px' }} class="me-2" />
+                                      Delete
+                                    </button>
+                                  </li>
+                                </>
+                              )}
                             </ul>
                           )}
                         </div>

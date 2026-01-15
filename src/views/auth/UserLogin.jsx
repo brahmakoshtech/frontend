@@ -19,8 +19,8 @@ export default {
       error.value = '';
       
       try {
-        // Login automatically determines client from email
-        const response = await api.request('/mobile/user/login', {
+        // Use the original user auth endpoint
+        const response = await api.request('/auth/user/login', {
           method: 'POST',
           body: {
             email: email.value,

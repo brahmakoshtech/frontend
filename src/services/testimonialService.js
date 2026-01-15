@@ -47,7 +47,7 @@ const testimonialService = {
   // Get all testimonials
   async getAllTestimonials() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/testimonials`, {
+      const response = await axios.get(`${API_BASE_URL}/testimonials?includeInactive=true`, {
         headers: getAuthHeaders()
       });
       return { success: true, data: response.data };
