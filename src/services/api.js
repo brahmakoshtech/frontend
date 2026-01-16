@@ -63,13 +63,14 @@ class ApiService {
         tokenSource = 'admin (endpoint match)';
       } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') ||
         endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || endpoint.includes('/brand-assets') ||
-        endpoint.includes('/meditations')) {
-        // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS & MEDITATIONS: Always use client token
+        endpoint.includes('/meditations') || endpoint.includes('/chantings')) {
+        // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS, MEDITATIONS & CHANTINGS: Always use client token
         token = getTokenForRole('client');
         tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 
                      endpoint.includes('/founder-messages') ? 'client (founder-messages endpoint)' : 
                      endpoint.includes('/brand-assets') ? 'client (brand-assets endpoint)' :
                      endpoint.includes('/meditations') ? 'client (meditations endpoint)' :
+                     endpoint.includes('/chantings') ? 'client (chantings endpoint)' :
                      'client (endpoint match)';
       } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
@@ -157,7 +158,26 @@ class ApiService {
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
-      const data = await response.json();
+      
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Handle non-JSON responses (like HTML 404 pages)
+        const text = await response.text();
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status} ${response.statusText}. ${response.status === 404 ? 'Endpoint not found. Please ensure the server is deployed with the latest routes.' : ''}`);
+        }
+        // If response is OK but not JSON, try to parse as JSON anyway
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error(`Expected JSON response but received ${contentType || 'unknown content type'}`);
+        }
+      }
 
       // Debug logging for errors
       if (!response.ok) {

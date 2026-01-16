@@ -97,28 +97,11 @@ export default {
         if (response.success && response.data) {
           let testimonialsList = Array.isArray(response.data.data) ? response.data.data : [];
           
-          // Convert S3 URLs to presigned URLs with error handling
-          testimonialsList = await Promise.all(
-            testimonialsList.map(async (testimonial) => {
-              if (testimonial.image) {
-                try {
-                  const presignedUrl = await testimonialService.getPresignedImageUrl(testimonial.image);
-                  // Validate presigned URL before using
-                  if (presignedUrl && presignedUrl.startsWith('http')) {
-                    return { ...testimonial, image: presignedUrl };
-                  } else {
-                    // Fallback to original URL or placeholder
-                    return { ...testimonial, image: null };
-                  }
-                } catch (error) {
-                  console.warn('Failed to get presigned URL for testimonial image:', error);
-                  // Return testimonial with null image to use placeholder
-                  return { ...testimonial, image: null };
-                }
-              }
-              return testimonial;
-            })
-          );
+          // Use signedImageUrl from backend if available
+          testimonialsList = testimonialsList.map(testimonial => ({
+            ...testimonial,
+            image: testimonial.signedImageUrl || testimonial.image || null
+          }));
           
           testimonials.value = testimonialsList;
         } else {
@@ -137,64 +120,47 @@ export default {
         loading.value = true;
         toast.info('Creating testimonial...');
         const { image, ...testimonialData } = newTestimonial.value;
+        console.log('1. Creating testimonial without image:', testimonialData);
         const response = await testimonialService.createTestimonial(testimonialData);
         
         if (response.success && response.data) {
           let createdTestimonial = response.data;
+          console.log('2. Testimonial created:', createdTestimonial._id);
           
-          // Upload image if provided and testimonial ID exists
+          // Upload image if provided
           if (image && createdTestimonial._id) {
+            console.log('3. Uploading image for testimonial:', createdTestimonial._id);
+            console.log('4. Image file:', image.name, image.type, image.size);
             try {
               toast.info('Uploading image...');
               const imageResponse = await testimonialService.uploadImage(createdTestimonial._id, image);
-              
+              console.log('5. Image upload response:', imageResponse);
               if (imageResponse.success && imageResponse.data) {
-                // Backend returns {success: true, data: {imageUrl: "..."}}
-                // testimonialService extracts it: response.data.data = {imageUrl: "..."}
-                // So imageResponse.data = {imageUrl: "..."}
-                let imageUrl = imageResponse.data.imageUrl;
-                
-                if (imageUrl) {
-                  // Get presigned URL for S3 images
-                  try {
-                    const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);
-                    imageUrl = presignedUrl || imageUrl;
-                  } catch (error) {
-                    // console.warn('Failed to get presigned URL, using original:', error);
-                  }
-                  
-                  // Set the image property on the testimonial object
-                  createdTestimonial.image = imageUrl;
-                } else {
-                  // console.error('No imageUrl found in response.data:', imageResponse.data);
-                }
+                createdTestimonial.image = imageResponse.data.imageUrl;
+                console.log('6. Image uploaded successfully:', imageResponse.data.imageUrl);
               } else {
-                toast.error('⚠️ Image upload response invalid');
+                console.error('7. Image upload failed:', imageResponse.error);
               }
             } catch (imageError) {
+              console.error('8. Image upload error:', imageError);
               toast.error('⚠️ Testimonial created but image upload failed');
             }
+          } else {
+            console.log('3. No image to upload or no testimonial ID');
           }
           
-          // Ensure image is set before adding to list
-          if (!createdTestimonial.image && image) {
-            // console.warn('Image was not set after upload, testimonial:', createdTestimonial);
-          }
-          
-          // Force Vue reactivity by creating a new object
-          const testimonialToAdd = {
-            ...createdTestimonial,
-            image: createdTestimonial.image || null
-          };
-          
-          testimonials.value.unshift(testimonialToAdd);
           newTestimonial.value = { name: '', rating: 5, message: '', image: null };
           showAddModal.value = false;
           toast.success('✓ Testimonial added successfully!');
+          
+          // Refresh list to get pre-signed URLs
+          await fetchTestimonials();
         } else {
+          console.error('Create testimonial failed:', response.error);
           toast.error('❌ ' + (response.error || 'Failed to create testimonial'));
         }
       } catch (error) {
+        console.error('Add testimonial error:', error);
         toast.error('❌ Failed to create testimonial. Please try again.');
       } finally {
         loading.value = false;
@@ -211,6 +177,7 @@ export default {
         loading.value = true;
         toast.info('Updating testimonial...');
         const { image, ...testimonialData } = editingTestimonial.value;
+        
         const response = await testimonialService.updateTestimonial(
           editingTestimonial.value.id || editingTestimonial.value._id, 
           testimonialData
@@ -219,38 +186,25 @@ export default {
         if (response.success) {
           let updatedTestimonial = response.data;
           
-          // Upload image if provided
+          // Upload new image if provided
           if (image && typeof image !== 'string') {
             try {
               toast.info('Uploading new image...');
               const imageResponse = await testimonialService.uploadImage(updatedTestimonial._id, image);
-              if (imageResponse.success && imageResponse.data && imageResponse.data.imageUrl) {
-                // Get presigned URL for S3 images
-                let imageUrl = imageResponse.data.imageUrl;
-                try {
-                  const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);
-                  imageUrl = presignedUrl || imageUrl;
-                } catch (error) {
-                  // console.warn('Failed to get presigned URL, using original:', error);
-                }
-                updatedTestimonial.image = imageUrl;
+              if (imageResponse.success && imageResponse.data) {
+                updatedTestimonial.image = imageResponse.data.imageUrl;
               }
             } catch (imageError) {
               toast.error('⚠️ Testimonial updated but image upload failed');
             }
           }
           
-          const index = testimonials.value.findIndex(t => (t.id || t._id) === (editingTestimonial.value.id || editingTestimonial.value._id));
-          if (index !== -1) {
-            // Force Vue reactivity by creating a new object
-            testimonials.value[index] = {
-              ...updatedTestimonial,
-              image: updatedTestimonial.image || null
-            };
-          }
           showEditModal.value = false;
           editingTestimonial.value = null;
           toast.success('✓ Testimonial updated successfully!');
+          
+          // Refresh list to get pre-signed URLs
+          await fetchTestimonials();
         }
       } catch (error) {
         toast.error('❌ Failed to update testimonial. Please try again.');

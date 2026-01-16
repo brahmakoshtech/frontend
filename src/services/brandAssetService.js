@@ -152,8 +152,23 @@ const brandAssetService = {
   },
 
   // Get presigned URL for S3 image with timeout and error handling
-  getPresignedImageUrl: async (imageUrl) => {
+  // Now supports both S3 keys and URLs
+  getPresignedImageUrl: async (imageUrl, imageKey = null) => {
     try {
+      // If we have a key, use it directly (preferred method)
+      if (imageKey) {
+        const response = await api.request(`/media/presigned-url?key=${encodeURIComponent(imageKey)}`, {
+          method: 'GET',
+          timeout: 5000
+        });
+        
+        const presignedUrl = response.data?.presignedUrl;
+        if (presignedUrl && presignedUrl.startsWith('http')) {
+          return presignedUrl;
+        }
+      }
+      
+      // Fallback: Extract key from URL if no key provided
       if (!imageUrl || !imageUrl.includes('amazonaws.com')) {
         return imageUrl;
       }
@@ -162,9 +177,10 @@ const brandAssetService = {
       const url = new URL(imageUrl);
       const key = url.pathname.substring(1);
 
-      // Use GET method with timeout
-      const response = await api.request(`/upload/presigned-url/${encodeURIComponent(key)}`, {
-        timeout: 5000 // 5 second timeout
+      // Use new endpoint
+      const response = await api.request(`/media/presigned-url?key=${encodeURIComponent(key)}`, {
+        method: 'GET',
+        timeout: 5000
       });
       
       const presignedUrl = response.data?.presignedUrl;

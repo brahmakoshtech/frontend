@@ -64,19 +64,22 @@ export default {
           // Convert S3 URLs to presigned URLs with better error handling
           assetsList = await Promise.all(
             assetsList.map(async (asset) => {
-              if (asset.brandLogoImage) {
+              if (asset.brandLogoImage || asset.brandLogoImageKey) {
                 try {
-                  const presignedUrl = await brandAssetService.getPresignedImageUrl(asset.brandLogoImage);
+                  const presignedUrl = await brandAssetService.getPresignedImageUrl(
+                    asset.brandLogoImage, 
+                    asset.brandLogoImageKey
+                  );
                   // Only use presigned URL if it's valid
                   if (presignedUrl && presignedUrl.startsWith('http')) {
                     return { ...asset, brandLogoImage: presignedUrl };
                   } else {
-                    // Use null to show placeholder instead of broken image
-                    return { ...asset, brandLogoImage: null };
+                    // Fallback to original URL or null
+                    return { ...asset, brandLogoImage: asset.brandLogoImage || null };
                   }
                 } catch (error) {
                   // Keep original URL as fallback
-                  return { ...asset, brandLogoImage: null };
+                  return { ...asset, brandLogoImage: asset.brandLogoImage || null };
                 }
               }
               return asset;
@@ -178,6 +181,9 @@ export default {
 
       loading.value = true;
       try {
+        // Find original asset to preserve image
+        const originalAsset = brandAssets.value.find(a => (a._id || a.id) === (editingAsset.value._id || editingAsset.value.id));
+        
         // First update text fields
         const { brandLogoImage, ...textData } = editFormData.value;
         const response = await brandAssetService.updateBrandAsset(
@@ -218,6 +224,9 @@ export default {
             } catch (imageError) {
               alert('Asset updated but image upload failed');
             }
+          } else if (originalAsset && originalAsset.brandLogoImage) {
+            // Preserve existing image if no new image uploaded
+            updatedAsset.brandLogoImage = originalAsset.brandLogoImage;
           }
           
           const index = brandAssets.value.findIndex(a => (a._id || a.id) === (editingAsset.value._id || editingAsset.value.id));

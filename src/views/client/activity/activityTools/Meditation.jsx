@@ -247,8 +247,11 @@ export default {
         loading.value = true;
         editUploadProgress.value = { video: 0, image: 0 };
         
-        let videoUrl = editingMeditation.value.videoUrl;
-        let imageUrl = editingMeditation.value.imageUrl;
+        const updateData = {
+          name: editFormData.value.name,
+          description: editFormData.value.description,
+          link: editFormData.value.link
+        };
         
         // Upload new video if provided
         if (editFormData.value.video) {
@@ -267,7 +270,7 @@ export default {
               }
             );
             
-            videoUrl = fileUrl;
+            updateData.videoUrl = fileUrl;
           } catch (error) {
             console.error('Video upload failed:', error);
             alert('Video upload failed: ' + (error.message || 'Unknown error'));
@@ -293,7 +296,7 @@ export default {
               }
             );
             
-            imageUrl = fileUrl;
+            updateData.imageUrl = fileUrl;
           } catch (error) {
             console.error('Image upload failed:', error);
             alert('Image upload failed: ' + (error.message || 'Unknown error'));
@@ -303,13 +306,7 @@ export default {
         }
         
         // Update meditation
-        await meditationService.updateDirect(editingMeditation.value._id, {
-          name: editFormData.value.name,
-          description: editFormData.value.description,
-          link: editFormData.value.link,
-          videoUrl,
-          imageUrl
-        });
+        await meditationService.updateDirect(editingMeditation.value._id, updateData);
         
         await loadMeditations();
         closeEditModal();
@@ -324,18 +321,38 @@ export default {
     };
 
     const deleteMeditation = async (id) => {
-      if (confirm('Are you sure you want to delete this meditation?')) {
+      console.log('🗑️ DELETE BUTTON CLICKED - Meditation ID:', id);
+      console.log('Current meditations count:', meditations.value.length);
+      console.log('Meditation to delete:', meditations.value.find(m => m._id === id));
+      
+      if (confirm('Are you sure you want to PERMANENTLY DELETE this meditation?')) {
         try {
           loading.value = true;
-          await meditationService.delete(id);
+          console.log('Calling DELETE API...');
+          
+          const response = await meditationService.delete(id);
+          console.log('✅ DELETE API Response:', response);
+          
+          console.log('Reloading meditations list...');
           await loadMeditations();
+          
+          console.log('New meditations count:', meditations.value.length);
+          console.log('Deleted meditation still exists?', meditations.value.find(m => m._id === id));
+          
           alert('Meditation deleted successfully!');
         } catch (error) {
-          console.error('Error deleting meditation:', error);
-          alert('Error deleting meditation');
+          console.error('❌ Error deleting meditation:', error);
+          console.error('Error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status
+          });
+          alert('Error deleting meditation: ' + (error.message || 'Unknown error'));
         } finally {
           loading.value = false;
         }
+      } else {
+        console.log('Delete cancelled by user');
       }
     };
 
@@ -366,8 +383,10 @@ export default {
     };
 
     const toggleStatus = async (meditation) => {
+      console.log('🔄 TOGGLE STATUS CLICKED - Meditation ID:', meditation._id, 'Current status:', meditation.isActive);
       try {
         const response = await meditationService.toggleStatus(meditation._id);
+        console.log('✅ Toggle status successful. New status:', response.data.isActive);
         const index = meditations.value.findIndex(m => m._id === meditation._id);
         if (index !== -1) {
           meditations.value[index] = {
@@ -378,7 +397,7 @@ export default {
         openDropdownId.value = null;
         alert(`Meditation ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
       } catch (error) {
-        console.error('Error toggling status:', error);
+        console.error('❌ Error toggling status:', error);
         alert('Error updating status');
       }
     };
@@ -892,6 +911,14 @@ export default {
                         
                         <div class="mb-3">
                           <label class="form-label fw-semibold small">Upload New Video (Optional)</label>
+                          {editingMeditation.value.videoUrl && !editFormData.value.video && (
+                            <div class="mb-2 p-2 bg-info bg-opacity-10 rounded">
+                              <small class="text-info d-block mb-1">📹 Current video preview:</small>
+                              <video controls class="w-100 rounded-3" style={{ maxHeight: '150px' }}>
+                                <source src={editingMeditation.value.videoUrl} type="video/mp4" />
+                              </video>
+                            </div>
+                          )}
                           <input 
                             type="file" 
                             class="form-control rounded-3" 
@@ -936,6 +963,12 @@ export default {
                         
                         <div class="mb-3">
                           <label class="form-label fw-semibold small">Upload New Image (Optional)</label>
+                          {editingMeditation.value.imageUrl && !editFormData.value.image && (
+                            <div class="mb-2 p-2 bg-info bg-opacity-10 rounded">
+                              <small class="text-info d-block mb-1">🖼️ Current image preview:</small>
+                              <img src={editingMeditation.value.imageUrl} alt="Current" class="img-fluid rounded-3" style={{ maxHeight: '150px' }} />
+                            </div>
+                          )}
                           <input 
                             type="file" 
                             class="form-control rounded-3" 

@@ -122,7 +122,11 @@ const founderMessageService = {
       formData.append('founderName', messageData.founderName);
       formData.append('position', messageData.position);
       formData.append('content', messageData.content);
-      formData.append('status', messageData.status);
+      
+      // Only append status if it's defined
+      if (messageData.status !== undefined && messageData.status !== null) {
+        formData.append('status', messageData.status);
+      }
       
       // Only append image if it's a File (new image selected)
       if (messageData.founderImage && messageData.founderImage instanceof File) {
@@ -189,36 +193,55 @@ const founderMessageService = {
   },
 
   // Get presigned URL for S3 image
-  async getPresignedImageUrl(imageUrl) {
-    if (!imageUrl) return null;
+  // Now supports both S3 keys and URLs
+  async getPresignedImageUrl(imageUrl, imageKey = null) {
+    if (!imageUrl && !imageKey) return null;
     
-    // Skip presigned URL for localhost/local URLs (these are old messages)
-    if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1') || imageUrl.startsWith('/uploads/')) {
-      return imageUrl; // Return as-is for local URLs
-    }
-    
-    // Check if it's an S3 URL
-    const isS3Url = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com');
-    if (!isS3Url) {
-      return imageUrl; // Return as-is for non-S3 URLs
-    }
-    
-    try {
-      // Extract key from S3 URL
-      // Format: https://bucket.s3.region.amazonaws.com/key
-      const url = new URL(imageUrl);
-      const key = url.pathname.substring(1); // Remove leading slash
-      
-      // Get presigned URL from backend with authentication
-      const response = await api.request(`/upload/presigned-url/${encodeURIComponent(key)}`, {
-        method: 'GET'
-      });
-      
-      if (response.success && response.data?.presignedUrl) {
-        return response.data.presignedUrl;
+    // If we have a key, use it directly (preferred method)
+    if (imageKey) {
+      try {
+        const response = await api.request(`/media/presigned-url?key=${encodeURIComponent(imageKey)}`, {
+          method: 'GET'
+        });
+        
+        if (response.success && response.data?.presignedUrl) {
+          return response.data.presignedUrl;
+        }
+      } catch (error) {
+        console.warn('Failed to get presigned URL from key:', error);
       }
-    } catch (error) {
-      // If auth fails, return original URL (might work if bucket is public)
+    }
+    
+    // Fallback: Extract key from URL if no key provided
+    if (imageUrl) {
+      // Skip presigned URL for localhost/local URLs (these are old messages)
+      if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1') || imageUrl.startsWith('/uploads/')) {
+        return imageUrl; // Return as-is for local URLs
+      }
+      
+      // Check if it's an S3 URL
+      const isS3Url = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com');
+      if (!isS3Url) {
+        return imageUrl; // Return as-is for non-S3 URLs
+      }
+      
+      try {
+        // Extract key from S3 URL
+        // Format: https://bucket.s3.region.amazonaws.com/key
+        const url = new URL(imageUrl);
+        const key = url.pathname.substring(1); // Remove leading slash
+        
+        // Get presigned URL from backend using new endpoint
+        const response = await api.request(`/media/presigned-url?key=${encodeURIComponent(key)}`, {
+          method: 'GET'
+        });
+        
+        if (response.success && response.data?.presignedUrl) {
+          return response.data.presignedUrl;
+        }
+      } catch (error) {
+        console.warn('Failed to get presigned URL from URL:', error);
+      }
     }
     
     // Fallback to original URL

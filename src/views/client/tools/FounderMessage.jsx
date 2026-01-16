@@ -46,12 +46,15 @@ export default {
           // Convert S3 URLs to presigned URLs for better access
           let messagesList = await Promise.all(
             response.data.map(async (message) => {
-              if (message.founderImage) {
+              if (message.founderImage || message.founderImageKey) {
                 try {
-                  const presignedUrl = await founderMessageService.getPresignedImageUrl(message.founderImage);
-                  return { ...message, founderImage: presignedUrl };
+                  const presignedUrl = await founderMessageService.getPresignedImageUrl(
+                    message.founderImage, 
+                    message.founderImageKey
+                  );
+                  return { ...message, founderImage: presignedUrl || message.founderImage };
                 } catch (error) {
-                  return message;
+                  return { ...message, founderImage: message.founderImage || null };
                 }
               }
               return message;
@@ -235,28 +238,45 @@ export default {
 
       loading.value = true;
       try {
-        const response = await founderMessageService.updateMessage(editMessage.value._id, editMessage.value);
+        // Find original message to preserve image
+        const originalMessage = messages.value.find(m => m._id === editMessage.value._id);
+        
+        // Only send text fields, exclude founderImage and _id
+        const { founderImage, _id, ...messageData } = editMessage.value;
+        console.log('Sending to backend:', messageData); // Debug log
+        const response = await founderMessageService.updateMessage(_id, messageData);
         
         if (response.success) {
           let updatedMessage = response.data;
           
-          // Get presigned URL for image if it exists and was updated
-          if (updatedMessage.founderImage && updatedMessage.founderImage.includes('amazonaws.com')) {
+          // Upload new image if provided
+          if (founderImage && typeof founderImage !== 'string') {
             try {
-              const presignedUrl = await founderMessageService.getPresignedImageUrl(updatedMessage.founderImage);
-              updatedMessage.founderImage = presignedUrl || updatedMessage.founderImage;
-            } catch (error) {
-              console.error('Error getting presigned URL:', error);
+              const imageResponse = await founderMessageService.uploadImage(_id, founderImage);
+              if (imageResponse.success && imageResponse.data && imageResponse.data.imageUrl) {
+                let imageUrl = imageResponse.data.imageUrl;
+                try {
+                  const presignedUrl = await founderMessageService.getPresignedImageUrl(imageUrl);
+                  updatedMessage.founderImage = presignedUrl || imageUrl;
+                } catch (error) {
+                  updatedMessage.founderImage = imageUrl;
+                }
+              }
+            } catch (imageError) {
+              alert('Message updated but image upload failed');
             }
+          } else if (originalMessage && originalMessage.founderImage) {
+            // Preserve existing image if no new image uploaded
+            updatedMessage.founderImage = originalMessage.founderImage;
           }
           
-          const index = messages.value.findIndex(m => m._id === editMessage.value._id);
+          const index = messages.value.findIndex(m => m._id === _id);
           if (index !== -1) {
             messages.value[index] = updatedMessage;
           }
           
           // Update selected message if it's the same one
-          if (selectedMessage.value && selectedMessage.value._id === editMessage.value._id) {
+          if (selectedMessage.value && selectedMessage.value._id === _id) {
             selectedMessage.value = updatedMessage;
           }
           

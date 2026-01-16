@@ -3,28 +3,48 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Helper function to get presigned URL for S3 images
-const getPresignedImageUrl = async (imageUrl) => {
-  if (!imageUrl) return null;
+// Now supports both S3 keys and URLs
+const getPresignedImageUrl = async (imageUrl, imageKey = null) => {
+  if (!imageUrl && !imageKey) return null;
   
-  // Check if it's an S3 URL
-  const isS3Url = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com');
-  if (!isS3Url) {
-    return imageUrl; // Return as-is for non-S3 URLs
+  // If we have a key, use it directly (preferred method)
+  if (imageKey) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/media/presigned-url?key=${encodeURIComponent(imageKey)}`, {
+        headers: getAuthHeaders()
+      });
+      if (response.data.success && response.data.data?.presignedUrl) {
+        return response.data.data.presignedUrl;
+      }
+    } catch (error) {
+      console.warn('Failed to get presigned URL from key:', error);
+    }
   }
   
-  try {
-    // Extract key from S3 URL
-    // Format: https://bucket.s3.region.amazonaws.com/key
-    const url = new URL(imageUrl);
-    const key = url.pathname.substring(1); // Remove leading slash
-    
-    // Get presigned URL from backend
-    const response = await axios.get(`${API_BASE_URL}/upload/presigned-url/${encodeURIComponent(key)}`);
-    if (response.data.success && response.data.data.presignedUrl) {
-      return response.data.data.presignedUrl;
+  // Fallback: Extract key from URL if no key provided
+  if (imageUrl) {
+    // Check if it's an S3 URL
+    const isS3Url = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com');
+    if (!isS3Url) {
+      return imageUrl; // Return as-is for non-S3 URLs
     }
-  } catch (error) {
-    // console.warn('Failed to get presigned URL, using original:', error);
+    
+    try {
+      // Extract key from S3 URL
+      // Format: https://bucket.s3.region.amazonaws.com/key
+      const url = new URL(imageUrl);
+      const key = url.pathname.substring(1); // Remove leading slash
+      
+      // Get presigned URL from backend using new endpoint
+      const response = await axios.get(`${API_BASE_URL}/media/presigned-url?key=${encodeURIComponent(key)}`, {
+        headers: getAuthHeaders()
+      });
+      if (response.data.success && response.data.data?.presignedUrl) {
+        return response.data.data.presignedUrl;
+      }
+    } catch (error) {
+      console.warn('Failed to get presigned URL from URL:', error);
+    }
   }
   
   // Fallback to original URL
@@ -56,7 +76,7 @@ const testimonialService = {
     }
   },
 
-  // Create new testimonial
+  // Create new testimonial (without image)
   async createTestimonial(testimonialData) {
     try {
       const response = await axios.post(`${API_BASE_URL}/testimonials`, testimonialData, {
@@ -64,21 +84,21 @@ const testimonialService = {
       });
       return { success: true, data: response.data.data || response.data };
     } catch (error) {
+      console.error('Create testimonial error:', error.response?.data || error.message);
       return { success: false, error: error.response?.data?.message || error.message };
     }
   },
 
-  // Update testimonial
+  // Update testimonial (without image)
   async updateTestimonial(id, testimonialData) {
     try {
       const response = await axios.put(`${API_BASE_URL}/testimonials/${id}`, testimonialData, {
         headers: getAuthHeaders()
       });
-      // Backend returns {success: true, data: testimonial}
-      // Extract the data object directly
       return { success: true, data: response.data.data || response.data };
     } catch (error) {
-      return { success: false, error: error.message };
+      console.error('Update testimonial error:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.message || error.message };
     }
   },
 
