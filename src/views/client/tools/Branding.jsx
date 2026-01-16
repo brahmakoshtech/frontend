@@ -493,23 +493,26 @@ export default {
                     
                     <div class="position-absolute top-0 end-0 p-3" style={{ opacity: 0.08, fontSize: '3rem', color: '#007bff' }}>🎨</div>
                     
-                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center position-relative" style={{ height: '120px', borderRadius: '16px 16px 0 0' }}>
-                      <img 
-                        src={asset.brandLogoImage || generatePlaceholder(asset.brandLogoName || 'Brand')} 
-                        alt={asset.brandLogoName || 'Brand Asset'}
-                        class="img-fluid rounded-3 shadow-sm" 
-                        style={{ maxHeight: '100px', maxWidth: '90%', objectFit: 'contain' }}
-                        onError={(e) => {
-                          e.target.src = generatePlaceholder(asset.brandLogoName || 'B', 'dc3545');
-                        }}
-                      />
-                    </div>
-                    
                     <div class="card-body p-3">
+                      <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="me-3">
+                          <img 
+                            src={asset.brandLogoImage || generatePlaceholder(asset.brandLogoName || 'Brand')} 
+                            alt={asset.brandLogoName || 'Brand Asset'}
+                            class="rounded-circle shadow" 
+                            style={{ width: '70px', height: '70px', objectFit: 'cover', border: '3px solid #fff' }}
+                            onError={(e) => {
+                              e.target.src = generatePlaceholder(asset.brandLogoName || 'B', 'dc3545');
+                            }}
+                          />
+                        </div>
+                        <div class="flex-grow-1">
+                          <h5 class="mb-1 fw-bold" style={{ fontSize: '1.1rem', color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>{asset.headingText || 'Brand Asset'}</h5>
+                          <p class="mb-0 fw-semibold" style={{ fontSize: '0.95rem', color: '#fff', textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>{asset.brandLogoName || 'Logo Name'}</p>
+                        </div>
+                      </div>
                       <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="flex-grow-1">
-                          <h5 class="mb-1 fw-bold text-dark" style={{ fontSize: '1rem' }}>{asset.headingText || 'Brand Asset'}</h5>
-                          <p class="mb-2 text-primary fw-semibold" style={{ fontSize: '0.9rem' }}>{asset.brandLogoName || 'Logo Name'}</p>
                           <div class="d-flex align-items-center gap-1 mb-2">
                             <a 
                               href={asset.isActive ? asset.webLinkUrl : '#'} 
