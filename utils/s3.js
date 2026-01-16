@@ -65,16 +65,23 @@ export const generateUploadUrl = async (fileName, contentType, folder = '') => {
 };
 
 // Generate presigned URL for getting/reading an object
-export const getobject = async (key) => {
+export const getobject = async (key, expiresIn = 604800) => {
   try {
+    // If key is a URL, extract the key first
+    const actualKey = key.startsWith('http') ? extractS3KeyFromUrl(key) : key;
+    
+    if (!actualKey) {
+      throw new Error('Invalid S3 key provided');
+    }
+    
     const command = new GetObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
-      Key: key,
+      Key: actualKey,
       ResponseContentDisposition: 'inline',
-      ResponseContentType: key.endsWith('.txt') ? 'text/plain; charset=utf-8' : undefined,
+      ResponseContentType: actualKey.endsWith('.txt') ? 'text/plain; charset=utf-8' : undefined,
     });
 
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 604800 });
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
     return signedUrl;
   } catch (error) {
     console.error('Error generating get presigned URL:', error);
@@ -138,6 +145,50 @@ export const deleteObject = async (key) => {
   }
 };
 
+/**
+ * Extract S3 key from S3 URL
+ * Supports multiple S3 URL formats:
+ * - https://bucket.s3.region.amazonaws.com/key
+ * - https://bucket.s3.amazonaws.com/key
+ * - s3://bucket/key
+ */
+export const extractS3KeyFromUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return null;
+  }
+  
+  // Handle s3:// protocol
+  if (url.startsWith('s3://')) {
+    const parts = url.replace('s3://', '').split('/');
+    if (parts.length > 1) {
+      return parts.slice(1).join('/');
+    }
+    return null;
+  }
+  
+  // Handle HTTP/HTTPS URLs
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      const urlObj = new URL(url);
+      // Remove leading slash from pathname
+      const key = urlObj.pathname.substring(1);
+      return key || null;
+    } catch (error) {
+      console.error('Error parsing S3 URL:', error);
+      // Fallback: try to extract key manually
+      // Pattern: https://bucket.s3.region.amazonaws.com/key or https://bucket.s3.amazonaws.com/key
+      const match = url.match(/s3[.-]([^.]+)\.amazonaws\.com\/(.+)$/);
+      if (match && match[2]) {
+        return decodeURIComponent(match[2]);
+      }
+      return null;
+    }
+  }
+  
+  // If it's already a key (no http:// or s3://), return as-is
+  return url;
+};
+
 // Upload file directly to S3
 export const uploadToS3 = async (file, folder = '') => {
   console.log('=== S3 UPLOAD START ===');
@@ -190,10 +241,14 @@ export const uploadToS3 = async (file, folder = '') => {
     const result = await s3Client.send(command);
     console.log('S3 upload result:', result);
     
-    // Return the S3 URL
-    const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-    console.log('Generated image URL:', imageUrl);
-    return imageUrl;
+    // Return both key and URL for storage
+    const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    console.log('Generated file URL:', fileUrl);
+    
+    return {
+      key: key,
+      url: fileUrl
+    };
   } catch (error) {
     console.error('=== S3 UPLOAD ERROR ===');
     console.error('Error name:', error.name);

@@ -21,6 +21,11 @@ const founderMessageSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  founderImageKey: {
+    type: String,
+    default: null
+    // S3 object key for generating presigned URLs
+  },
   status: {
     type: String,
     enum: ['draft', 'published'],

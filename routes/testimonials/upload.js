@@ -81,10 +81,13 @@ router.post('/:id/upload-image', authenticate, upload.single('image'), async (re
     }
 
     // Upload new image to S3
-    const imageUrl = await uploadToS3(req.file, 'testimonials');
+    const uploadResult = await uploadToS3(req.file, 'testimonials');
+    const imageUrl = uploadResult.url;
+    const imageKey = uploadResult.key;
 
-    // Update testimonial with new image URL
+    // Update testimonial with new image URL and key
     testimonial.image = imageUrl;
+    testimonial.imageKey = imageKey;
     await testimonial.save();
 
     res.json({

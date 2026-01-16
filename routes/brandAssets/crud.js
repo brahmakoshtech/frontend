@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import BrandAsset from '../../models/BrandAsset.js';
 import Client from '../../models/Client.js';
 import multer from 'multer';
-import { uploadToS3, deleteFromS3 } from '../../utils/s3.js';
+import { uploadToS3, deleteFromS3, getobject, extractS3KeyFromUrl } from '../../utils/s3.js';
 import { authenticate } from '../../middleware/auth.js';
 
 const router = express.Router();
@@ -102,10 +102,28 @@ router.get('/', authenticate, async (req, res) => {
       .populate('clientId', 'clientId')
       .sort({ createdAt: -1 });
 
+    // Generate presigned URLs for images
+    const assetsWithUrls = await Promise.all(
+      brandAssets.map(async (asset) => {
+        const assetObj = withClientIdString(asset);
+        if (assetObj.brandLogoImageKey || assetObj.brandLogoImage) {
+          try {
+            const imageKey = assetObj.brandLogoImageKey || extractS3KeyFromUrl(assetObj.brandLogoImage);
+            if (imageKey) {
+              assetObj.brandLogoImage = await getobject(imageKey, 604800);
+            }
+          } catch (error) {
+            console.error('Error generating image presigned URL:', error);
+          }
+        }
+        return assetObj;
+      })
+    );
+
     res.json({
       success: true,
-      data: brandAssets.map(withClientIdString),
-      count: brandAssets.length
+      data: assetsWithUrls,
+      count: assetsWithUrls.length
     });
   } catch (error) {
     res.status(500).json({
@@ -422,20 +440,23 @@ router.post('/:id/upload-image', authenticate, upload.single('brandLogoImage'), 
       });
     }
 
-    // Delete old image if exists
-    if (brandAsset.brandLogoImage) {
+    // Delete old image if exists (prefer key over URL)
+    if (brandAsset.brandLogoImageKey || brandAsset.brandLogoImage) {
       try {
-        await deleteFromS3(brandAsset.brandLogoImage);
+        await deleteFromS3(brandAsset.brandLogoImageKey || brandAsset.brandLogoImage);
       } catch (error) {
         console.warn('Failed to delete old image:', error.message);
       }
     }
 
     // Upload new image to S3
-    const imageUrl = await uploadToS3(req.file, 'brand-assets');
+    const uploadResult = await uploadToS3(req.file, 'brand-assets');
+    const imageUrl = uploadResult.url;
+    const imageKey = uploadResult.key;
 
-    // Update brand asset with new image URL
+    // Update brand asset with new image URL and key
     brandAsset.brandLogoImage = imageUrl;
+    brandAsset.brandLogoImageKey = imageKey;
     const updatedBrandAsset = await brandAsset.save();
 
     res.json({

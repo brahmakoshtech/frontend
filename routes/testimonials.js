@@ -4,7 +4,7 @@ import Testimonial from '../models/Testimonial.js';
 import Client from '../models/Client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import multer from 'multer';
-import { uploadToS3, deleteFromS3 } from '../utils/s3.js';
+import { uploadToS3, deleteFromS3, getobject } from '../utils/s3.js';
 
 const router = express.Router();
 
@@ -98,10 +98,28 @@ router.get('/', authenticate, authorize('client','user'), async (req, res) => {
     
     const testimonials = await Testimonial.find(query).sort({ createdAt: -1 });
 
+    // Generate pre-signed URLs for images
+    const testimonialsWithSignedUrls = await Promise.all(
+      testimonials.map(async (testimonial) => {
+        const testimonialObj = testimonial.toObject();
+        if (testimonialObj.imageKey) {
+          try {
+            const signedUrl = await getobject(testimonialObj.imageKey, 604800);
+            console.log('Generated signed URL for:', testimonialObj.imageKey, '→', signedUrl.substring(0, 100) + '...');
+            testimonialObj.signedImageUrl = signedUrl;
+            testimonialObj.image = signedUrl;
+          } catch (error) {
+            console.error('❌ Error generating signed URL for:', testimonialObj.imageKey, error.message);
+          }
+        }
+        return testimonialObj;
+      })
+    );
+
     res.json({
       success: true,
-      data: testimonials,
-      count: testimonials.length
+      data: testimonialsWithSignedUrls,
+      count: testimonialsWithSignedUrls.length
     });
   } catch (error) {
     console.error('Error fetching testimonials:', error);
@@ -113,8 +131,8 @@ router.get('/', authenticate, authorize('client','user'), async (req, res) => {
   }
 });
 
-// POST /api/testimonials - Create new testimonial with image
-router.post('/', authenticate, authorize('client','user'), upload.single('image'), handleMulterError, async (req, res) => {
+// POST /api/testimonials - Create new testimonial (without image)
+router.post('/', authenticate, authorize('client','user'), async (req, res) => {
   console.log('=== TESTIMONIAL CREATE REQUEST ===');
   console.log('Body:', req.body);
   console.log('File:', req.file ? {
@@ -161,28 +179,16 @@ router.post('/', authenticate, authorize('client','user'), upload.single('image'
     }
 
     let imageUrl = null;
-    if (req.file) {
-      console.log('Starting S3 upload...');
-      try {
-        imageUrl = await uploadToS3(req.file, 'testimonials');
-        console.log('S3 upload successful:', imageUrl);
-      } catch (uploadError) {
-        console.error('S3 upload error:', uploadError);
-        return res.status(400).json({
-          success: false,
-          message: 'Image upload failed',
-          error: uploadError.message
-        });
-      }
-    } else {
-      console.log('No image file to upload');
-    }
+    let imageKey = null;
+    // Image will be uploaded separately via /upload-image endpoint
+    console.log('No image in create request - will be uploaded separately if needed');
 
     console.log('Creating testimonial with data:', {
       name: name.trim(),
       rating: parseInt(rating),
       message: message.trim(),
       image: imageUrl,
+      imageKey: imageKey,
       clientId: clientId
     });
 
@@ -191,6 +197,7 @@ router.post('/', authenticate, authorize('client','user'), upload.single('image'
       rating: parseInt(rating),
       message: message.trim(),
       image: imageUrl,
+      imageKey: imageKey,
       clientId: clientId
     });
 
@@ -214,8 +221,8 @@ router.post('/', authenticate, authorize('client','user'), upload.single('image'
   }
 });
 
-// PUT /api/testimonials/:id - Update testimonial
-router.put('/:id', authenticate, authorize('client','user'), upload.single('image'), handleMulterError, async (req, res) => {
+// PUT /api/testimonials/:id - Update testimonial (without image)
+router.put('/:id', authenticate, authorize('client','user'), async (req, res) => {
   try {
     const { name, rating, message } = req.body;
     
@@ -261,29 +268,16 @@ router.put('/:id', authenticate, authorize('client','user'), upload.single('imag
       });
     }
 
-    // Update image if new one is provided
-    let imageUrl = testimonial.image;
-    if (req.file) {
-      try {
-        imageUrl = await uploadToS3(req.file, 'testimonials');
-        // Delete old image if exists
-        if (testimonial.image) {
-          await deleteFromS3(testimonial.image);
-        }
-      } catch (uploadError) {
-        console.error('Image upload failed:', uploadError);
-        return res.status(400).json({
-          success: false,
-          message: 'Image upload failed',
-          error: uploadError.message
-        });
-      }
-    }
+    // Image will be updated separately via /upload-image endpoint
+    // Keep existing image
+    const imageUrl = testimonial.image;
+    const imageKey = testimonial.imageKey;
 
     testimonial.name = name.trim();
     testimonial.rating = parseInt(rating);
     testimonial.message = message.trim();
     testimonial.image = imageUrl;
+    testimonial.imageKey = imageKey;
     
     await testimonial.save();
 
@@ -330,10 +324,10 @@ router.delete('/:id', authenticate, authorize('client','user'), async (req, res)
       });
     }
 
-    // Delete image from S3 if exists
-    if (testimonial.image) {
+    // Delete image from S3 if exists (prefer key over URL)
+    if (testimonial.imageKey || testimonial.image) {
       try {
-        await deleteFromS3(testimonial.image);
+        await deleteFromS3(testimonial.imageKey || testimonial.image);
       } catch (deleteError) {
         console.error('Failed to delete image from S3:', deleteError);
       }
@@ -389,19 +383,22 @@ router.post('/:id/upload-image', authenticate, authorize('client','user'), uploa
       });
     }
 
-    const imageUrl = await uploadToS3(req.file, 'testimonials');
+    const uploadResult = await uploadToS3(req.file, 'testimonials');
+    const imageUrl = uploadResult.url;
+    const imageKey = uploadResult.key;
 
-    // Delete old image if exists
-    if (testimonial.image) {
+    // Delete old image if exists (prefer key over URL)
+    if (testimonial.imageKey || testimonial.image) {
       try {
-        await deleteFromS3(testimonial.image);
+        await deleteFromS3(testimonial.imageKey || testimonial.image);
       } catch (deleteError) {
         console.error('Failed to delete old image:', deleteError);
       }
     }
 
-    // Update testimonial with new image URL
+    // Update testimonial with new image URL and key
     testimonial.image = imageUrl;
+    testimonial.imageKey = imageKey;
     await testimonial.save();
 
     res.json({

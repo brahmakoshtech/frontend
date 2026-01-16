@@ -22,11 +22,13 @@ import userProfileMobileRoutes from './routes/mobile/userProfile.js';
 import chatRoutes from './routes/mobile/chat.js';
 import voiceRoutes from './routes/mobile/voice.js';
 import uploadRoutes from './routes/upload.js';
+import mediaRoutes from './routes/media.js';
 // import testimonialRoutes from './routes/testimonials.js'; // Using organized routes instead
 import testimonialRoutes from './routes/testimonials/index.js';
 import founderMessageRoutes from './routes/founderMessages/index.js';
 import brandAssetRoutes from './routes/brandAssets/index.js';
 import meditationRoutes from './routes/meditations.js';
+import chantingRoutes from './routes/chantings.js';
 import { initializeSuperAdmin } from './config/initSuperAdmin.js';
 import realtimeAgentRoutes from './routes/mobile/realtimeAgent.js';
 import { setupVoiceAgentWebSocket } from './routes/mobile/voiceAgent.js';
@@ -102,11 +104,17 @@ app.use('/api/mobile/voice', voiceRoutes);
 // Upload Routes - S3 Image Upload
 app.use('/api/upload', uploadRoutes);
 
+// Media Routes - Presigned URLs
+app.use('/api/media', mediaRoutes);
+
 // Testimonial Routes
 app.use('/api/testimonials', testimonialRoutes);
 
 // Meditation Routes
 app.use('/api/meditations', meditationRoutes);
+
+// Chanting Routes
+app.use('/api/chantings', chantingRoutes);
 
 // Founder Message Routes
 app.use('/api/founder-messages', founderMessageRoutes);

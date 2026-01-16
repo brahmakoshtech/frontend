@@ -23,6 +23,11 @@ const testimonialSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  imageKey: {
+    type: String,
+    default: null
+    // S3 object key for generating presigned URLs
+  },
   clientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client',

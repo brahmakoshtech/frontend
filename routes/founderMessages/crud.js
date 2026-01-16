@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import FounderMessage from '../../models/FounderMessage.js';
 import Client from '../../models/Client.js';
 import multer from 'multer';
-import { uploadToS3, deleteFromS3 } from '../../utils/s3.js';
+import { uploadToS3, deleteFromS3, getobject, extractS3KeyFromUrl } from '../../utils/s3.js';
 import { authenticate } from '../../middleware/auth.js';
 
 console.log('FounderMessage CRUD routes loaded');
@@ -90,7 +90,25 @@ router.get('/', authenticate, async (req, res) => {
       .populate('clientId', 'clientId')
       .sort({ createdAt: -1 });
     
-    res.json({ success: true, data: messages.map(withClientIdString), count: messages.length });
+    // Generate presigned URLs for images
+    const messagesWithUrls = await Promise.all(
+      messages.map(async (message) => {
+        const messageObj = withClientIdString(message);
+        if (messageObj.founderImageKey || messageObj.founderImage) {
+          try {
+            const imageKey = messageObj.founderImageKey || extractS3KeyFromUrl(messageObj.founderImage);
+            if (imageKey) {
+              messageObj.founderImage = await getobject(imageKey, 604800);
+            }
+          } catch (error) {
+            console.error('Error generating image presigned URL:', error);
+          }
+        }
+        return messageObj;
+      })
+    );
+    
+    res.json({ success: true, data: messagesWithUrls, count: messagesWithUrls.length });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -119,7 +137,20 @@ router.get('/:id', authenticate, async (req, res) => {
     if (!message) {
       return res.status(404).json({ success: false, message: 'Message not found' });
     }
-    res.json({ success: true, data: withClientIdString(message) });
+    
+    const messageObj = withClientIdString(message);
+    if (messageObj.founderImageKey || messageObj.founderImage) {
+      try {
+        const imageKey = messageObj.founderImageKey || extractS3KeyFromUrl(messageObj.founderImage);
+        if (imageKey) {
+          messageObj.founderImage = await getobject(imageKey, 604800);
+        }
+      } catch (error) {
+        console.error('Error generating image presigned URL:', error);
+      }
+    }
+    
+    res.json({ success: true, data: messageObj });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -208,10 +239,13 @@ router.post('/:id/upload-image', authenticate, upload.single('founderImage'), as
     }
 
     // Upload image to S3
-    const imageUrl = await uploadToS3(req.file, 'founder-messages');
+    const uploadResult = await uploadToS3(req.file, 'founder-messages');
+    const imageUrl = uploadResult.url;
+    const imageKey = uploadResult.key;
 
-    // Update message with image URL
+    // Update message with image URL and key
     message.founderImage = imageUrl;
+    message.founderImageKey = imageKey;
     await message.save();
 
     res.json({
@@ -278,20 +312,19 @@ router.put('/:id', authenticate, upload.single('founderImage'), async (req, res)
         }
       }
       
-      founderImageUrl = await uploadToS3(req.file, 'founder-messages');
+      const uploadResult = await uploadToS3(req.file, 'founder-messages');
+      founderImageUrl = uploadResult.url;
+      updateData.founderImageKey = uploadResult.key;
     }
     
-    const updateData = {
-      founderName,
-      position,
-      content,
-      founderImage: founderImageUrl
-    };
+    const updateData = {};
     
-    // Only update status if provided
-    if (status) {
-      updateData.status = status;
-    }
+    // Only add fields that are provided
+    if (founderName !== undefined) updateData.founderName = founderName;
+    if (position !== undefined) updateData.position = position;
+    if (content !== undefined) updateData.content = content;
+    if (founderImageUrl !== undefined) updateData.founderImage = founderImageUrl;
+    if (status !== undefined && status !== null && status !== '') updateData.status = status;
     
     const updatedMessage = await FounderMessage.findOneAndUpdate(
       {
@@ -301,7 +334,7 @@ router.put('/:id', authenticate, upload.single('founderImage'), async (req, res)
         isActive: true
       },
       updateData,
-      { new: true, runValidators: true }
+      { new: true, runValidators: false }
     ).populate('clientId', 'clientId');
     
     if (!updatedMessage) {

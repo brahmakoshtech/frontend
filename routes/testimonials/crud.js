@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Testimonial from '../../models/Testimonial.js';
 import Client from '../../models/Client.js';
 import { authenticate } from '../../middleware/auth.js';
+import { getobject, extractS3KeyFromUrl } from '../../utils/s3.js';
 
 const router = express.Router();
 
@@ -67,10 +68,32 @@ router.get('/', authenticate, async (req, res) => {
       .populate('clientId', 'clientId')
       .sort({ createdAt: -1 });
 
+    // Generate presigned URLs for images
+    const testimonialsWithUrls = await Promise.all(
+      testimonials.map(async (testimonial) => {
+        const testimonialObj = withClientIdString(testimonial);
+        
+        // Generate presigned URL for image if exists
+        if (testimonialObj.imageKey || testimonialObj.image) {
+          try {
+            // Use stored key if available, otherwise extract from URL
+            const imageKey = testimonialObj.imageKey || extractS3KeyFromUrl(testimonialObj.image);
+            if (imageKey) {
+              testimonialObj.image = await getobject(imageKey);
+            }
+          } catch (error) {
+            console.error('Error generating image presigned URL:', error);
+          }
+        }
+        
+        return testimonialObj;
+      })
+    );
+
     res.json({
       success: true,
-      data: testimonials.map(withClientIdString),
-      count: testimonials.length
+      data: testimonialsWithUrls,
+      count: testimonialsWithUrls.length
     });
   } catch (error) {
     console.error('Error fetching testimonials:', error);
@@ -111,6 +134,19 @@ router.get('/:id', authenticate, async (req, res) => {
     const obj = testimonial.toObject();
     if (obj.clientId && typeof obj.clientId === 'object') {
       obj.clientId = obj.clientId.clientId; // Extract CLI-ABC123
+    }
+
+    // Generate presigned URL for image if exists
+    if (obj.imageKey || obj.image) {
+      try {
+        // Use stored key if available, otherwise extract from URL
+        const imageKey = obj.imageKey || extractS3KeyFromUrl(obj.image);
+        if (imageKey) {
+          obj.image = await getobject(imageKey);
+        }
+      } catch (error) {
+        console.error('Error generating image presigned URL:', error);
+      }
     }
 
     res.json({
