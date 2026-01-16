@@ -222,7 +222,7 @@ export default {
         }
         
         // Create meditation with S3 URLs
-        await meditationService.createDirect({
+        const response = await meditationService.createDirect({
           name: formData.value.name,
           description: formData.value.description,
           link: formData.value.link,
@@ -230,7 +230,11 @@ export default {
           imageUrl
         });
         
-        await loadMeditations();
+        // Add new meditation to list without reloading
+        if (response.success && response.data) {
+          meditations.value.unshift(response.data);
+        }
+        
         closeAddModal();
         uploadProgress.value = { video: 0, image: 0 };
         alert('Meditation added successfully!');
@@ -306,9 +310,27 @@ export default {
         }
         
         // Update meditation
-        await meditationService.updateDirect(editingMeditation.value._id, updateData);
+        const response = await meditationService.updateDirect(editingMeditation.value._id, updateData);
         
-        await loadMeditations();
+        // Update meditation in list without reloading
+        if (response.success && response.data) {
+          const index = meditations.value.findIndex(m => m._id === editingMeditation.value._id);
+          if (index !== -1) {
+            // Preserve existing URLs if not updated
+            const updatedMeditation = {
+              ...response.data,
+              videoUrl: response.data.videoUrl || editingMeditation.value.videoUrl,
+              imageUrl: response.data.imageUrl || editingMeditation.value.imageUrl,
+              videoKey: response.data.videoKey || editingMeditation.value.videoKey,
+              imageKey: response.data.imageKey || editingMeditation.value.imageKey
+            };
+            meditations.value[index] = updatedMeditation;
+          }
+        }
+        
+        closeEditModal();
+        editUploadProgress.value = { video: 0, image: 0 };
+        alert('Meditation updated successfully!');
         closeEditModal();
         editUploadProgress.value = { video: 0, image: 0 };
         alert('Meditation updated successfully!');
@@ -322,8 +344,6 @@ export default {
 
     const deleteMeditation = async (id) => {
       console.log('🗑️ DELETE BUTTON CLICKED - Meditation ID:', id);
-      console.log('Current meditations count:', meditations.value.length);
-      console.log('Meditation to delete:', meditations.value.find(m => m._id === id));
       
       if (confirm('Are you sure you want to PERMANENTLY DELETE this meditation?')) {
         try {
@@ -333,26 +353,16 @@ export default {
           const response = await meditationService.delete(id);
           console.log('✅ DELETE API Response:', response);
           
-          console.log('Reloading meditations list...');
-          await loadMeditations();
-          
-          console.log('New meditations count:', meditations.value.length);
-          console.log('Deleted meditation still exists?', meditations.value.find(m => m._id === id));
+          // Remove meditation from list without reloading
+          meditations.value = meditations.value.filter(m => m._id !== id);
           
           alert('Meditation deleted successfully!');
         } catch (error) {
           console.error('❌ Error deleting meditation:', error);
-          console.error('Error details:', {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status
-          });
           alert('Error deleting meditation: ' + (error.message || 'Unknown error'));
         } finally {
           loading.value = false;
         }
-      } else {
-        console.log('Delete cancelled by user');
       }
     };
 

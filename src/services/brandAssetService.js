@@ -132,6 +132,41 @@ const brandAssetService = {
     }
   },
 
+  // Upload background image for brand asset
+  uploadBackgroundImage: async (id, imageFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('backgroundLogoImage', imageFile);
+
+      const token = localStorage.getItem('token_client');
+
+      const response = await fetch(`${API_BASE_URL}/brand-assets/${id}/upload-background-image`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      console.error('Error uploading background image:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to upload background image'
+      };
+    }
+  },
+
   // Toggle brand asset status (activate/deactivate)
   toggleBrandAssetStatus: async (id) => {
     try {

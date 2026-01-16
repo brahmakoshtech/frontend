@@ -340,7 +340,7 @@ export default {
             </div>
 
             <div class="row">
-              <div class="col-lg-8">
+              <div class="col-12">
                 <div class="card border-0 shadow-lg rounded-4">
                   <div class="card-header bg-white border-0 rounded-top-4 p-4">
                     <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
@@ -527,17 +527,24 @@ export default {
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="col-lg-4">
-                {selectedMessage.value ? (
-                  <div class="card border-0 shadow-lg rounded-4">
-                    <div class="card-header bg-primary text-white border-0 rounded-top-4 p-4">
+            {/* Message Preview Modal for Mobile */}
+            {selectedMessage.value && (
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => selectedMessage.value = null}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', maxHeight: '80vh' }}>
+                    <div class="modal-header bg-primary text-white border-0" style={{ borderRadius: '16px 16px 0 0' }}>
                       <h5 class="mb-0 fw-bold d-flex align-items-center">
                         <EyeIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
                         Message Preview
                       </h5>
+                      <button 
+                        class="btn-close btn-close-white" 
+                        onClick={() => selectedMessage.value = null}
+                      ></button>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="modal-body p-4" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                       {selectedMessage.value.founderImage && (
                         <div class="text-center mb-4">
                           <img 
@@ -561,28 +568,15 @@ export default {
                       </small>
                     </div>
                   </div>
-                ) : (
-                  <div class="card border-0 shadow-lg rounded-4">
-                    <div class="card-body text-center py-5">
-                      <div class="mb-4 p-4 rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style={{ width: '100px', height: '100px' }}>
-                        <UserIcon style={{ width: '3rem', height: '3rem', color: '#6c757d' }} />
-                      </div>
-                      <h5 class="text-muted mb-3 d-flex align-items-center">
-                        <EyeIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
-                        Select a message
-                      </h5>
-                      <p class="text-muted">Click on "Read More" to preview a message here</p>
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Add Modal */}
             {showAddModal.value && (
-              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div class="modal-dialog modal-lg">
-                  <div class="modal-content">
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => showAddModal.value = false}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', maxHeight: '85vh' }}>
                     <div class="modal-header">
                       <h5 class="modal-title">Create New Message</h5>
                       <button class="btn-close" onClick={() => showAddModal.value = false}></button>
@@ -663,9 +657,9 @@ export default {
             )}
             {/* Edit Modal */}
             {showEditModal.value && (
-              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div class="modal-dialog modal-lg">
-                  <div class="modal-content">
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => showEditModal.value = false}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', maxHeight: '85vh' }}>
                     <div class="modal-header">
                       <h5 class="modal-title">Edit Message</h5>
                       <button class="btn-close" onClick={() => showEditModal.value = false}></button>

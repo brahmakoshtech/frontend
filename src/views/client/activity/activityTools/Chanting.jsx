@@ -903,6 +903,14 @@ export default {
 
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Update Video File</label>
+                    {editingChanting.value && editingChanting.value.videoUrl && !editFormData.value.video && (
+                      <div class="mb-2 p-2 bg-info bg-opacity-10 rounded">
+                        <small class="text-info d-block mb-1">📹 Current video preview:</small>
+                        <video controls class="w-100 rounded-3" style={{ maxHeight: '150px' }}>
+                          <source src={editingChanting.value.videoUrl} type="video/mp4" />
+                        </video>
+                      </div>
+                    )}
                     <input 
                       type="file" 
                       class="form-control"
@@ -926,10 +934,19 @@ export default {
                         </div>
                       </div>
                     )}
+                    {editingChanting.value && editingChanting.value.videoUrl && !editFormData.value.video && (
+                      <small class="text-info d-block mt-1">Current video will be kept if no new video is uploaded</small>
+                    )}
                   </div>
 
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Update Thumbnail</label>
+                    {editingChanting.value && editingChanting.value.imageUrl && !editFormData.value.image && (
+                      <div class="mb-2 p-2 bg-info bg-opacity-10 rounded">
+                        <small class="text-info d-block mb-1">🖼️ Current image preview:</small>
+                        <img src={editingChanting.value.imageUrl} alt="Current" class="img-fluid rounded-3" style={{ maxHeight: '150px' }} />
+                      </div>
+                    )}
                     <input 
                       type="file" 
                       class="form-control"
@@ -952,6 +969,9 @@ export default {
                           ></div>
                         </div>
                       </div>
+                    )}
+                    {editingChanting.value && editingChanting.value.imageUrl && !editFormData.value.image && (
+                      <small class="text-info d-block mt-1">Current image will be kept if no new image is uploaded</small>
                     )}
                   </div>
 

@@ -19,6 +19,7 @@ export default {
       headingText: '',
       brandLogoName: '',
       brandLogoImage: null,
+      backgroundLogoImage: null,
       webLinkUrl: '',
       socialLink: ''
     });
@@ -27,12 +28,17 @@ export default {
       brandLogoName: '',
       webLinkUrl: '',
       socialLink: '',
-      brandLogoImage: null
+      brandLogoImage: null,
+      backgroundLogoImage: null
     });
     const imageUploaded = ref(false);
     const imageFileName = ref('');
+    const backgroundImageUploaded = ref(false);
+    const backgroundImageFileName = ref('');
     const editImageUploaded = ref(false);
     const editImageFileName = ref('');
+    const editBackgroundImageUploaded = ref(false);
+    const editBackgroundImageFileName = ref('');
 
     // Generate placeholder image as data URL
     const generatePlaceholder = (text, bgColor = '007bff', textColor = 'ffffff') => {
@@ -72,16 +78,36 @@ export default {
                   );
                   // Only use presigned URL if it's valid
                   if (presignedUrl && presignedUrl.startsWith('http')) {
-                    return { ...asset, brandLogoImage: presignedUrl };
+                    asset.brandLogoImage = presignedUrl;
                   } else {
-                    // Fallback to original URL or null
-                    return { ...asset, brandLogoImage: asset.brandLogoImage || null };
+                    asset.brandLogoImage = asset.brandLogoImage || null;
                   }
                 } catch (error) {
                   // Keep original URL as fallback
-                  return { ...asset, brandLogoImage: asset.brandLogoImage || null };
+                  asset.brandLogoImage = asset.brandLogoImage || null;
                 }
               }
+              if (asset.backgroundLogoImage || asset.backgroundLogoImageKey) {
+                try {
+                  const presignedUrl = await brandAssetService.getPresignedImageUrl(
+                    asset.backgroundLogoImage, 
+                    asset.backgroundLogoImageKey
+                  );
+                  if (presignedUrl && presignedUrl.startsWith('http')) {
+                    asset.backgroundLogoImage = presignedUrl;
+                  } else {
+                    asset.backgroundLogoImage = asset.backgroundLogoImage || null;
+                  }
+                } catch (error) {
+                  asset.backgroundLogoImage = asset.backgroundLogoImage || null;
+                }
+              }
+              // Debug log
+              console.log('Asset loaded:', {
+                name: asset.brandLogoName,
+                hasBackgroundImage: !!asset.backgroundLogoImage,
+                backgroundImageUrl: asset.backgroundLogoImage
+              });
               return asset;
             })
           );
@@ -107,13 +133,13 @@ export default {
       loading.value = true;
       try {
         // First create brand asset without image
-        const { brandLogoImage, ...assetData } = formData.value;
+        const { brandLogoImage, backgroundLogoImage, ...assetData } = formData.value;
         const response = await brandAssetService.createBrandAsset(assetData);
         
         if (response.success && response.data) {
           let createdAsset = response.data;
           
-          // Upload image if provided and asset ID exists
+          // Upload brand logo image if provided and asset ID exists
           if (brandLogoImage && createdAsset._id) {
             try {
               const imageResponse = await brandAssetService.uploadImage(createdAsset._id, brandLogoImage);
@@ -141,14 +167,45 @@ export default {
                 }
               }
             } catch (imageError) {
-              alert('Brand asset created but image upload failed');
+              alert('Brand asset created but logo image upload failed');
+            }
+          }
+          
+          // Upload background logo image if provided
+          if (backgroundLogoImage && createdAsset._id) {
+            try {
+              const bgImageResponse = await brandAssetService.uploadBackgroundImage(createdAsset._id, backgroundLogoImage);
+              
+              if (bgImageResponse.success && bgImageResponse.data) {
+                if (bgImageResponse.data.brandAsset && bgImageResponse.data.brandAsset.backgroundLogoImage) {
+                  let imageUrl = bgImageResponse.data.brandAsset.backgroundLogoImage;
+                  try {
+                    const presignedUrl = await brandAssetService.getPresignedImageUrl(imageUrl);
+                    createdAsset.backgroundLogoImage = presignedUrl || imageUrl;
+                  } catch (error) {
+                    createdAsset.backgroundLogoImage = imageUrl;
+                  }
+                } else if (bgImageResponse.data.imageUrl) {
+                  let imageUrl = bgImageResponse.data.imageUrl;
+                  try {
+                    const presignedUrl = await brandAssetService.getPresignedImageUrl(imageUrl);
+                    createdAsset.backgroundLogoImage = presignedUrl || imageUrl;
+                  } catch (error) {
+                    createdAsset.backgroundLogoImage = imageUrl;
+                  }
+                }
+              }
+            } catch (bgImageError) {
+              alert('Brand asset created but background image upload failed');
             }
           }
           
           brandAssets.value.unshift(createdAsset);
-          formData.value = { headingText: '', brandLogoName: '', brandLogoImage: null, webLinkUrl: '', socialLink: '' };
+          formData.value = { headingText: '', brandLogoName: '', brandLogoImage: null, backgroundLogoImage: null, webLinkUrl: '', socialLink: '' };
           imageUploaded.value = false;
           imageFileName.value = '';
+          backgroundImageUploaded.value = false;
+          backgroundImageFileName.value = '';
           showUploadModal.value = false;
         } else {
           alert('Failed to create brand asset: ' + response.error);
@@ -185,7 +242,7 @@ export default {
         const originalAsset = brandAssets.value.find(a => (a._id || a.id) === (editingAsset.value._id || editingAsset.value.id));
         
         // First update text fields
-        const { brandLogoImage, ...textData } = editFormData.value;
+        const { brandLogoImage, backgroundLogoImage, ...textData } = editFormData.value;
         const response = await brandAssetService.updateBrandAsset(
           editingAsset.value._id || editingAsset.value.id, 
           textData
@@ -194,7 +251,7 @@ export default {
         if (response.success) {
           let updatedAsset = response.data;
           
-          // Upload new image if provided
+          // Upload new brand logo image if provided
           if (brandLogoImage) {
             try {
               const imageResponse = await brandAssetService.uploadImage(
@@ -222,11 +279,46 @@ export default {
                 }
               }
             } catch (imageError) {
-              alert('Asset updated but image upload failed');
+              alert('Asset updated but logo image upload failed');
             }
           } else if (originalAsset && originalAsset.brandLogoImage) {
             // Preserve existing image if no new image uploaded
             updatedAsset.brandLogoImage = originalAsset.brandLogoImage;
+          }
+          
+          // Upload new background logo image if provided
+          if (backgroundLogoImage) {
+            try {
+              const bgImageResponse = await brandAssetService.uploadBackgroundImage(
+                editingAsset.value._id || editingAsset.value.id, 
+                backgroundLogoImage
+              );
+              
+              if (bgImageResponse.success && bgImageResponse.data) {
+                if (bgImageResponse.data.brandAsset && bgImageResponse.data.brandAsset.backgroundLogoImage) {
+                  let imageUrl = bgImageResponse.data.brandAsset.backgroundLogoImage;
+                  try {
+                    const presignedUrl = await brandAssetService.getPresignedImageUrl(imageUrl);
+                    updatedAsset.backgroundLogoImage = presignedUrl || imageUrl;
+                  } catch (error) {
+                    updatedAsset.backgroundLogoImage = imageUrl;
+                  }
+                } else if (bgImageResponse.data.imageUrl) {
+                  let imageUrl = bgImageResponse.data.imageUrl;
+                  try {
+                    const presignedUrl = await brandAssetService.getPresignedImageUrl(imageUrl);
+                    updatedAsset.backgroundLogoImage = presignedUrl || imageUrl;
+                  } catch (error) {
+                    updatedAsset.backgroundLogoImage = imageUrl;
+                  }
+                }
+              }
+            } catch (bgImageError) {
+              alert('Asset updated but background image upload failed');
+            }
+          } else if (originalAsset && originalAsset.backgroundLogoImage) {
+            // Preserve existing background image if no new image uploaded
+            updatedAsset.backgroundLogoImage = originalAsset.backgroundLogoImage;
           }
           
           const index = brandAssets.value.findIndex(a => (a._id || a.id) === (editingAsset.value._id || editingAsset.value.id));
@@ -238,6 +330,8 @@ export default {
           editingAsset.value = null;
           editImageUploaded.value = false;
           editImageFileName.value = '';
+          editBackgroundImageUploaded.value = false;
+          editBackgroundImageFileName.value = '';
         } else {
           alert('Failed to update brand asset: ' + response.error);
         }
@@ -378,7 +472,15 @@ export default {
                     class={`card border-0 shadow-lg h-100 position-relative overflow-hidden ${!asset.isActive ? 'opacity-50' : ''}`}
                     style={{ 
                       transition: 'all 0.3s ease',
-                      background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+                      ...(asset.backgroundLogoImage && {
+                        backgroundImage: `url('${asset.backgroundLogoImage}')`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat'
+                      }),
+                      ...(!asset.backgroundLogoImage && {
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+                      }),
                       borderRadius: '16px',
                       cursor: 'default'
                     }}
@@ -590,6 +692,29 @@ export default {
                           </div>
                         )}
                       </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-semibold">Background Logo Image</label>
+                        <input 
+                          type="file" 
+                          class="form-control rounded-3" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              formData.value.backgroundLogoImage = file;
+                              backgroundImageUploaded.value = true;
+                              backgroundImageFileName.value = file.name;
+                            }
+                          }}
+                        />
+                        {backgroundImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-success">
+                              ✓ Background image uploaded: {backgroundImageFileName.value}
+                            </small>
+                          </div>
+                        )}
+                      </div>
                       <div class="row">
                         <div class="col-md-6">
                           <div class="mb-3">
@@ -693,6 +818,36 @@ export default {
                           <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
                             <small class="text-info">
                               📷 Current image will be kept if no new image is selected
+                            </small>
+                          </div>
+                        )}
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-semibold">Background Logo Image</label>
+                        <input 
+                          type="file" 
+                          class="form-control rounded-3" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              editFormData.value.backgroundLogoImage = file;
+                              editBackgroundImageUploaded.value = true;
+                              editBackgroundImageFileName.value = file.name;
+                            }
+                          }}
+                        />
+                        {editBackgroundImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                            <small class="text-success">
+                              ✓ New background image selected: {editBackgroundImageFileName.value}
+                            </small>
+                          </div>
+                        )}
+                        {editingAsset.value?.backgroundLogoImage && !editBackgroundImageUploaded.value && (
+                          <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
+                            <small class="text-info">
+                              📷 Current background image will be kept if no new image is selected
                             </small>
                           </div>
                         )}
