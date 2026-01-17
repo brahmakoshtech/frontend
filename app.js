@@ -27,6 +27,7 @@ import mediaRoutes from './routes/media.js';
 import testimonialRoutes from './routes/testimonials/index.js';
 import founderMessageRoutes from './routes/founderMessages/index.js';
 import brandAssetRoutes from './routes/brandAssets/index.js';
+import sponsorRoutes from './routes/sponsors.js';
 import meditationRoutes from './routes/meditations.js';
 import chantingRoutes from './routes/chantings.js';
 import prathanaRoutes from './routes/prathanas.js';
@@ -110,6 +111,9 @@ app.use('/api/media', mediaRoutes);
 
 // Testimonial Routes
 app.use('/api/testimonials', testimonialRoutes);
+
+// Sponsor Routes
+app.use('/api/sponsors', sponsorRoutes);
 
 // Meditation Routes
 app.use('/api/meditations', meditationRoutes);
