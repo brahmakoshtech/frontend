@@ -491,7 +491,52 @@ export default {
                       </div>
                     )}
                     
-                    <div class="position-absolute top-0 end-0 p-3" style={{ opacity: 0.08, fontSize: '3rem', color: '#007bff' }}>🎨</div>
+                    {/* Dropdown in top-right corner */}
+                    <div class="position-absolute" style={{ top: '12px', right: '12px', zIndex: 10 }}>
+                      <div class="dropdown position-relative">
+                        <button 
+                          class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                          onClick={() => toggleDropdown(asset._id || asset.id)}
+                          style={{ width: '32px', height: '32px', transition: 'all 0.2s ease' }}
+                        >
+                          <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem' }} />
+                        </button>
+                        {activeDropdown.value === (asset._id || asset.id) && (
+                          <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
+                            {asset.isActive && (
+                              <>
+                                <button 
+                                  class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                  onClick={() => { editAsset(asset); toggleDropdown(null); }}
+                                >
+                                  <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
+                                  <span class="fw-medium">Edit Asset</span>
+                                </button>
+                              </>
+                            )}
+                            <button 
+                              class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                              onClick={() => { toggleAssetStatus(asset); toggleDropdown(null); }}
+                            >
+                              <span class={`rounded-circle ${asset.isActive ? 'bg-warning' : 'bg-success'}`} style={{ width: '1rem', height: '1rem' }}></span>
+                              <span class="fw-medium">{asset.isActive ? 'Disable' : 'Enable'}</span>
+                            </button>
+                            {asset.isActive && (
+                              <>
+                                <hr class="dropdown-divider my-1" />
+                                <button 
+                                  class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
+                                  onClick={() => { deleteAsset(asset._id || asset.id); toggleDropdown(null); }}
+                                >
+                                  <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                  <span class="fw-medium">Delete</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     
                     <div class="card-body p-3">
                       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -542,49 +587,6 @@ export default {
                           <span class={`badge px-2 py-1 rounded-pill fw-semibold ${asset.isActive ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`} style={{ fontSize: '0.75rem' }}>
                             {asset.isActive ? '✅ Active' : '🔒 Disabled'}
                           </span>
-                        </div>
-                        <div class="dropdown position-relative">
-                          <button 
-                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
-                            onClick={() => toggleDropdown(asset._id || asset.id)}
-                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease', position: 'relative', zIndex: 10 }}
-                          >
-                            <EllipsisVerticalIcon style={{ width: '2rem', height: '2rem' }} />
-                          </button>
-                          {activeDropdown.value === (asset._id || asset.id) && (
-                            <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
-                              {asset.isActive && (
-                                <>
-                                  <button 
-                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                    onClick={() => { editAsset(asset); toggleDropdown(null); }}
-                                  >
-                                    <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
-                                    <span class="fw-medium">Edit Asset</span>
-                                  </button>
-                                </>
-                              )}
-                                              <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                                onClick={() => { toggleAssetStatus(asset); toggleDropdown(null); }}
-                                              >
-                                                <span class={`rounded-circle ${asset.isActive ? 'bg-warning' : 'bg-success'}`} style={{ width: '1rem', height: '1rem' }}></span>
-                                                <span class="fw-medium">{asset.isActive ? 'Disable' : 'Enable'}</span>
-                                              </button>
-                              {asset.isActive && (
-                                <>
-                                  <hr class="dropdown-divider my-1" />
-                                  <button 
-                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
-                                    onClick={() => { deleteAsset(asset._id || asset.id); toggleDropdown(null); }}
-                                  >
-                                    <TrashIcon style={{ width: '1rem', height: '1rem' }} />
-                                    <span class="fw-medium">Delete</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </div>
                       
@@ -637,17 +639,14 @@ export default {
 
             {/* Upload Modal */}
             {showUploadModal.value && (
-              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div class="modal-dialog modal-lg">
-                  <div class="modal-content border-0 shadow-lg rounded-4">
-                    <div class="modal-header bg-white border-bottom rounded-top-4 p-4">
-                      <h5 class="modal-title fw-bold d-flex align-items-center text-dark">
-                        <SwatchIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
-                        Upload Brand Asset
-                      </h5>
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => showUploadModal.value = false}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', maxHeight: '85vh' }}>
+                    <div class="modal-header">
+                      <h5 class="modal-title">Upload Brand Asset</h5>
                       <button class="btn-close" onClick={() => showUploadModal.value = false}></button>
                     </div>
-                    <div class="modal-body p-4">
+                    <div class="modal-body">
                       <div class="row">
                         <div class="col-md-6">
                           <div class="mb-3">
@@ -743,10 +742,10 @@ export default {
                         </div>
                       </div>
                     </div>
-                    <div class="modal-footer border-0 p-4">
-                      <button class="btn btn-secondary rounded-pill px-4" onClick={() => showUploadModal.value = false}>Cancel</button>
+                    <div class="modal-footer">
+                      <button class="btn btn-secondary" onClick={() => showUploadModal.value = false} disabled={loading.value}>Cancel</button>
                       <button 
-                        class="btn btn-primary rounded-pill px-4 fw-semibold"
+                        class="btn btn-primary"
                         onClick={addBrandAsset}
                         disabled={loading.value}
                       >
@@ -760,17 +759,14 @@ export default {
 
             {/* Edit Modal */}
             {showEditModal.value && (
-              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div class="modal-dialog modal-lg">
-                  <div class="modal-content border-0 shadow-lg rounded-4">
-                    <div class="modal-header bg-white border-bottom rounded-top-4 p-4">
-                      <h5 class="modal-title fw-bold d-flex align-items-center text-dark">
-                        <PencilIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
-                        Edit Brand Asset
-                      </h5>
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => showEditModal.value = false}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', maxHeight: '85vh' }}>
+                    <div class="modal-header">
+                      <h5 class="modal-title">Edit Brand Asset</h5>
                       <button class="btn-close" onClick={() => showEditModal.value = false}></button>
                     </div>
-                    <div class="modal-body p-4">
+                    <div class="modal-body">
                       <div class="row">
                         <div class="col-md-6">
                           <div class="mb-3">
@@ -850,7 +846,7 @@ export default {
                         {editingAsset.value?.backgroundLogoImage && !editBackgroundImageUploaded.value && (
                           <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
                             <small class="text-info">
-                              📷 Current background image will be kept if no new image is selected
+                              🇺️ Current background image will be kept if no new image is selected
                             </small>
                           </div>
                         )}
@@ -880,10 +876,10 @@ export default {
                         </div>
                       </div>
                     </div>
-                    <div class="modal-footer border-0 p-4">
-                      <button class="btn btn-secondary rounded-pill px-4" onClick={() => showEditModal.value = false}>Cancel</button>
+                    <div class="modal-footer">
+                      <button class="btn btn-secondary" onClick={() => showEditModal.value = false} disabled={loading.value}>Cancel</button>
                       <button 
-                        class="btn btn-primary rounded-pill px-4 fw-semibold"
+                        class="btn btn-primary"
                         onClick={updateBrandAsset}
                         disabled={loading.value}
                       >
@@ -897,85 +893,64 @@ export default {
 
             {/* View Modal */}
             {selectedAsset.value && (
-              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div class="modal-dialog modal-lg">
-                  <div class="modal-content border-0 shadow-lg rounded-4">
-                    <div class="modal-header bg-white border-bottom rounded-top-4 p-4">
-                      <h5 class="modal-title fw-bold d-flex align-items-center text-dark">
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => selectedAsset.value = null}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', maxHeight: '80vh' }}>
+                    <div class="modal-header bg-primary text-white border-0" style={{ borderRadius: '16px 16px 0 0' }}>
+                      <h5 class="mb-0 fw-bold d-flex align-items-center">
                         <EyeIcon style={{ width: '1.5rem', height: '1.5rem' }} class="me-2" />
-                        View Brand Asset
+                        Brand Asset Preview
                       </h5>
-                      <button class="btn-close" onClick={() => selectedAsset.value = null}></button>
+                      <button 
+                        class="btn-close btn-close-white" 
+                        onClick={() => selectedAsset.value = null}
+                      ></button>
                     </div>
-                    <div class="modal-body p-4">
-                      <div class="row">
-                        <div class="col-md-6">
-                          <div class="text-center mb-4">
-                            <img 
-                              src={selectedAsset.value.brandLogoImage || generatePlaceholder(selectedAsset.value.brandLogoName || 'Brand', '007bff')}
-                              alt={selectedAsset.value.brandLogoName}
-                              class="img-fluid rounded-3 shadow"
-                              style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain' }}
-                            />
-                          </div>
+                    <div class="modal-body p-4" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                      {selectedAsset.value.brandLogoImage && (
+                        <div class="text-center mb-4">
+                          <img 
+                            src={selectedAsset.value.brandLogoImage}
+                            alt={selectedAsset.value.brandLogoName}
+                            class="rounded-circle border border-3 border-white shadow-lg"
+                            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                          />
                         </div>
-                        <div class="col-md-6">
-                          <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">Heading Text</label>
-                            <p class="fs-5 fw-semibold">{selectedAsset.value.headingText}</p>
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">Brand Logo Name</label>
-                            <p class="fs-6 text-primary fw-semibold">{selectedAsset.value.brandLogoName}</p>
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">Web Link</label>
-                            <p>
-                              <a href={selectedAsset.value.webLinkUrl} target="_blank" class="text-decoration-none">
-                                {selectedAsset.value.webLinkUrl}
-                              </a>
-                            </p>
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">Social Link</label>
-                            <p>
-                              <a href={selectedAsset.value.socialLink} target="_blank" class="text-decoration-none">
-                                {selectedAsset.value.socialLink}
-                              </a>
-                            </p>
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">Status</label>
-                            <p>
-                              <span class={`badge ${selectedAsset.value.isActive ? 'bg-success' : 'bg-secondary'} px-3 py-2 rounded-pill`}>
-                                {selectedAsset.value.isActive ? '✅ Active' : '❌ Inactive'}
-                              </span>
-                            </p>
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">Created Date</label>
-                            <p class="text-muted">
-                              {selectedAsset.value.createdAt ? new Date(selectedAsset.value.createdAt).toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : 'No date available'}
-                            </p>
-                          </div>
+                      )}
+                      <h4 class="mb-2 text-center fw-bold text-dark">{selectedAsset.value.headingText}</h4>
+                      <p class="text-primary text-center mb-3 fw-semibold">{selectedAsset.value.brandLogoName}</p>
+
+                      <div class="p-3 rounded-3 mb-4" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                        <div class="mb-3">
+                          <label class="form-label fw-bold text-muted">Web Link</label>
+                          <p class="mb-0">
+                            <a href={selectedAsset.value.webLinkUrl} target="_blank" class="text-decoration-none">
+                              {selectedAsset.value.webLinkUrl}
+                            </a>
+                          </p>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label fw-bold text-muted">Social Link</label>
+                          <p class="mb-0">
+                            <a href={selectedAsset.value.socialLink} target="_blank" class="text-decoration-none">
+                              {selectedAsset.value.socialLink}
+                            </a>
+                          </p>
+                        </div>
+                        <div class="mb-0">
+                          <label class="form-label fw-bold text-muted">Status</label>
+                          <p class="mb-0">
+                            <span class={`badge ${selectedAsset.value.isActive ? 'bg-success' : 'bg-secondary'} px-3 py-2 rounded-pill`}>
+                              {selectedAsset.value.isActive ? '✅ Active' : '❌ Inactive'}
+                            </span>
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    <div class="modal-footer border-0 p-4">
-                      <button class="btn btn-secondary rounded-pill px-4" onClick={() => selectedAsset.value = null}>Close</button>
-                      <button 
-                        class="btn btn-primary rounded-pill px-4 fw-semibold"
-                        onClick={() => { editAsset(selectedAsset.value); selectedAsset.value = null; }}
-                      >
-                        <PencilIcon style={{ width: '1rem', height: '1rem' }} class="me-1" />
-                        Edit Asset
-                      </button>
+                      <hr class="my-3" />
+                      <small class="text-muted d-flex align-items-center gap-1">
+                        <CalendarIcon style={{ width: '14px', height: '14px' }} />
+                        Created on {selectedAsset.value.createdAt ? new Date(selectedAsset.value.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No date'}
+                      </small>
                     </div>
                   </div>
                 </div>

@@ -14,7 +14,7 @@ export default {
     const selectedMessage = ref(null);
     const activeDropdown = ref(null);
     const currentPage = ref(1);
-    const itemsPerPage = 6;
+    const itemsPerPage = 9;
     const editMessage = ref({
       _id: '',
       founderName: '',
@@ -30,8 +30,17 @@ export default {
       content: '',
       founderImage: null
     });
-    const newImageUploaded = ref(false);
-    const newImageFileName = ref('');
+    const expandedMessages = ref(new Set());
+
+    const toggleExpand = (messageId) => {
+      const expanded = new Set(expandedMessages.value);
+      if (expanded.has(messageId)) {
+        expanded.delete(messageId);
+      } else {
+        expanded.add(messageId);
+      }
+      expandedMessages.value = expanded;
+    };
 
     const goBack = () => {
       router.push('/client/tools');
@@ -371,101 +380,116 @@ export default {
                     ) : (
                       <div class="row g-4">
                         {paginatedMessages.value.map(message => (
-                          <div key={message._id} class="col-12">
-                            <div class={`card border-0 shadow-lg h-100 position-relative ${!message.isActive ? 'opacity-50' : ''}`} style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', borderRadius: '16px', transition: 'all 0.3s ease' }}>
+                          <div key={message._id} class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                            <div class={`card border-0 shadow-lg h-100 position-relative ${!message.isActive ? 'opacity-50' : ''}`} style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', borderRadius: '16px', transition: 'all 0.3s ease', minHeight: '300px' }}>
                               {!message.isActive && (
                                 <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1, pointerEvents: 'none' }}>
                                   <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled</span>
                                 </div>
                               )}
-                              <div class="card-body p-4">
-                                <div class="d-flex align-items-start">
+                              <div class="card-body p-3 d-flex flex-column">
+                                {/* Header with image and name */}
+                                <div class="d-flex align-items-center mb-3">
                                   <div class="flex-shrink-0 me-3">
                                     {message.founderImage ? (
                                       <img 
                                         src={message.founderImage} 
                                         alt={message.founderName}
                                         class="rounded-circle border border-3 border-white shadow-lg"
-                                        style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                                        style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                                       />
                                     ) : (
-                                      <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-lg" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                                        <UserIcon style={{ width: '2.5rem', height: '2.5rem', color: 'white' }} />
+                                      <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-lg" style={{ width: '60px', height: '60px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                                        <UserIcon style={{ width: '2rem', height: '2rem', color: 'white' }} />
                                       </div>
                                     )}
                                   </div>
                                   <div class="flex-grow-1">
-                                    <div class="d-flex justify-content-between align-items-start mb-3">
-                                      <div>
-                                        <h5 class="mb-1 fw-bold text-dark" style={{ fontSize: '1.2rem' }}>{message.founderName}</h5>
-                                        <p class="mb-0 fw-semibold text-primary" style={{ fontSize: '0.95rem' }}>{message.position}</p>
+                                    <h6 class="mb-1 fw-bold text-dark" style={{ fontSize: '1rem' }}>{message.founderName}</h6>
+                                    <p class="mb-0 fw-semibold text-primary" style={{ fontSize: '0.85rem' }}>{message.position}</p>
+                                  </div>
+                                  <div class="dropdown position-relative">
+                                    <button 
+                                      class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                                      onClick={() => toggleDropdown(message._id)}
+                                      style={{ width: '32px', height: '32px', transition: 'all 0.2s ease', position: 'relative', zIndex: 10 }}
+                                    >
+                                      <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem' }} />
+                                    </button>
+                                    {activeDropdown.value === message._id && (
+                                      <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
+                                        {message.isActive && (
+                                          <>
+                                            <button 
+                                              class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                              onClick={() => { openEditModal(message); toggleDropdown(null); }}
+                                            >
+                                              <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
+                                              <span class="fw-medium">Edit Message</span>
+                                            </button>
+                                          </>
+                                        )}
+                                        <button 
+                                          class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                          onClick={() => { toggleStatus(message); toggleDropdown(null); }}
+                                        >
+                                          <span>{message.isActive ? '🔴' : '🟢'}</span> {message.isActive ? 'Disable' : 'Enable'}
+                                        </button>
+                                        {message.isActive && (
+                                          <>
+                                            <div class="dropdown-divider"></div>
+                                            <button 
+                                              class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
+                                              onClick={() => { deleteMessage(message._id); toggleDropdown(null); }}
+                                            >
+                                              <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                              <span class="fw-medium">Delete</span>
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
-                                      <div class="d-flex align-items-center gap-3">
-                                        <div class="dropdown position-relative">
-                                          <button 
-                                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
-                                            onClick={() => toggleDropdown(message._id)}
-                                            style={{ width: '40px', height: '40px', transition: 'all 0.2s ease', position: 'relative', zIndex: 10 }}
-                                          >
-                                            <EllipsisVerticalIcon style={{ width: '1.2rem', height: '1.2rem' }} />
-                                          </button>
-                                          {activeDropdown.value === message._id && (
-                                            <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '180px', right: '0', top: '100%', zIndex: 1000 }}>
-                                              {message.isActive && (
-                                                <>
-                                                  <button 
-                                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                                    onClick={() => { openEditModal(message); toggleDropdown(null); }}
-                                                  >
-                                                    <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
-                                                    <span class="fw-medium">Edit Message</span>
-                                                  </button>
-                                                </>
-                                              )}
-                                              <button 
-                                                class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                                onClick={() => { toggleStatus(message); toggleDropdown(null); }}
-                                              >
-                                                <span>{message.isActive ? '🔴' : '🟢'}</span> {message.isActive ? 'Disable' : 'Enable'}
-                                              </button>
-                                              {message.isActive && (
-                                                <>
-                                                  <div class="dropdown-divider"></div>
-                                                  <button 
-                                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
-                                                    onClick={() => { deleteMessage(message._id); toggleDropdown(null); }}
-                                                  >
-                                                    <TrashIcon style={{ width: '1rem', height: '1rem' }} />
-                                                    <span class="fw-medium">Delete</span>
-                                                  </button>
-                                                </>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div class="mb-3 p-3 rounded-3" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
-                                      <p class="mb-0 text-dark lh-base" style={{ fontSize: '0.95rem' }}>
-                                        {message.content.length > 150 ? message.content.substring(0, 150) + '...' : message.content}
-                                      </p>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                      <small class="text-muted d-flex align-items-center gap-1">
-                                        <CalendarIcon style={{ width: '14px', height: '14px' }} />
-                                        Created on {new Date(message.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                      </small>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Message content */}
+                                <div class="flex-grow-1 mb-3">
+                                  <div class="p-3 rounded-3" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef', minHeight: '120px' }}>
+                                    <p class="mb-0 text-dark lh-base" style={{ fontSize: '0.9rem' }}>
+                                      {expandedMessages.value.has(message._id) 
+                                        ? message.content 
+                                        : (message.content.length > 100 ? message.content.substring(0, 100) + '...' : message.content)
+                                      }
+                                    </p>
+                                    {message.content.length > 100 && (
                                       <button 
-                                        class="btn btn-primary btn-sm px-4 py-2 fw-semibold rounded-pill"
-                                        onClick={() => viewMessage(message)}
-                                        disabled={loading.value || !message.isActive}
-                                        style={{ fontSize: '0.85rem', cursor: message.isActive ? 'pointer' : 'not-allowed' }}
-                                        title={message.isActive ? 'Read message' : 'Message is disabled'}
+                                        class="btn btn-link p-0 mt-2 text-primary fw-semibold"
+                                        onClick={() => toggleExpand(message._id)}
+                                        style={{ fontSize: '0.8rem', textDecoration: 'none' }}
                                       >
-                                        <EyeIcon style={{ width: '16px', height: '16px' }} class="me-1" />
-                                        Read More
+                                        {expandedMessages.value.has(message._id) ? 'See Less' : 'See More'}
                                       </button>
-                                    </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Footer */}
+                                <div class="mt-auto">
+                                  <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted d-flex align-items-center gap-1">
+                                      <CalendarIcon style={{ width: '12px', height: '12px' }} />
+                                      {new Date(message.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </small>
+                                    <button 
+                                      class="btn btn-primary btn-sm px-3 py-1 fw-semibold rounded-pill"
+                                      onClick={() => viewMessage(message)}
+                                      disabled={loading.value || !message.isActive}
+                                      style={{ fontSize: '0.75rem', cursor: message.isActive ? 'pointer' : 'not-allowed' }}
+                                      title={message.isActive ? 'View full message in modal' : 'Message is disabled'}
+                                    >
+                                      <EyeIcon style={{ width: '12px', height: '12px' }} class="me-1" />
+                                      View
+                                    </button>
                                   </div>
                                 </div>
                               </div>

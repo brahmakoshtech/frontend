@@ -11,7 +11,8 @@ import {
   StarIcon, 
   TicketIcon,
   ArrowRightIcon,
-  ClockIcon
+  ClockIcon,
+  BuildingOffice2Icon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -109,6 +110,15 @@ export default {
         route: '/client/tools/tickets',
         color: '#6366f1',
         category: 'Support'
+      },
+      { 
+        id: 11, 
+        name: 'Sponsors', 
+        icon: BuildingOffice2Icon, 
+        description: 'Manage sponsorship partnerships and collaborations', 
+        route: '/client/tools/sponsors',
+        color: '#7c3aed',
+        category: 'Marketing'
       }
     ];
 

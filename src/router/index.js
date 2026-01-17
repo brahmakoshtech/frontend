@@ -361,6 +361,11 @@ const routes = [
         component: () => import('../views/client/tools/Tickets.jsx')
       },
       {
+        path: 'tools/sponsors',
+        name: 'ClientSponsors',
+        component: () => import('../views/client/tools/Sponsors.jsx')
+      },
+      {
         path: 'support',
         name: 'ClientSupport',
         component: () => import('../views/client/Support.jsx')
