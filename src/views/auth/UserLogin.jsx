@@ -73,7 +73,7 @@ export default {
       error.value = '';
       try {
         // Google login also auto-determines client
-        const { data } = await api.post('/api/mobile/user/login/firebase', {
+        const { data } = await api.post('/auth/user/google', {
           idToken: response.credential
         });
         
