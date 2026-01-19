@@ -1,5 +1,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import { ArrowLeftIcon, PlusIcon, EyeIcon, PencilIcon, TrashIcon, UserIcon, EllipsisVerticalIcon, ChevronLeftIcon, ChevronRightIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, CalendarIcon, ChartBarIcon } from '@heroicons/vue/24/outline';
 import founderMessageService from '../../../services/founderMessageService.js';
 
@@ -7,6 +8,7 @@ export default {
   name: 'ClientFounderMessage',
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const messages = ref([]);
     const loading = ref(false);
     const showAddModal = ref(false);
@@ -84,7 +86,7 @@ export default {
     // Add new message
     const addMessage = async () => {
       if (!newMessage.value.founderName || !newMessage.value.position || !newMessage.value.content) {
-        alert('Please fill all required fields');
+        toast.error('Please fill all required fields');
         return;
       }
 
@@ -117,26 +119,57 @@ export default {
                 }
               }
             } catch (imageError) {
-              alert('Message created but image upload failed');
+              toast.warning('Message created but image upload failed');
             }
           }
           
           messages.value.unshift(createdMessage);
           newMessage.value = { founderName: '', position: '', content: '', founderImage: null };
           showAddModal.value = false;
+          toast.success('Message created successfully!');
         } else {
-          alert('Failed to create message: ' + response.error);
+          toast.error('Failed to create message: ' + response.error);
         }
       } catch (error) {
-        alert('Error creating message');
+        toast.error('Error creating message');
       } finally {
         loading.value = false;
       }
     };
 
+    // Delete message with confirmation
+    const showDeleteConfirmation = (id) => {
+      toast.info(
+        'Are you sure you want to delete this message?',
+        {
+          timeout: false,
+          closeOnClick: false,
+          pauseOnFocusLoss: false,
+          pauseOnHover: true,
+          draggable: false,
+          showCloseButton: false,
+          hideProgressBar: false,
+          closeButton: false,
+          icon: '⚠️',
+          onClose: () => {},
+          onClick: () => {},
+          // Custom buttons using HTML
+          toastClassName: 'custom-confirm-toast',
+          bodyClassName: 'custom-confirm-body'
+        }
+      );
+      
+      // Create custom confirmation
+      setTimeout(() => {
+        const confirmed = confirm('Are you sure you want to delete this message?');
+        if (confirmed) {
+          deleteMessage(id);
+        }
+      }, 100);
+    };
+
     // Delete message
     const deleteMessage = async (id) => {
-      if (!confirm('Are you sure you want to delete this message?')) return;
       
       loading.value = true;
       try {
@@ -150,12 +183,13 @@ export default {
           if (paginatedMessages.value.length === 0 && currentPage.value > 1) {
             currentPage.value = currentPage.value - 1;
           }
+          toast.success('Message deleted successfully!');
         } else {
-          alert('Failed to delete message: ' + response.error);
+          toast.error('Failed to delete message: ' + response.error);
         }
       } catch (error) {
         console.error('Error deleting message:', error);
-        alert('Error deleting message');
+        toast.error('Error deleting message');
       } finally {
         loading.value = false;
       }
@@ -174,13 +208,13 @@ export default {
             selectedMessage.value = { ...selectedMessage.value, isActive: response.data.isActive };
           }
           activeDropdown.value = null;
-          alert(`Message ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+          toast.success(`Message ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
         } else {
-          alert('Failed to toggle status: ' + response.error);
+          toast.error('Failed to toggle status: ' + response.error);
         }
       } catch (error) {
         console.error('Error toggling status:', error);
-        alert('Error toggling status');
+        toast.error('Error toggling status');
       }
     };
 
@@ -241,7 +275,7 @@ export default {
     // Update message
     const updateMessage = async () => {
       if (!editMessage.value.founderName || !editMessage.value.position || !editMessage.value.content) {
-        alert('Please fill all required fields');
+        toast.error('Please fill all required fields');
         return;
       }
 
@@ -272,7 +306,7 @@ export default {
                 }
               }
             } catch (imageError) {
-              alert('Message updated but image upload failed');
+              toast.warning('Message updated but image upload failed');
             }
           } else if (originalMessage && originalMessage.founderImage) {
             // Preserve existing image if no new image uploaded
@@ -291,12 +325,13 @@ export default {
           
           showEditModal.value = false;
           editMessage.value = { _id: '', founderName: '', position: '', content: '', founderImage: null };
+          toast.success('Message updated successfully!');
         } else {
-          alert('Failed to update message: ' + response.error);
+          toast.error('Failed to update message: ' + response.error);
         }
       } catch (error) {
         console.error('Error updating message:', error);
-        alert('Error updating message: ' + error.message);
+        toast.error('Error updating message: ' + error.message);
       } finally {
         loading.value = false;
       }

@@ -425,25 +425,6 @@ export default {
                                       class="dropdown-item d-flex align-items-center py-2 rounded-2" 
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (sponsor.logo) {
-                                          window.open(sponsor.logo, '_blank');
-                                        } else {
-                                          toast.info('No logo available to view');
-                                        }
-                                        toggleDropdown(sponsor._id || sponsor.id);
-                                      }}
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="me-2 text-info">
-                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                                      </svg>
-                                      View Logo
-                                    </button>
-                                  </li>
-                                  <li>
-                                    <button 
-                                      class="dropdown-item d-flex align-items-center py-2 rounded-2" 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
                                         editSponsor(sponsor);
                                         toggleDropdown(sponsor._id || sponsor.id);
                                       }}

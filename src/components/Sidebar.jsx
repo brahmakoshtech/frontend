@@ -45,6 +45,7 @@ export default {
       { path: '/client/avatar', label: 'Avatar', icon: '👤' },
       { path: '/client/ai-agents', label: 'AI Agents', icon: '🤖' },
       { path: '/client/services', label: 'Services', icon: '🎯' },
+      // { path: '/client/brahma-bazar', label: 'Brahma Bazar', icon: '🛒' },
       { path: '/client/users', label: 'Users', icon: '👥' },
       { path: '/client/payments', label: 'Payments', icon: '💳' },
       { path: '/client/tools', label: 'Tools', icon: '🛠️' }

@@ -96,25 +96,31 @@ export default {
           {error.value && <div class="alert alert-danger">{error.value}</div>}
           <form onSubmit={handleLogin}>
             <div class="mb-3">
-              <label class="form-label">Email</label>
+              <label class="form-label" for="email">Email</label>
               <input
+                id="email"
+                name="email"
                 value={email.value}
                 onInput={(e) => email.value = e.target.value}
                 type="email"
                 class="form-control"
                 required
                 placeholder="Enter user email"
+                autocomplete="email"
               />
             </div>
             <div class="mb-3">
-              <label class="form-label">Password</label>
+              <label class="form-label" for="password">Password</label>
               <input
+                id="password"
+                name="password"
                 value={password.value}
                 onInput={(e) => password.value = e.target.value}
                 type="password"
                 class="form-control"
                 required
                 placeholder="Enter password"
+                autocomplete="current-password"
               />
             </div>
             <button type="submit" disabled={loading.value} class="btn btn-primary w-100">
