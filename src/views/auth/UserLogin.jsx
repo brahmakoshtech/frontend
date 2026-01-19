@@ -73,7 +73,7 @@ export default {
       error.value = '';
       try {
         // Google login also auto-determines client
-        const { data } = await api.post('/api/auth/user', {
+        const { data } = await api.post('/auth/user', {
           idToken: response.credential
         });
         
