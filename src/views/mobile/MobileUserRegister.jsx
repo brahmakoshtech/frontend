@@ -801,7 +801,6 @@ export default {
               </button>
             </form>
           )}
-
           {/* Step 4: Profile Image Upload */}
           {step.value === 4 && (
             <form onSubmit={handleStep4}>
