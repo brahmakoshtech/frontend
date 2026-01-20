@@ -282,6 +282,11 @@ const routes = [
         component: () => import('../views/client/services/ExpertManagement.jsx')
       },
       {
+        path: 'expert-details/:id',
+        name: 'ExpertDetails',
+        component: () => import('../views/client/services/ExpertDetails.jsx')
+      },
+      {
         path: 'brahma-bazar',
         name: 'BrahmaBazar',
         component: () => import('../views/client/services/BrahmaBazar.jsx')

@@ -6,7 +6,7 @@ const expertService = {
   // Get all experts
   getExperts: async (categoryId = null, includeInactive = false) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       let url = `${API_BASE_URL}/experts`;
       
       const params = [];
@@ -39,7 +39,7 @@ const expertService = {
   // Get single expert
   getExpert: async (id) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const response = await axios.get(`${API_BASE_URL}/experts/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -56,7 +56,7 @@ const expertService = {
   // Create expert
   createExpert: async (expertData) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const response = await axios.post(`${API_BASE_URL}/experts`, expertData, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -73,7 +73,7 @@ const expertService = {
   // Update expert
   updateExpert: async (id, expertData) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const response = await axios.put(`${API_BASE_URL}/experts/${id}`, expertData, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -90,7 +90,7 @@ const expertService = {
   // Delete expert
   deleteExpert: async (id) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const response = await axios.delete(`${API_BASE_URL}/experts/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -107,7 +107,7 @@ const expertService = {
   // Upload profile photo
   uploadProfilePhoto: async (expertId, file) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const formData = new FormData();
       formData.append('profilePhoto', file);
       
@@ -127,7 +127,7 @@ const expertService = {
   // Upload background banner
   uploadBanner: async (expertId, file) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const formData = new FormData();
       formData.append('backgroundBanner', file);
       
@@ -147,7 +147,7 @@ const expertService = {
   // Toggle expert status
   toggleExpert: async (id) => {
     try {
-      const token = localStorage.getItem('token_client');
+      const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
       const response = await axios.patch(`${API_BASE_URL}/experts/${id}/toggle`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`,

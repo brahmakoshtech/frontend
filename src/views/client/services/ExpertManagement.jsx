@@ -2,6 +2,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { 
   ArrowLeftIcon,
+  ArrowRightIcon,
   PlusIcon,
   EllipsisVerticalIcon,
   PencilIcon,
@@ -46,8 +47,8 @@ export default {
       experience: '',
       expertise: '',
       profileSummary: '',
-      primaryLanguage: 'Hindi',
-      otherLanguages: '',
+      languages: ['Hindi'], // Array of selected languages
+      customLanguage: '', // For "Other" option
       profilePhoto: null,
       backgroundBanner: null,
       chatCharge: '',
@@ -62,8 +63,8 @@ export default {
       experience: '',
       expertise: '',
       profileSummary: '',
-      primaryLanguage: 'Hindi',
-      otherLanguages: '',
+      languages: ['Hindi'], // Array of selected languages
+      customLanguage: '', // For "Other" option
       profilePhoto: null,
       backgroundBanner: null,
       chatCharge: '',
@@ -148,6 +149,29 @@ export default {
       showExpertModal.value = true;
     };
 
+    // Language handling functions
+    const toggleLanguage = (language, isEdit = false) => {
+      const form = isEdit ? editForm.value : expertForm.value;
+      const index = form.languages.indexOf(language);
+      
+      if (index > -1) {
+        // Remove language if already selected
+        form.languages.splice(index, 1);
+        // Clear custom language if "Other" is deselected
+        if (language === 'Other') {
+          form.customLanguage = '';
+        }
+      } else {
+        // Add language
+        form.languages.push(language);
+      }
+    };
+
+    const isLanguageSelected = (language, isEdit = false) => {
+      const form = isEdit ? editForm.value : expertForm.value;
+      return form.languages.includes(language);
+    };
+
     const handleImageUpload = (event, type) => {
       const file = event.target.files[0];
       if (file) {
@@ -173,8 +197,8 @@ export default {
           experience: expertForm.value.experience,
           expertise: expertForm.value.expertise,
           profileSummary: expertForm.value.profileSummary,
-          primaryLanguage: expertForm.value.primaryLanguage,
-          otherLanguages: expertForm.value.otherLanguages,
+          languages: expertForm.value.languages,
+          customLanguage: expertForm.value.customLanguage,
           chatCharge: expertForm.value.chatCharge,
           voiceCharge: expertForm.value.voiceCharge,
           videoCharge: expertForm.value.videoCharge,
@@ -217,8 +241,8 @@ export default {
             experience: '',
             expertise: '',
             profileSummary: '',
-            primaryLanguage: 'Hindi',
-            otherLanguages: '',
+            languages: ['Hindi'],
+            customLanguage: '',
             profilePhoto: null,
             backgroundBanner: null,
             chatCharge: '',
@@ -255,6 +279,11 @@ export default {
       activeDropdown.value = null;
     };
 
+    const viewExpertDetails = (expert) => {
+      // Navigate to expert details page
+      router.push(`/client/expert-details/${expert._id}`);
+    };
+
     const editExpert = (expert) => {
       editingExpert.value = expert;
       editForm.value = {
@@ -262,8 +291,8 @@ export default {
         experience: expert.experience,
         expertise: expert.expertise,
         profileSummary: expert.profileSummary,
-        primaryLanguage: expert.primaryLanguage || 'Hindi',
-        otherLanguages: expert.otherLanguages || '',
+        languages: expert.languages || ['Hindi'],
+        customLanguage: expert.customLanguage || '',
         profilePhoto: null,
         backgroundBanner: null,
         chatCharge: expert.chatCharge,
@@ -326,8 +355,8 @@ export default {
           experience: editForm.value.experience,
           expertise: editForm.value.expertise,
           profileSummary: editForm.value.profileSummary,
-          primaryLanguage: editForm.value.primaryLanguage,
-          otherLanguages: editForm.value.otherLanguages,
+          languages: editForm.value.languages,
+          customLanguage: editForm.value.customLanguage,
           chatCharge: editForm.value.chatCharge,
           voiceCharge: editForm.value.voiceCharge,
           videoCharge: editForm.value.videoCharge,
@@ -422,19 +451,7 @@ export default {
       return statusConfig[status] || statusConfig.offline;
     };
 
-    const availableLanguages = ['Hindi', 'English', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu', 'Sanskrit'];
 
-    const toggleLanguage = (language, isEdit = false) => {
-      const form = isEdit ? editForm.value : expertForm.value;
-      const index = form.languages.indexOf(language);
-      if (index > -1) {
-        if (form.languages.length > 1) {
-          form.languages.splice(index, 1);
-        }
-      } else {
-        form.languages.push(language);
-      }
-    };
 
     onMounted(() => {
       loadCategories();
@@ -657,7 +674,7 @@ export default {
                         </div>
                         <div class="dropdown">
                           <button 
-                            class="btn btn-light rounded-circle p-2"
+                            class="btn btn-dark rounded-circle p-2 d-flex align-items-center justify-content-center"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleDropdown(expert._id);
@@ -666,10 +683,11 @@ export default {
                               width: '32px', 
                               height: '32px', 
                               border: 'none',
-                              zIndex: 15
+                              zIndex: 20,
+                              position: 'relative'
                             }}
                           >
-                            <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem', color: '#6b7280' }} />
+                            <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem', color: 'white' }} />
                           </button>
                           {activeDropdown.value === expert._id && (
                             <div 
@@ -732,8 +750,9 @@ export default {
                           </div>
                           <div class="col-12">
                             <small class="text-muted d-block">
-                              <strong>Languages:</strong> {expert.primaryLanguage || 'Hindi'}
-                              {expert.otherLanguages && `, ${expert.otherLanguages}`}
+                              <strong>Languages:</strong> 
+                              {expert.languages ? expert.languages.join(', ') : 'Hindi'}
+                              {expert.customLanguage && `, ${expert.customLanguage}`}
                             </small>
                           </div>
                         </div>
@@ -770,6 +789,18 @@ export default {
                             <div style={{ fontSize: '0.625rem', opacity: 0.9 }}>Video</div>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Arrow Button */}
+                      <div class="d-flex justify-content-end mt-3">
+                        <button 
+                          class="btn btn-outline-primary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                          style={{ width: '32px', height: '32px' }}
+                          onClick={() => viewExpertDetails(expert)}
+                          title="View Expert Details"
+                        >
+                          <ArrowRightIcon style={{ width: '1rem', height: '1rem' }} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -871,33 +902,59 @@ export default {
                             ></textarea>
                           </div>
 
-                          {/* Primary Language */}
-                          <div class="col-12 col-md-6">
-                            <label class="form-label fw-semibold" for="expertPrimaryLanguage">Primary Language *</label>
-                            <select 
-                              class="form-select" 
-                              id="expertPrimaryLanguage"
-                              name="expertPrimaryLanguage"
-                              v-model={expertForm.value.primaryLanguage}
-                              required
-                            >
-                              <option value="Hindi">Hindi</option>
-                              <option value="English">English</option>
-                            </select>
-                          </div>
-
-                          {/* Other Languages */}
-                          <div class="col-12 col-md-6">
-                            <label class="form-label fw-semibold" for="expertOtherLanguages">Other Languages (Optional)</label>
-                            <input 
-                              type="text" 
-                              class="form-control" 
-                              id="expertOtherLanguages"
-                              name="expertOtherLanguages"
-                              v-model={expertForm.value.otherLanguages}
-                              placeholder="e.g., Bengali, Tamil, Telugu"
-                            />
-                            <small class="text-muted">Separate multiple languages with commas</small>
+                          {/* Languages */}
+                          <div class="col-12">
+                            <label class="form-label fw-semibold">Languages *</label>
+                            <div class="border rounded p-3">
+                              <div class="row g-2">
+                                <div class="col-12 col-md-4">
+                                  <div class="form-check">
+                                    <input 
+                                      class="form-check-input" 
+                                      type="checkbox" 
+                                      id="hindi"
+                                      checked={isLanguageSelected('Hindi')}
+                                      onChange={() => toggleLanguage('Hindi')}
+                                    />
+                                    <label class="form-check-label" for="hindi">Hindi</label>
+                                  </div>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                  <div class="form-check">
+                                    <input 
+                                      class="form-check-input" 
+                                      type="checkbox" 
+                                      id="english"
+                                      checked={isLanguageSelected('English')}
+                                      onChange={() => toggleLanguage('English')}
+                                    />
+                                    <label class="form-check-label" for="english">English</label>
+                                  </div>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                  <div class="form-check">
+                                    <input 
+                                      class="form-check-input" 
+                                      type="checkbox" 
+                                      id="other"
+                                      checked={isLanguageSelected('Other')}
+                                      onChange={() => toggleLanguage('Other')}
+                                    />
+                                    <label class="form-check-label" for="other">Other</label>
+                                  </div>
+                                </div>
+                                {isLanguageSelected('Other') && (
+                                  <div class="col-12">
+                                    <input 
+                                      type="text" 
+                                      class="form-control mt-2" 
+                                      placeholder="Enter custom language"
+                                      v-model={expertForm.value.customLanguage}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           {/* Profile Photo */}
@@ -1124,33 +1181,59 @@ export default {
                             ></textarea>
                           </div>
 
-                          {/* Primary Language */}
-                          <div class="col-12 col-md-6">
-                            <label class="form-label fw-semibold" for="editExpertPrimaryLanguage">Primary Language *</label>
-                            <select 
-                              class="form-select" 
-                              id="editExpertPrimaryLanguage"
-                              name="editExpertPrimaryLanguage"
-                              v-model={editForm.value.primaryLanguage}
-                              required
-                            >
-                              <option value="Hindi">Hindi</option>
-                              <option value="English">English</option>
-                            </select>
-                          </div>
-
-                          {/* Other Languages */}
-                          <div class="col-12 col-md-6">
-                            <label class="form-label fw-semibold" for="editExpertOtherLanguages">Other Languages (Optional)</label>
-                            <input 
-                              type="text" 
-                              class="form-control" 
-                              id="editExpertOtherLanguages"
-                              name="editExpertOtherLanguages"
-                              v-model={editForm.value.otherLanguages}
-                              placeholder="e.g., Bengali, Tamil, Telugu"
-                            />
-                            <small class="text-muted">Separate multiple languages with commas</small>
+                          {/* Languages */}
+                          <div class="col-12">
+                            <label class="form-label fw-semibold">Languages *</label>
+                            <div class="border rounded p-3">
+                              <div class="row g-2">
+                                <div class="col-12 col-md-4">
+                                  <div class="form-check">
+                                    <input 
+                                      class="form-check-input" 
+                                      type="checkbox" 
+                                      id="editHindi"
+                                      checked={isLanguageSelected('Hindi', true)}
+                                      onChange={() => toggleLanguage('Hindi', true)}
+                                    />
+                                    <label class="form-check-label" for="editHindi">Hindi</label>
+                                  </div>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                  <div class="form-check">
+                                    <input 
+                                      class="form-check-input" 
+                                      type="checkbox" 
+                                      id="editEnglish"
+                                      checked={isLanguageSelected('English', true)}
+                                      onChange={() => toggleLanguage('English', true)}
+                                    />
+                                    <label class="form-check-label" for="editEnglish">English</label>
+                                  </div>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                  <div class="form-check">
+                                    <input 
+                                      class="form-check-input" 
+                                      type="checkbox" 
+                                      id="editOther"
+                                      checked={isLanguageSelected('Other', true)}
+                                      onChange={() => toggleLanguage('Other', true)}
+                                    />
+                                    <label class="form-check-label" for="editOther">Other</label>
+                                  </div>
+                                </div>
+                                {isLanguageSelected('Other', true) && (
+                                  <div class="col-12">
+                                    <input 
+                                      type="text" 
+                                      class="form-control mt-2" 
+                                      placeholder="Enter custom language"
+                                      v-model={editForm.value.customLanguage}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold" for="editExpertPhoto">
@@ -1356,12 +1439,16 @@ export default {
                       <div class="mb-3">
                         <h6 class="fw-semibold mb-2 small text-muted">Languages</h6>
                         <p class="mb-0">
-                          <span class="badge bg-primary me-1">{selectedExpert.value.primaryLanguage || 'Hindi'}</span>
-                          {selectedExpert.value.otherLanguages && 
-                            selectedExpert.value.otherLanguages.split(',').map((lang, index) => (
-                              <span key={index} class="badge bg-secondary me-1">{lang.trim()}</span>
+                          {selectedExpert.value.languages ? (
+                            selectedExpert.value.languages.map((lang, index) => (
+                              <span key={index} class="badge bg-primary me-1">{lang}</span>
                             ))
-                          }
+                          ) : (
+                            <span class="badge bg-primary me-1">Hindi</span>
+                          )}
+                          {selectedExpert.value.customLanguage && (
+                            <span class="badge bg-secondary me-1">{selectedExpert.value.customLanguage}</span>
+                          )}
                         </p>
                       </div>
                       
