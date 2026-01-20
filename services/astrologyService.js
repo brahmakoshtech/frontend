@@ -1,7 +1,6 @@
 // src/services/astrologyService.js
 
 import axios from 'axios';
-
 const ASTROLOGY_API_BASE_URL = 'https://json.astrologyapi.com/v1';
 const ASTROLOGY_USER_ID = process.env.ASTROLOGY_USER_ID || '648891';
 const ASTROLOGY_API_KEY = process.env.ASTROLOGY_API_KEY || '2932331f2f8acd62fb79f5f489963d1ddadf7382';
