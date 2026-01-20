@@ -51,6 +51,7 @@ class ApiService {
   async request(endpoint, options = {}) {
     // Get token from options or determine from endpoint/context
     let token = options.token;
+    console.log('token', token);
     let tokenSource = 'provided';
 
     if (!token) {
@@ -231,6 +232,8 @@ class ApiService {
       throw error;
     }
   }
+
+
 
   // Super Admin Auth endpoints
   async superAdminLogin(email, password) {
@@ -522,34 +525,44 @@ class ApiService {
   }
 
   // Client endpoints
-  async getClientUsers() {
-    return this.request('/client/users');
-  }
+// frontend/src/services/api.js
 
-  async createClientUser(email, password, profile) {
-    return this.request('/client/users', {
-      method: 'POST',
-      body: { email, password, profile },
-    });
-  }
+// Update getClientUsers method to match backend
+async getClientUsers() {
+  return this.request('/client/users');
+}
 
-  async updateClientUser(id, data) {
-    return this.request(`/client/users/${id}`, {
-      method: 'PUT',
-      body: data,
-    });
-  }
+async createClientUser(email, password, profile) {
+  return this.request('/client/users', {
+    method: 'POST',
+    body: { email, password, profile },
+  });
+}
 
-  async deleteClientUser(id) {
-    return this.request(`/client/users/${id}`, {
-      method: 'DELETE',
-    });
-  }
+async updateClientUser(id, data) {
+  return this.request(`/client/users/${id}`, {
+    method: 'PUT',
+    body: data,
+  });
+}
 
-  async getClientDashboard() {
-    return this.request('/client/dashboard/overview');
-  }
+async deleteClientUser(id) {
+  return this.request(`/client/users/${id}`, {
+    method: 'DELETE',
+  });
+}
 
+async getUserCompleteDetails(userId) {
+  return this.request(`/client/users/${userId}/complete-details`);
+}
+
+async getUserAstrology(userId) {
+  return this.request(`/client/users/${userId}/astrology`);
+}
+
+async getClientDashboard() {
+  return this.request('/client/dashboard/overview');
+}
   // User endpoints
   async getUserProfile() {
     return this.request('/users/profile');
@@ -835,7 +848,10 @@ const api = {
   updateUserProfileWithImage: apiService.updateUserProfileWithImage.bind(apiService),
   mobileUserRegisterStep4UploadImage: apiService.mobileUserRegisterStep4UploadImage.bind(apiService),
   // Direct request method
-  request: apiService.request.bind(apiService)
+  request: apiService.request.bind(apiService),
+
+  getUserCompleteDetails: apiService.getUserCompleteDetails.bind(apiService),
+  getUserAstrology: apiService.getUserAstrology.bind(apiService)
 };
 
 export default api;
