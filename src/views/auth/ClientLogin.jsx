@@ -2,7 +2,6 @@ import { ref } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { useAuth } from '../../store/auth.js';
 import api from '../../services/api.js';
-
 export default {
   name: 'ClientLogin',
   setup() {
