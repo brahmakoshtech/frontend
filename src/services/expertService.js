@@ -4,14 +4,23 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const expertService = {
   // Get all experts
-  getExperts: async (categoryId = null) => {
+  getExperts: async (categoryId = null, includeInactive = false) => {
     try {
       const token = localStorage.getItem('token_client');
       let url = `${API_BASE_URL}/experts`;
       
+      const params = [];
       // Add category filter if provided
       if (categoryId) {
-        url += `?categoryId=${categoryId}`;
+        params.push(`categoryId=${categoryId}`);
+      }
+      // Add includeInactive parameter
+      if (includeInactive) {
+        params.push('includeInactive=true');
+      }
+      
+      if (params.length > 0) {
+        url += `?${params.join('&')}`;
       }
       
       const response = await axios.get(url, {

@@ -206,6 +206,19 @@ export default {
       }
     };
 
+    const fetchSingleCategory = async (categoryId) => {
+      try {
+        const response = await expertCategoryService.getExpertCategoryById(categoryId);
+        if (response.success && response.data) {
+          return response.data;
+        }
+        return null;
+      } catch (error) {
+        console.error('Fetch single category error:', error);
+        return null;
+      }
+    };
+
     const toggleDropdown = (categoryId) => {
       activeDropdown.value = activeDropdown.value === categoryId ? null : categoryId;
     };

@@ -46,6 +46,8 @@ export default {
       experience: '',
       expertise: '',
       profileSummary: '',
+      primaryLanguage: 'Hindi',
+      otherLanguages: '',
       profilePhoto: null,
       backgroundBanner: null,
       chatCharge: '',
@@ -60,6 +62,8 @@ export default {
       experience: '',
       expertise: '',
       profileSummary: '',
+      primaryLanguage: 'Hindi',
+      otherLanguages: '',
       profilePhoto: null,
       backgroundBanner: null,
       chatCharge: '',
@@ -83,7 +87,7 @@ export default {
       try {
         loading.value = true;
         console.log('Loading experts with categoryId:', categoryId);
-        const response = await expertService.getExperts(categoryId);
+        const response = await expertService.getExperts(categoryId, true); // Include inactive experts
         console.log('Experts API response:', response);
         if (response.success) {
           console.log('Experts data:', response.data);
@@ -169,6 +173,8 @@ export default {
           experience: expertForm.value.experience,
           expertise: expertForm.value.expertise,
           profileSummary: expertForm.value.profileSummary,
+          primaryLanguage: expertForm.value.primaryLanguage,
+          otherLanguages: expertForm.value.otherLanguages,
           chatCharge: expertForm.value.chatCharge,
           voiceCharge: expertForm.value.voiceCharge,
           videoCharge: expertForm.value.videoCharge,
@@ -211,6 +217,8 @@ export default {
             experience: '',
             expertise: '',
             profileSummary: '',
+            primaryLanguage: 'Hindi',
+            otherLanguages: '',
             profilePhoto: null,
             backgroundBanner: null,
             chatCharge: '',
@@ -254,6 +262,8 @@ export default {
         experience: expert.experience,
         expertise: expert.expertise,
         profileSummary: expert.profileSummary,
+        primaryLanguage: expert.primaryLanguage || 'Hindi',
+        otherLanguages: expert.otherLanguages || '',
         profilePhoto: null,
         backgroundBanner: null,
         chatCharge: expert.chatCharge,
@@ -316,6 +326,8 @@ export default {
           experience: editForm.value.experience,
           expertise: editForm.value.expertise,
           profileSummary: editForm.value.profileSummary,
+          primaryLanguage: editForm.value.primaryLanguage,
+          otherLanguages: editForm.value.otherLanguages,
           chatCharge: editForm.value.chatCharge,
           voiceCharge: editForm.value.voiceCharge,
           videoCharge: editForm.value.videoCharge,
@@ -408,6 +420,20 @@ export default {
         queue: { class: 'bg-info', text: 'In Queue', color: '#17a2b8' }
       };
       return statusConfig[status] || statusConfig.offline;
+    };
+
+    const availableLanguages = ['Hindi', 'English', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu', 'Sanskrit'];
+
+    const toggleLanguage = (language, isEdit = false) => {
+      const form = isEdit ? editForm.value : expertForm.value;
+      const index = form.languages.indexOf(language);
+      if (index > -1) {
+        if (form.languages.length > 1) {
+          form.languages.splice(index, 1);
+        }
+      } else {
+        form.languages.push(language);
+      }
     };
 
     onMounted(() => {
@@ -554,13 +580,14 @@ export default {
                       <div 
                         class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
                         style={{ 
-                          backgroundColor: 'rgba(255,255,255,0.9)',
-                          zIndex: 10,
-                          backdropFilter: 'blur(2px)'
+                          backgroundColor: 'rgba(255,255,255,0.7)',
+                          zIndex: 5,
+                          backdropFilter: 'blur(1px)',
+                          pointerEvents: 'none'
                         }}
                       >
                         <div class="text-center">
-                          <div class="text-muted mb-2" style={{ fontSize: '3rem' }}>⏸️</div>
+                          <div class="text-muted mb-2" style={{ fontSize: '2rem' }}>⏸️</div>
                           <h6 class="text-muted fw-bold">Expert Disabled</h6>
                         </div>
                       </div>
@@ -635,7 +662,12 @@ export default {
                               e.stopPropagation();
                               toggleDropdown(expert._id);
                             }}
-                            style={{ width: '32px', height: '32px', border: 'none' }}
+                            style={{ 
+                              width: '32px', 
+                              height: '32px', 
+                              border: 'none',
+                              zIndex: 15
+                            }}
                           >
                             <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem', color: '#6b7280' }} />
                           </button>
@@ -652,38 +684,37 @@ export default {
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <button class="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => viewExpert(expert)}>
-                                <EyeIcon style={{ width: '1rem', height: '1rem' }} />
-                                <span>View</span>
-                              </button>
-                              <button class="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => editExpert(expert)}>
-                                <PencilIcon style={{ width: '1rem', height: '1rem' }} />
-                                <span>Edit</span>
-                              </button>
-                              <button 
-                                class="dropdown-item d-flex align-items-center gap-2 py-2" 
-                                onClick={() => toggleExpertStatus(expert._id, expert.isActive ? 'active' : 'inactive')}
-                              >
-                                {expert.isActive ? (
-                                  <>
-                                    <span style={{ width: '1rem', height: '1rem', fontSize: '0.875rem' }}>⏸️</span>
-                                    <span>Disable</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span style={{ width: '1rem', height: '1rem', fontSize: '0.875rem' }}>▶️</span>
-                                    <span>Enable</span>
-                                  </>
-                                )}
-                              </button>
-                              {expert.isActive && (
+                              {expert.isActive ? (
                                 <>
+                                  <button class="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => viewExpert(expert)}>
+                                    <EyeIcon style={{ width: '1rem', height: '1rem' }} />
+                                    <span>View</span>
+                                  </button>
+                                  <button class="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => editExpert(expert)}>
+                                    <PencilIcon style={{ width: '1rem', height: '1rem' }} />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button 
+                                    class="dropdown-item d-flex align-items-center gap-2 py-2" 
+                                    onClick={() => toggleExpertStatus(expert._id, expert.isActive ? 'active' : 'inactive')}
+                                  >
+                                    <span>🔴</span>
+                                    <span>Disable</span>
+                                  </button>
                                   <hr class="dropdown-divider my-1" />
                                   <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" onClick={() => deleteExpert(expert._id)}>
                                     <TrashIcon style={{ width: '1rem', height: '1rem' }} />
                                     <span>Delete</span>
                                   </button>
                                 </>
+                              ) : (
+                                <button 
+                                  class="dropdown-item d-flex align-items-center gap-2 py-2" 
+                                  onClick={() => toggleExpertStatus(expert._id, expert.isActive ? 'active' : 'inactive')}
+                                >
+                                  <span>🟢</span>
+                                  <span>Enable</span>
+                                </button>
                               )}
                             </div>
                           )}
@@ -698,6 +729,12 @@ export default {
                           </div>
                           <div class="col-12">
                             <small class="text-muted d-block"><strong>Expertise:</strong> {expert.expertise}</small>
+                          </div>
+                          <div class="col-12">
+                            <small class="text-muted d-block">
+                              <strong>Languages:</strong> {expert.primaryLanguage || 'Hindi'}
+                              {expert.otherLanguages && `, ${expert.otherLanguages}`}
+                            </small>
                           </div>
                         </div>
                         <div class="bg-light rounded p-2">
@@ -832,6 +869,35 @@ export default {
                               placeholder="Brief description about the expert"
                               required
                             ></textarea>
+                          </div>
+
+                          {/* Primary Language */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertPrimaryLanguage">Primary Language *</label>
+                            <select 
+                              class="form-select" 
+                              id="expertPrimaryLanguage"
+                              name="expertPrimaryLanguage"
+                              v-model={expertForm.value.primaryLanguage}
+                              required
+                            >
+                              <option value="Hindi">Hindi</option>
+                              <option value="English">English</option>
+                            </select>
+                          </div>
+
+                          {/* Other Languages */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertOtherLanguages">Other Languages (Optional)</label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="expertOtherLanguages"
+                              name="expertOtherLanguages"
+                              v-model={expertForm.value.otherLanguages}
+                              placeholder="e.g., Bengali, Tamil, Telugu"
+                            />
+                            <small class="text-muted">Separate multiple languages with commas</small>
                           </div>
 
                           {/* Profile Photo */}
@@ -1057,6 +1123,35 @@ export default {
                               required
                             ></textarea>
                           </div>
+
+                          {/* Primary Language */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertPrimaryLanguage">Primary Language *</label>
+                            <select 
+                              class="form-select" 
+                              id="editExpertPrimaryLanguage"
+                              name="editExpertPrimaryLanguage"
+                              v-model={editForm.value.primaryLanguage}
+                              required
+                            >
+                              <option value="Hindi">Hindi</option>
+                              <option value="English">English</option>
+                            </select>
+                          </div>
+
+                          {/* Other Languages */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertOtherLanguages">Other Languages (Optional)</label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="editExpertOtherLanguages"
+                              name="editExpertOtherLanguages"
+                              v-model={editForm.value.otherLanguages}
+                              placeholder="e.g., Bengali, Tamil, Telugu"
+                            />
+                            <small class="text-muted">Separate multiple languages with commas</small>
+                          </div>
                           <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold" for="editExpertPhoto">
                               <PhotoIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
@@ -1256,6 +1351,18 @@ export default {
                       <div class="mb-3">
                         <h6 class="fw-semibold mb-2 small text-muted">Profile Summary</h6>
                         <p class="mb-0">{selectedExpert.value.profileSummary || 'No summary available'}</p>
+                      </div>
+                      
+                      <div class="mb-3">
+                        <h6 class="fw-semibold mb-2 small text-muted">Languages</h6>
+                        <p class="mb-0">
+                          <span class="badge bg-primary me-1">{selectedExpert.value.primaryLanguage || 'Hindi'}</span>
+                          {selectedExpert.value.otherLanguages && 
+                            selectedExpert.value.otherLanguages.split(',').map((lang, index) => (
+                              <span key={index} class="badge bg-secondary me-1">{lang.trim()}</span>
+                            ))
+                          }
+                        </p>
                       </div>
                       
                       {selectedExpert.value.backgroundBanner && (

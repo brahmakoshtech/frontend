@@ -591,6 +591,22 @@ export default {
                               {avatar.description.length > 80 ? avatar.description.substring(0, 80) + '...' : avatar.description}
                             </p>
                             
+                            {/* Category and Gender Info */}
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                              <span class={`badge ${
+                                avatar.category === 'Deity' ? 'bg-primary' :
+                                avatar.category === 'Rashami' ? 'bg-success' :
+                                avatar.category === 'Expert' ? 'bg-warning text-dark' : 'bg-secondary'
+                              } px-2 py-1`} style={{ fontSize: '0.75rem' }}>
+                                {avatar.category === 'Deity' ? '🕉️ Deity' :
+                                 avatar.category === 'Rashami' ? '🌟 Rashami' :
+                                 avatar.category === 'Expert' ? '👨🏫 Expert' : avatar.category}
+                              </span>
+                              <span class="badge bg-light text-dark px-2 py-1" style={{ fontSize: '0.75rem' }}>
+                                {avatar.gender === 'Male' ? '👨 Male' : '👩 Female'}
+                              </span>
+                            </div>
+                            
                             {/* Content Badges */}
                             <div class="d-flex flex-wrap gap-1 mb-3">
                               {avatar.videoUrl && (
