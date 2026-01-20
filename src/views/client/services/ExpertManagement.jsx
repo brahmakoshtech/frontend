@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { 
   ArrowLeftIcon,
   PlusIcon,
@@ -15,15 +15,18 @@ import {
   VideoCameraIcon,
   PhotoIcon,
   CreditCardIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  FunnelIcon
 } from '@heroicons/vue/24/outline';
 import { useToast } from 'vue-toastification';
 import expertService from '../../../services/expertService.js';
+import expertCategoryService from '../../../services/expertCategoryService.js';
 
 export default {
   name: 'ExpertManagement',
   setup() {
     const router = useRouter();
+    const route = useRoute();
     const toast = useToast();
     const loading = ref(false);
     const showExpertModal = ref(false);
@@ -33,6 +36,10 @@ export default {
     const selectedExpert = ref(null);
     const editingExpert = ref(null);
     const experts = ref([]);
+    const categories = ref([]);
+    const selectedCategoryId = ref(route.query.category || '');
+    const filteredExperts = ref([]);
+    const pageTitle = ref('Expert Management');
 
     const expertForm = ref({
       name: '',
@@ -44,7 +51,8 @@ export default {
       chatCharge: '',
       voiceCharge: '',
       videoCharge: '',
-      status: 'offline'
+      status: 'offline',
+      categoryId: ''
     });
 
     const editForm = ref({
@@ -57,7 +65,8 @@ export default {
       chatCharge: '',
       voiceCharge: '',
       videoCharge: '',
-      status: 'offline'
+      status: 'offline',
+      categoryId: ''
     });
 
     const editProfilePhotoUploaded = ref(false);
@@ -70,26 +79,65 @@ export default {
     const bannerUploaded = ref(false);
     const bannerFileName = ref('');
 
-    const loadExperts = async () => {
+    const loadExperts = async (categoryId = null) => {
       try {
         loading.value = true;
-        const response = await expertService.getExperts();
+        console.log('Loading experts with categoryId:', categoryId);
+        const response = await expertService.getExperts(categoryId);
+        console.log('Experts API response:', response);
         if (response.success) {
+          console.log('Experts data:', response.data);
           experts.value = response.data || [];
+          // No need for client-side filtering anymore
+          filteredExperts.value = experts.value;
         } else {
+          console.error('Failed to load experts:', response);
           toast.error('Failed to load experts');
         }
       } catch (error) {
         console.error('Load experts error:', error);
         toast.error('Failed to load experts');
         experts.value = [];
+        filteredExperts.value = [];
       } finally {
         loading.value = false;
       }
     };
 
+    const loadCategories = async () => {
+      try {
+        const response = await expertCategoryService.getAllExpertCategories();
+        if (response.success && response.data) {
+          const actualData = response.data.data || response.data;
+          let categoriesList = Array.isArray(actualData.data) ? actualData.data : 
+                             Array.isArray(actualData) ? actualData : [];
+          categories.value = categoriesList.filter(cat => cat.isActive);
+        }
+      } catch (error) {
+        console.error('Load categories error:', error);
+        categories.value = [];
+      }
+    };
+
+    // Remove filterExperts function as we now use API filtering
+    // const filterExperts = () => { ... } - REMOVED
+
+    const onCategoryChange = () => {
+      // Load experts with selected category filter
+      loadExperts(selectedCategoryId.value || null);
+      
+      // Update page title based on selected category
+      const selectedCategory = categories.value.find(cat => cat._id === selectedCategoryId.value);
+      pageTitle.value = selectedCategory ? `${selectedCategory.name} Management` : 'Expert Management';
+      
+      // Update URL query parameter
+      router.replace({ 
+        query: selectedCategoryId.value ? { category: selectedCategoryId.value } : {} 
+      });
+    };
+
     const goBack = () => {
-      window.close();
+      router.push('/client/expert-connect');
     };
 
     const openExpertModal = () => {
@@ -124,10 +172,14 @@ export default {
           chatCharge: expertForm.value.chatCharge,
           voiceCharge: expertForm.value.voiceCharge,
           videoCharge: expertForm.value.videoCharge,
-          status: expertForm.value.status
+          status: expertForm.value.status,
+          categoryId: expertForm.value.categoryId
         };
         
+        console.log('Creating expert with data:', expertData);
+        
         const response = await expertService.createExpert(expertData);
+        console.log('Create expert response:', response);
         
         if (response.success) {
           const newExpert = response.data;
@@ -164,15 +216,16 @@ export default {
             chatCharge: '',
             voiceCharge: '',
             videoCharge: '',
-            status: 'offline'
+            status: 'offline',
+            categoryId: ''
           };
           profilePhotoUploaded.value = false;
           profilePhotoFileName.value = '';
           bannerUploaded.value = false;
           bannerFileName.value = '';
           
-          // Reload experts
-          await loadExperts();
+          // Reload experts with current filter
+          await loadExperts(selectedCategoryId.value || null);
         } else {
           toast.error('Failed to create expert profile');
         }
@@ -206,7 +259,8 @@ export default {
         chatCharge: expert.chatCharge,
         voiceCharge: expert.voiceCharge,
         videoCharge: expert.videoCharge,
-        status: expert.status
+        status: expert.status,
+        categoryId: expert.categoryId || ''
       };
       editProfilePhotoUploaded.value = false;
       editProfilePhotoFileName.value = '';
@@ -231,6 +285,27 @@ export default {
       }
     };
 
+    const assignAllUncategorizedExperts = () => {
+      const uncategorizedExperts = experts.value.filter(e => !e.categoryId);
+      uncategorizedExperts.forEach(expert => {
+        assignExpertToCategory(expert._id, selectedCategoryId.value);
+      });
+    };
+
+    const assignExpertToCategory = async (expertId, categoryId) => {
+      try {
+        const response = await expertService.updateExpert(expertId, { categoryId });
+        if (response.success) {
+          // Reload experts with current filter after assignment
+          await loadExperts(selectedCategoryId.value || null);
+          toast.success('Expert assigned to category successfully!');
+        }
+      } catch (error) {
+        console.error('Assign expert error:', error);
+        toast.error('Failed to assign expert to category');
+      }
+    };
+
     const updateExpert = async () => {
       try {
         loading.value = true;
@@ -244,7 +319,8 @@ export default {
           chatCharge: editForm.value.chatCharge,
           voiceCharge: editForm.value.voiceCharge,
           videoCharge: editForm.value.videoCharge,
-          status: editForm.value.status
+          status: editForm.value.status,
+          categoryId: editForm.value.categoryId
         };
         
         const response = await expertService.updateExpert(editingExpert.value._id, expertData);
@@ -271,8 +347,8 @@ export default {
           toast.success('✓ Expert profile updated successfully!');
           showEditModal.value = false;
           
-          // Reload experts
-          await loadExperts();
+          // Reload experts with current filter
+          await loadExperts(selectedCategoryId.value || null);
         } else {
           toast.error('Failed to update expert profile');
         }
@@ -293,7 +369,7 @@ export default {
         
         if (response.success) {
           toast.success('✓ Expert deleted successfully!');
-          await loadExperts();
+          await loadExperts(selectedCategoryId.value || null);
         } else {
           toast.error('Failed to delete expert');
         }
@@ -304,6 +380,23 @@ export default {
         loading.value = false;
       }
       
+      activeDropdown.value = null;
+    };
+
+    const toggleExpertStatus = async (expertId, currentStatus) => {
+      try {
+        const response = await expertService.toggleExpert(expertId);
+        if (response.success) {
+          // Reload experts with current filter
+          await loadExperts(selectedCategoryId.value || null);
+          toast.success(`Expert ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+        } else {
+          toast.error('Failed to toggle expert status');
+        }
+      } catch (error) {
+        console.error('Toggle expert status error:', error);
+        toast.error('Failed to toggle expert status');
+      }
       activeDropdown.value = null;
     };
 
@@ -318,7 +411,17 @@ export default {
     };
 
     onMounted(() => {
-      loadExperts();
+      loadCategories();
+      // Load experts with category filter from URL if present
+      loadExperts(selectedCategoryId.value || null);
+      
+      // Set initial page title if category is selected from URL
+      if (selectedCategoryId.value) {
+        setTimeout(() => {
+          const selectedCategory = categories.value.find(cat => cat._id === selectedCategoryId.value);
+          pageTitle.value = selectedCategory ? `${selectedCategory.name} Management` : 'Expert Management';
+        }, 100);
+      }
     });
 
     return () => (
@@ -334,25 +437,40 @@ export default {
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
                 >
                   <ArrowLeftIcon style={{ width: '1rem', height: '1rem' }} />
-                  <span class="d-none d-sm-inline">Close</span>
-                  <span class="d-sm-none">×</span>
+                  <span class="d-none d-sm-inline">Back to Categories</span>
+                  <span class="d-sm-none">Back</span>
                 </button>
                 <div class="flex-grow-1">
-                  <h1 class="mb-1 fw-bold fs-3 fs-md-2 text-dark">Astrologer Management</h1>
+                  <h1 class="mb-1 fw-bold fs-3 fs-md-2 text-dark">{pageTitle.value}</h1>
                   <p class="mb-0 text-dark d-none d-sm-block" style={{ opacity: 0.8, fontSize: '0.9rem' }}>
                     Manage spiritual experts and their profiles
                   </p>
                 </div>
-                <button 
-                  class="btn btn-light btn-sm btn-md-lg rounded-pill px-3 px-md-4 shadow-sm align-self-stretch align-self-md-auto"
-                  onClick={openExpertModal}
-                  disabled={loading.value}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: '600', minHeight: '40px' }}
-                >
-                  <PlusIcon style={{ width: '1rem', height: '1rem' }} />
-                  <span class="d-none d-sm-inline">Add Expert</span>
-                  <span class="d-sm-none">Add</span>
-                </button>
+                <div class="d-flex gap-2 align-items-center">
+                  <select 
+                    class="form-select form-select-sm" 
+                    id="categoryFilter"
+                    name="categoryFilter"
+                    style={{ minWidth: '150px' }}
+                    v-model={selectedCategoryId.value}
+                    onChange={onCategoryChange}
+                  >
+                    <option value="">All Categories</option>
+                    {categories.value.map(category => (
+                      <option key={category._id} value={category._id}>{category.name}</option>
+                    ))}
+                  </select>
+                  <button 
+                    class="btn btn-light btn-sm btn-md-lg rounded-pill px-3 px-md-4 shadow-sm"
+                    onClick={openExpertModal}
+                    disabled={loading.value}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: '600', minHeight: '40px', whiteSpace: 'nowrap' }}
+                  >
+                    <PlusIcon style={{ width: '1rem', height: '1rem' }} />
+                    <span class="d-none d-sm-inline">Add Expert</span>
+                    <span class="d-sm-none">Add</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -365,7 +483,7 @@ export default {
                       <UserIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
                       <UserIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
                     </div>
-                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{experts.value.length}</h4>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{filteredExperts.value.length}</h4>
                     <small class="text-muted" style={{ fontSize: '0.75rem' }}>Total Experts</small>
                   </div>
                 </div>
@@ -377,7 +495,7 @@ export default {
                       <UserIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
                       <UserIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
                     </div>
-                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{experts.value.filter(e => e.status === 'online').length}</h4>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{filteredExperts.value.filter(e => e.status === 'online').length}</h4>
                     <small class="text-muted" style={{ fontSize: '0.75rem' }}>Online Now</small>
                   </div>
                 </div>
@@ -408,9 +526,27 @@ export default {
               </div>
             </div>
 
+            {/* Quick Fix for Uncategorized Experts */}
+            {experts.value.some(e => !e.categoryId) && (
+              <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+                <span>⚠️</span>
+                <div class="flex-grow-1">
+                  <strong>Uncategorized Experts Found:</strong> {experts.value.filter(e => !e.categoryId).length} experts need category assignment.
+                </div>
+                {selectedCategoryId.value && (
+                  <button 
+                    class="btn btn-warning btn-sm"
+                    onClick={assignAllUncategorizedExperts}
+                  >
+                    Assign to Current Category
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Experts Grid */}
             <div class="row g-3">
-              {experts.value.map(expert => (
+              {filteredExperts.value.map(expert => (
                 <div key={expert._id} class="col-12 col-md-6 col-xl-4">
                   <div class="card border-0 shadow-sm h-100 position-relative overflow-hidden" style={{ borderRadius: '12px' }}>
                     {/* Disabled Overlay */}
@@ -478,7 +614,7 @@ export default {
                             <h6 class="fw-bold mb-1 text-truncate">{expert.name}</h6>
                             <div class="d-flex align-items-center gap-1 mb-1">
                               <StarIcon style={{ width: '0.875rem', height: '0.875rem', color: '#fbbf24' }} />
-                              <small class="text-muted">{expert.rating} ({expert.reviews})</small>
+                              <small class="text-muted">{expert.rating || 'N/A'} ({expert.reviews || 0})</small>
                             </div>
                             <span 
                               class="badge rounded-pill px-2 py-1"
@@ -540,11 +676,15 @@ export default {
                                   </>
                                 )}
                               </button>
-                              <hr class="dropdown-divider my-1" />
-                              <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" onClick={() => deleteExpert(expert._id)}>
-                                <TrashIcon style={{ width: '1rem', height: '1rem' }} />
-                                <span>Delete</span>
-                              </button>
+                              {expert.isActive && (
+                                <>
+                                  <hr class="dropdown-divider my-1" />
+                                  <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" onClick={() => deleteExpert(expert._id)}>
+                                    <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                    <span>Delete</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -562,9 +702,9 @@ export default {
                         </div>
                         <div class="bg-light rounded p-2">
                           <small class="text-muted" style={{ lineHeight: '1.4' }}>
-                            {expert.profileSummary.length > 80 
+                            {(expert.profileSummary?.length || 0) > 80 
                               ? expert.profileSummary.substring(0, 80) + '...' 
-                              : expert.profileSummary
+                              : expert.profileSummary || 'No summary available'
                             }
                           </small>
                         </div>
@@ -601,14 +741,14 @@ export default {
             </div>
 
             {/* Empty State */}
-            {experts.value.length === 0 && (
+            {filteredExperts.value.length === 0 && (
               <div class="text-center py-5">
                 <UserIcon style={{ width: '4rem', height: '4rem', color: '#dee2e6' }} class="mb-3" />
-                <h5 class="text-muted mb-2">No experts found</h5>
-                <p class="text-muted mb-3">Start by adding your first expert to the system</p>
+                <h5 class="text-muted mb-2">{selectedCategoryId.value ? 'No experts in this category' : 'No experts found'}</h5>
+                <p class="text-muted mb-3">{selectedCategoryId.value ? 'Try selecting a different category or add experts to this category' : 'Start by adding your first expert to the system'}</p>
                 <button class="btn btn-primary rounded-pill px-4" onClick={openExpertModal}>
                   <PlusIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
-                  Add First Expert
+                  Add {selectedCategoryId.value ? 'Expert to Category' : 'First Expert'}
                 </button>
               </div>
             )}
@@ -795,6 +935,20 @@ export default {
                               <option value="online">Online</option>
                               <option value="busy">Busy</option>
                               <option value="queue">In Queue</option>
+                            </select>
+                          </div>
+
+                          {/* Category */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertCategory">
+                              <FunnelIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Category *
+                            </label>
+                            <select class="form-select" id="expertCategory" name="expertCategory" v-model={expertForm.value.categoryId} required>
+                              <option value="">Select Category</option>
+                              {categories.value.map(category => (
+                                <option key={category._id} value={category._id}>{category.name}</option>
+                              ))}
                             </select>
                           </div>
                         </div>
@@ -999,6 +1153,18 @@ export default {
                               <option value="queue">In Queue</option>
                             </select>
                           </div>
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertCategory">
+                              <FunnelIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Category *
+                            </label>
+                            <select class="form-select" id="editExpertCategory" name="editExpertCategory" v-model={editForm.value.categoryId} required>
+                              <option value="">Select Category</option>
+                              {categories.value.map(category => (
+                                <option key={category._id} value={category._id}>{category.name}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </form>
                     </div>
@@ -1064,7 +1230,7 @@ export default {
                         <h4 class="fw-bold mb-1">{selectedExpert.value.name}</h4>
                         <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                           <StarIcon style={{ width: '1rem', height: '1rem', color: '#ffc107' }} />
-                          <span class="small">{selectedExpert.value.rating} ({selectedExpert.value.reviews} reviews)</span>
+                          <span class="small">{selectedExpert.value.rating || 'N/A'} ({selectedExpert.value.reviews || 0} reviews)</span>
                         </div>
                         <span 
                           class="badge rounded-pill px-3 py-2"
@@ -1079,17 +1245,17 @@ export default {
                       
                       <div class="mb-3">
                         <h6 class="fw-semibold mb-2 small text-muted">Experience</h6>
-                        <p class="mb-0">{selectedExpert.value.experience}</p>
+                        <p class="mb-0">{selectedExpert.value.experience || 'Not specified'}</p>
                       </div>
                       
                       <div class="mb-3">
                         <h6 class="fw-semibold mb-2 small text-muted">Expertise</h6>
-                        <p class="mb-0">{selectedExpert.value.expertise}</p>
+                        <p class="mb-0">{selectedExpert.value.expertise || 'Not specified'}</p>
                       </div>
                       
                       <div class="mb-3">
                         <h6 class="fw-semibold mb-2 small text-muted">Profile Summary</h6>
-                        <p class="mb-0">{selectedExpert.value.profileSummary}</p>
+                        <p class="mb-0">{selectedExpert.value.profileSummary || 'No summary available'}</p>
                       </div>
                       
                       {selectedExpert.value.backgroundBanner && (
@@ -1111,7 +1277,7 @@ export default {
                           <div class="col-12 col-sm-4">
                             <div class="card border-0 bg-light text-center p-2">
                               <ChatBubbleLeftRightIcon style={{ width: '1.25rem', height: '1.25rem', color: '#6c757d' }} class="mb-2 mx-auto" />
-                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.chatCharge}</h6>
+                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.chatCharge || 0}</h6>
                               <small class="text-muted">per minute</small>
                               <div class="mt-1">
                                 <small class="fw-semibold">Chat</small>
@@ -1121,7 +1287,7 @@ export default {
                           <div class="col-12 col-sm-4">
                             <div class="card border-0 bg-light text-center p-2">
                               <PhoneIcon style={{ width: '1.25rem', height: '1.25rem', color: '#6c757d' }} class="mb-2 mx-auto" />
-                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.voiceCharge}</h6>
+                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.voiceCharge || 0}</h6>
                               <small class="text-muted">per minute</small>
                               <div class="mt-1">
                                 <small class="fw-semibold">Voice Call</small>
@@ -1131,7 +1297,7 @@ export default {
                           <div class="col-12 col-sm-4">
                             <div class="card border-0 bg-light text-center p-2">
                               <VideoCameraIcon style={{ width: '1.25rem', height: '1.25rem', color: '#6c757d' }} class="mb-2 mx-auto" />
-                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.videoCharge}</h6>
+                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.videoCharge || 0}</h6>
                               <small class="text-muted">per minute</small>
                               <div class="mt-1">
                                 <small class="fw-semibold">Video Call</small>

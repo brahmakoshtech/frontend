@@ -4,10 +4,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 const expertService = {
   // Get all experts
-  getExperts: async () => {
+  getExperts: async (categoryId = null) => {
     try {
       const token = localStorage.getItem('token_client');
-      const response = await axios.get(`${API_BASE_URL}/experts`, {
+      let url = `${API_BASE_URL}/experts`;
+      
+      // Add category filter if provided
+      if (categoryId) {
+        url += `?categoryId=${categoryId}`;
+      }
+      
+      const response = await axios.get(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

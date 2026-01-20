@@ -19,7 +19,7 @@ export default {
         name: 'Expert connect', 
         icon: StarIcon, 
         description: 'Professional astrology consultations and horoscope readings', 
-        route: '/client/astro',
+        route: '/client/expert-connect',
         color: '#8b5cf6',
         category: 'Spiritual'
       },
