@@ -1502,9 +1502,6 @@ router.post('/register/resend-mobile-otp', async (req, res) => {
     });
   }
 });
-
-// backend/src/routes/mobile/userProfile.js
-
 /**
  * Search Location using Google Places API
  * GET /api/mobile/user/search-location?q=mumbai
