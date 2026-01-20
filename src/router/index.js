@@ -272,6 +272,11 @@ const routes = [
         component: () => import('../views/client/services/ExpertConnect.jsx')
       },
       {
+        path: 'expert-connect',
+        name: 'ClientExpertConnect',
+        component: () => import('../views/client/services/ExpertConnect.jsx')
+      },
+      {
         path: 'experts',
         name: 'ExpertManagement',
         component: () => import('../views/client/services/ExpertManagement.jsx')

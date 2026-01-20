@@ -549,7 +549,7 @@ export default {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (category.isActive) {
-                                window.open('/client/experts', '_blank');
+                                router.push(`/client/experts?category=${category._id}`);
                               }
                             }}
                           >
