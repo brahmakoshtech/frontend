@@ -1,3 +1,5 @@
+// frontend/src/views/auth/MobileUserRegister.jsx
+
 import { ref, onMounted } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import api from '../../services/api.js';
@@ -29,10 +31,18 @@ export default {
       dob: '',
       timeOfBirth: '',
       placeOfBirth: '',
+      latitude: null,
+      longitude: null,
       gowthra: ''
     });
     const imageFile = ref(null);
     const userToken = ref(null);
+    
+    // Location search
+    const locationSearchResults = ref([]);
+    const isSearchingLocation = ref(false);
+    const locationSearchQuery = ref('');
+    const isGettingLocation = ref(false);
     
     const loading = ref(false);
     const error = ref('');
@@ -55,7 +65,6 @@ export default {
         
         if (response.success) {
           emailOtpSent.value = true;
-          // Store client info
           localStorage.setItem('user_client_id', response.data.clientId);
           localStorage.setItem('user_client_name', response.data.clientName);
           alert('OTP sent to your email. Please check and enter the OTP.');
@@ -182,11 +191,120 @@ export default {
       }
     };
 
+    // Location Search using Backend Proxy
+    const searchLocation = async () => {
+      if (!locationSearchQuery.value || locationSearchQuery.value.length < 3) {
+        locationSearchResults.value = [];
+        return;
+      }
+
+      isSearchingLocation.value = true;
+      error.value = '';
+      
+      try {
+        const response = await api.request(`/mobile/user/search-location?q=${encodeURIComponent(locationSearchQuery.value)}`);
+        
+        if (response.success) {
+          locationSearchResults.value = response.data.locations;
+        } else {
+          throw new Error(response.message || 'Failed to search location');
+        }
+      } catch (err) {
+        console.error('Location search error:', err);
+        error.value = 'Failed to search location. Please try again.';
+        locationSearchResults.value = [];
+      } finally {
+        isSearchingLocation.value = false;
+      }
+    };
+
+    // Get Current Location using Browser Geolocation API
+    const useCurrentLocation = async () => {
+      if (!navigator.geolocation) {
+        error.value = 'Geolocation is not supported by your browser';
+        return;
+      }
+
+      isGettingLocation.value = true;
+      error.value = '';
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            
+            // Set coordinates immediately
+            profile.value.latitude = latitude;
+            profile.value.longitude = longitude;
+
+            // Reverse geocode to get place name
+            const response = await api.request(
+              `/mobile/user/search-location?q=${latitude},${longitude}`
+            );
+
+            if (response.success && response.data.locations.length > 0) {
+              const location = response.data.locations[0];
+              profile.value.placeOfBirth = location.displayName;
+              locationSearchQuery.value = location.displayName;
+            } else {
+              // Fallback: just show coordinates
+              profile.value.placeOfBirth = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+              locationSearchQuery.value = profile.value.placeOfBirth;
+            }
+
+            alert('✓ Current location detected successfully!');
+          } catch (err) {
+            console.error('Reverse geocoding error:', err);
+            error.value = 'Location detected but failed to get address. Coordinates saved.';
+          } finally {
+            isGettingLocation.value = false;
+          }
+        },
+        (err) => {
+          isGettingLocation.value = false;
+          switch (err.code) {
+            case err.PERMISSION_DENIED:
+              error.value = 'Location permission denied. Please enable location access in your browser settings.';
+              break;
+            case err.POSITION_UNAVAILABLE:
+              error.value = 'Location information unavailable.';
+              break;
+            case err.TIMEOUT:
+              error.value = 'Location request timed out.';
+              break;
+            default:
+              error.value = 'Failed to get your location.';
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    };
+
+    // Select location from search results
+    const selectLocation = (location) => {
+      profile.value.placeOfBirth = location.displayName;
+      profile.value.latitude = location.lat;
+      profile.value.longitude = location.lon;
+      locationSearchQuery.value = location.displayName;
+      locationSearchResults.value = [];
+    };
+
     // Step 3: Complete Profile
     const handleStep3 = async (e) => {
       e.preventDefault();
       loading.value = true;
       error.value = '';
+      
+      // Validate latitude/longitude
+      if (!profile.value.latitude || !profile.value.longitude) {
+        error.value = 'Please select a location from the search results or use your current location';
+        loading.value = false;
+        return;
+      }
       
       try {
         const response = await api.request('/mobile/user/register/step3', {
@@ -258,7 +376,7 @@ export default {
       }
     };
 
-    // Google Sign-In Handler
+    // Google Sign-In Handler - Only verify Step 1
     const handleGoogleCredential = async (response) => {
       loading.value = true;
       error.value = '';
@@ -271,11 +389,22 @@ export default {
           }
         });
         
-        localStorage.setItem('token_user', data.token);
-        localStorage.setItem('user_client_id', data.clientId);
-        localStorage.setItem('user_client_name', data.clientName);
+        // Store email and move to appropriate step
+        email.value = data.email || '';
         
-        router.push('/mobile/user/dashboard');
+        if (data.registrationComplete) {
+          // Fully registered - go to login
+          localStorage.setItem('token_user', data.token);
+          localStorage.setItem('user_client_id', data.clientId);
+          localStorage.setItem('user_client_name', data.clientName);
+          router.push('/mobile/user/dashboard');
+        } else {
+          // Only email verified - continue to Step 2
+          localStorage.setItem('user_client_id', data.clientId);
+          localStorage.setItem('user_client_name', data.clientName);
+          step.value = 2;
+          alert(`Email verified with Google! Please continue with Step 2: Mobile verification.`);
+        }
       } catch (e) {
         error.value = e.message || 'Google registration failed';
       } finally {
@@ -445,6 +574,9 @@ export default {
                     <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: '#e5e7eb', zIndex: 0 }}></div>
                   </div>
                   <div id="g_id_signin" style={{ display: 'flex', justifyContent: 'center' }}></div>
+                  <p style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                    Google Sign-In will verify your email (Step 1 only)
+                  </p>
                 </div>
               )}
             </>
@@ -513,11 +645,11 @@ export default {
             </form>
           )}
 
-          {/* Step 3: Profile */}
+          {/* Step 3: Profile with Location Search */}
           {step.value === 3 && (
             <form onSubmit={handleStep3}>
               <div class="mb-3">
-                <label class="form-label">Name</label>
+                <label class="form-label">Name *</label>
                 <input
                   value={profile.value.name}
                   onInput={(e) => profile.value.name = e.target.value}
@@ -545,16 +677,115 @@ export default {
                   class="form-control"
                 />
               </div>
+              
+              {/* Location Search with "Use My Location" Button */}
               <div class="mb-3">
-                <label class="form-label">Place of Birth</label>
-                <input
-                  value={profile.value.placeOfBirth}
-                  onInput={(e) => profile.value.placeOfBirth = e.target.value}
-                  type="text"
-                  class="form-control"
-                  placeholder="Enter place of birth"
-                />
+                <label class="form-label">Place of Birth * (Search or Use Current Location)</label>
+                <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+                  <input
+                    value={locationSearchQuery.value}
+                    onInput={(e) => {
+                      locationSearchQuery.value = e.target.value;
+                      searchLocation();
+                    }}
+                    type="text"
+                    class="form-control"
+                    placeholder="Search for a location (e.g., Mumbai, India)"
+                    required
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={useCurrentLocation}
+                    disabled={isGettingLocation.value}
+                    class="btn btn-outline-primary"
+                    style={{ 
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '0.375rem 0.75rem'
+                    }}
+                    title="Use my current location"
+                  >
+                    {isGettingLocation.value ? (
+                      <>
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Getting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          stroke-width="2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <circle cx="12" cy="12" r="4"></circle>
+                          <line x1="21.17" y1="8" x2="12" y2="8"></line>
+                          <line x1="3.95" y1="6.06" x2="8.54" y2="14"></line>
+                          <line x1="10.88" y1="21.94" x2="15.46" y2="14"></line>
+                        </svg>
+                        <span>My Location</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {/* Search Results Dropdown */}
+                {locationSearchResults.value.length > 0 && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    zIndex: 1000, 
+                    background: 'white', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '4px', 
+                    marginTop: '2px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    width: 'calc(100% - 48px)',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {locationSearchResults.value.map((location, index) => (
+                      <div
+                        key={index}
+                        onClick={() => selectLocation(location)}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: index < locationSearchResults.value.length - 1 ? '1px solid #eee' : 'none'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                      >
+                        {location.displayName}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {isSearchingLocation.value && (
+                  <small class="text-muted">Searching locations...</small>
+                )}
               </div>
+
+              {/* Display Selected Coordinates */}
+              {profile.value.latitude && profile.value.longitude && (
+                <div class="mb-3">
+                  <small class="text-success" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Location selected: {profile.value.latitude.toFixed(4)}, {profile.value.longitude.toFixed(4)}
+                  </small>
+                </div>
+              )}
+              
               <div class="mb-3">
                 <label class="form-label">Gowthra</label>
                 <input
