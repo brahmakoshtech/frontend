@@ -83,11 +83,18 @@ export default {
         loading.value = true;
         toast.info('Creating expert category...');
         
-        // Check if client token exists
-        const token = localStorage.getItem('token_client');
+        // Check if any token exists
+        const clientToken = localStorage.getItem('token_client');
+        const userToken = localStorage.getItem('token_user');
+        const token = clientToken || userToken;
+        
         if (!token) {
           toast.error('Authentication required. Please login again.');
-          router.push('/client/login');
+          if (userToken) {
+            router.push('/user/login');
+          } else {
+            router.push('/client/login');
+          }
           return;
         }
         
@@ -131,7 +138,12 @@ export default {
         console.error('Submit category error:', error);
         if (error.status === 401) {
           toast.error('Authentication required. Please login again.');
-          router.push('/client/login');
+          const userToken = localStorage.getItem('token_user');
+          if (userToken) {
+            router.push('/user/login');
+          } else {
+            router.push('/client/login');
+          }
         } else {
           toast.error('❌ Failed to create category. Please try again.');
         }
@@ -142,9 +154,12 @@ export default {
 
     const fetchExpertCategories = async () => {
       try {
-        const token = localStorage.getItem('token_client');
+        const clientToken = localStorage.getItem('token_client');
+        const userToken = localStorage.getItem('token_user');
+        const token = clientToken || userToken;
+        
         if (!token) {
-          console.warn('No client token found - showing empty state');
+          console.warn('No authentication token found - showing empty state');
           expertCategories.value = [];
           return;
         }
@@ -160,7 +175,12 @@ export default {
           }
         } catch (tokenError) {
           console.warn('Invalid token detected, clearing:', tokenError.message);
-          localStorage.removeItem('token_client');
+          if (clientToken) {
+            localStorage.removeItem('token_client');
+          }
+          if (userToken) {
+            localStorage.removeItem('token_user');
+          }
           expertCategories.value = [];
           return;
         }

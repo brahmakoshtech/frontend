@@ -1,17 +1,15 @@
 // frontend/src/views/client/Users.jsx
 
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '../../services/api.js';
 
 export default {
   name: 'ClientUsers',
   setup() {
+    const router = useRouter();
     const users = ref([]);
     const showCreateModal = ref(false);
-    const showDetailsModal = ref(false);
-    const selectedUser = ref(null);
-    const userDetails = ref(null);
-    const loadingDetails = ref(false);
     const newUser = ref({ 
       email: '', 
       password: '', 
@@ -74,31 +72,21 @@ export default {
       }
     };
 
-    const viewUserDetails = async (user) => {
-      selectedUser.value = user;
-      showDetailsModal.value = true;
-      loadingDetails.value = true;
-      userDetails.value = null;
-
-      try {
-        const response = await api.getUserCompleteDetails(user._id);
-        userDetails.value = response.data;
-      } catch (error) {
-        console.error('Failed to fetch user details:', error);
-        alert('Failed to load user details: ' + error.message);
-      } finally {
-        loadingDetails.value = false;
-      }
+    const viewUserKundali = (user) => {
+      router.push(`/client/users/${user._id}/kundali`);
     };
 
     const closeDetailsModal = () => {
-      showDetailsModal.value = false;
-      selectedUser.value = null;
-      userDetails.value = null;
+      // Not needed anymore - using separate page
     };
 
     const updateProfile = (field, value) => {
-      newUser.value.profile[field] = value;
+      // Handle numeric fields properly
+      if (field === 'latitude' || field === 'longitude') {
+        newUser.value.profile[field] = value && !isNaN(value) ? parseFloat(value) : null;
+      } else {
+        newUser.value.profile[field] = value;
+      }
     };
 
     onMounted(() => {
@@ -141,10 +129,10 @@ export default {
                     </td>
                     <td>
                       <button 
-                        onClick={() => viewUserDetails(user)} 
+                        onClick={() => viewUserKundali(user)} 
                         class="btn btn-info btn-sm me-2"
                       >
-                        View Details
+                        View Kundali
                       </button>
                       <button 
                         onClick={() => handleDelete(user._id)} 
@@ -235,8 +223,8 @@ export default {
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Latitude</label>
                           <input
-                            value={newUser.value.profile.latitude}
-                            onInput={(e) => updateProfile('latitude', parseFloat(e.target.value))}
+                            value={newUser.value.profile.latitude || ''}
+                            onInput={(e) => updateProfile('latitude', e.target.value)}
                             type="number"
                             step="0.0001"
                             class="form-control"
@@ -246,8 +234,8 @@ export default {
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Longitude</label>
                           <input
-                            value={newUser.value.profile.longitude}
-                            onInput={(e) => updateProfile('longitude', parseFloat(e.target.value))}
+                            value={newUser.value.profile.longitude || ''}
+                            onInput={(e) => updateProfile('longitude', e.target.value)}
                             type="number"
                             step="0.0001"
                             class="form-control"
@@ -270,123 +258,6 @@ export default {
                       <button type="submit" class="btn btn-primary">Create</button>
                     </div>
                   </form>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* User Details Modal */}
-          {showDetailsModal.value && (
-            <div 
-              class="modal show d-block" 
-              style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-              onClick={closeDetailsModal}
-            >
-              <div class="modal-dialog modal-xl modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title">User Complete Details</h5>
-                    <button type="button" class="btn-close" onClick={closeDetailsModal}></button>
-                  </div>
-                  <div class="modal-body">
-                    {loadingDetails.value ? (
-                      <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                          <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading user details and astrology data...</p>
-                      </div>
-                    ) : userDetails.value ? (
-                      <div>
-                        {/* User Basic Info */}
-                        <div class="card mb-3">
-                          <div class="card-header bg-primary text-white">
-                            <h6 class="mb-0">Basic Information</h6>
-                          </div>
-                          <div class="card-body">
-                            <div class="row">
-                              <div class="col-md-6">
-                                <p><strong>Name:</strong> {userDetails.value.user.profile?.name || 'N/A'}</p>
-                                <p><strong>Email:</strong> {userDetails.value.user.email}</p>
-                                <p><strong>Mobile:</strong> {userDetails.value.user.mobile || 'N/A'}</p>
-                              </div>
-                              <div class="col-md-6">
-                                <p><strong>DOB:</strong> {userDetails.value.user.profile?.dob ? new Date(userDetails.value.user.profile.dob).toLocaleDateString() : 'N/A'}</p>
-                                <p><strong>Time of Birth:</strong> {userDetails.value.user.profile?.timeOfBirth || 'N/A'}</p>
-                                <p><strong>Place of Birth:</strong> {userDetails.value.user.profile?.placeOfBirth || 'N/A'}</p>
-                                <p><strong>Gowthra:</strong> {userDetails.value.user.profile?.gowthra || 'N/A'}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Astrology Data */}
-                        {userDetails.value.astrology ? (
-                          <>
-                            {/* Birth Details */}
-                            <div class="card mb-3">
-                              <div class="card-header bg-info text-white">
-                                <h6 class="mb-0">Birth Details</h6>
-                              </div>
-                              <div class="card-body">
-                                <pre class="mb-0" style={{ maxHeight: '300px', overflow: 'auto' }}>
-                                  {JSON.stringify(userDetails.value.astrology.birthDetails, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-
-                            {/* Astro Details */}
-                            <div class="card mb-3">
-                              <div class="card-header bg-success text-white">
-                                <h6 class="mb-0">Astrological Details</h6>
-                              </div>
-                              <div class="card-body">
-                                <pre class="mb-0" style={{ maxHeight: '300px', overflow: 'auto' }}>
-                                  {JSON.stringify(userDetails.value.astrology.astroDetails, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-
-                            {/* Planets */}
-                            <div class="card mb-3">
-                              <div class="card-header bg-warning text-dark">
-                                <h6 class="mb-0">Planets</h6>
-                              </div>
-                              <div class="card-body">
-                                <pre class="mb-0" style={{ maxHeight: '300px', overflow: 'auto' }}>
-                                  {JSON.stringify(userDetails.value.astrology.planets, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-
-                            {/* Planets Extended */}
-                            <div class="card mb-3">
-                              <div class="card-header bg-danger text-white">
-                                <h6 class="mb-0">Planets Extended</h6>
-                              </div>
-                              <div class="card-body">
-                                <pre class="mb-0" style={{ maxHeight: '300px', overflow: 'auto' }}>
-                                  {JSON.stringify(userDetails.value.astrology.planetsExtended, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div class="alert alert-warning">
-                            <strong>Astrology Data Not Available</strong>
-                            <p class="mb-0">{userDetails.value.astrologyError || 'No astrology data found'}</p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div class="alert alert-danger">
-                        Failed to load user details
-                      </div>
-                    )}
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onClick={closeDetailsModal}>Close</button>
-                  </div>
                 </div>
               </div>
             </div>

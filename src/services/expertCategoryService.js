@@ -13,7 +13,11 @@ class ExpertCategoryService {
 
     // Add token to requests
     this.api.interceptors.request.use((config) => {
-      const token = localStorage.getItem('token_client');
+      // Check for both client and user tokens
+      const clientToken = localStorage.getItem('token_client');
+      const userToken = localStorage.getItem('token_user');
+      const token = clientToken || userToken;
+      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -24,14 +28,15 @@ class ExpertCategoryService {
   // Create expert category
   async createExpertCategory(categoryData) {
     try {
-      const token = localStorage.getItem('token_client');
-      console.log('Token check:', { hasToken: !!token, tokenLength: token?.length });
+      const clientToken = localStorage.getItem('token_client');
+      const userToken = localStorage.getItem('token_user');
+      const token = clientToken || userToken;
+      console.log('Token check:', { hasToken: !!token, tokenLength: token?.length, tokenType: clientToken ? 'client' : 'user' });
       
       const response = await this.api.post('/', categoryData);
       return response.data;
     } catch (error) {
       console.error('Create expert category error:', error);
-      // Remove automatic redirect - let component handle errors
       throw error.response?.data || error;
     }
   }
@@ -39,14 +44,15 @@ class ExpertCategoryService {
   // Get all expert categories
   async getAllExpertCategories() {
     try {
-      const token = localStorage.getItem('token_client');
-      console.log('Token check:', { hasToken: !!token, tokenLength: token?.length });
+      const clientToken = localStorage.getItem('token_client');
+      const userToken = localStorage.getItem('token_user');
+      const token = clientToken || userToken;
+      console.log('Token check:', { hasToken: !!token, tokenLength: token?.length, tokenType: clientToken ? 'client' : 'user' });
       
       const response = await this.api.get('/');
       return response.data;
     } catch (error) {
       console.error('Get expert categories error:', error);
-      // Remove automatic redirect - let component handle errors
       throw error.response?.data || error;
     }
   }
