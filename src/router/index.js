@@ -69,18 +69,6 @@ const routes = [
     path: '/',
     redirect: '/user/login'
   },
-  {
-    path: '/dashboard',
-    component: () => import('../layouts/DashboardLayout.jsx'),
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        name: 'Dashboard',
-        component: () => import('../views/Dashboard.jsx')
-      }
-    ]
-  },
   // Mobile User Routes (Chat & Voice)
   {
     path: '/mobile/user',
@@ -112,6 +100,36 @@ const routes = [
         path: 'realtime-agent',
         name: 'RealTimeAgent',
         component: () => import('../views/mobile/RealTimeAgent.jsx')
+      },
+      {
+        path: 'activities',
+        name: 'MobileActivities',
+        component: () => import('../views/mobile/MobileActivities.jsx')
+      },
+      {
+        path: 'ask-bi',
+        name: 'MobileAskBI',
+        component: () => import('../views/mobile/MobileAskBI.jsx')
+      },
+      {
+        path: 'sadhana',
+        name: 'MobileSadhana',
+        component: () => import('../views/mobile/MobileSadhana.jsx')
+      },
+      {
+        path: 'rewards',
+        name: 'MobileRewards',
+        component: () => import('../views/mobile/MobileRewards.jsx')
+      },
+      {
+        path: 'brahma-bazar',
+        name: 'MobileBrahmaBazar',
+        component: () => import('../views/mobile/MobileBrahmaBazar.jsx')
+      },
+      {
+        path: 'utility',
+        name: 'MobileUtility',
+        component: () => import('../views/mobile/MobileUtility.jsx')
       }
     ]
   },
@@ -218,8 +236,11 @@ const routes = [
     path: '/client',
     component: () => import('../layouts/ClientLayout.jsx'),
     meta: { requiresAuth: true, requiresRole: ['client', 'admin', 'super_admin'] },
-    redirect: '/client/overview',
     children: [
+      {
+        path: '',
+        redirect: 'overview'
+      },
       {
         path: 'overview',
         name: 'ClientOverview',
@@ -244,6 +265,21 @@ const routes = [
         path: 'services',
         name: 'ClientServices',
         component: () => import('../views/client/Services.jsx')
+      },
+      {
+        path: 'astro',
+        name: 'ClientAstro',
+        component: () => import('../views/client/services/ExpertConnect.jsx')
+      },
+      {
+        path: 'experts',
+        name: 'ExpertManagement',
+        component: () => import('../views/client/services/ExpertManagement.jsx')
+      },
+      {
+        path: 'brahma-bazar',
+        name: 'BrahmaBazar',
+        component: () => import('../views/client/services/BrahmaBazar.jsx')
       },
       {
         path: 'users',
@@ -364,6 +400,11 @@ const routes = [
         path: 'tools/sponsors',
         name: 'ClientSponsors',
         component: () => import('../views/client/tools/Sponsors.jsx')
+      },
+      {
+        path: 'tools/live-avatar',
+        name: 'ClientLiveAvatar',
+        component: () => import('../views/client/tools/LiveAvatar.jsx')
       },
       {
         path: 'support',

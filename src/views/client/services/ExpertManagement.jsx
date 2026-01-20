@@ -1,0 +1,1158 @@
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { 
+  ArrowLeftIcon,
+  PlusIcon,
+  EllipsisVerticalIcon,
+  PencilIcon,
+  TrashIcon,
+  EyeIcon,
+  UserIcon,
+  StarIcon,
+  CurrencyRupeeIcon,
+  ChatBubbleLeftRightIcon,
+  PhoneIcon,
+  VideoCameraIcon,
+  PhotoIcon,
+  CreditCardIcon,
+  ChartBarIcon
+} from '@heroicons/vue/24/outline';
+import { useToast } from 'vue-toastification';
+import expertService from '../../../services/expertService.js';
+
+export default {
+  name: 'ExpertManagement',
+  setup() {
+    const router = useRouter();
+    const toast = useToast();
+    const loading = ref(false);
+    const showExpertModal = ref(false);
+    const showEditModal = ref(false);
+    const showViewModal = ref(false);
+    const activeDropdown = ref(null);
+    const selectedExpert = ref(null);
+    const editingExpert = ref(null);
+    const experts = ref([]);
+
+    const expertForm = ref({
+      name: '',
+      experience: '',
+      expertise: '',
+      profileSummary: '',
+      profilePhoto: null,
+      backgroundBanner: null,
+      chatCharge: '',
+      voiceCharge: '',
+      videoCharge: '',
+      status: 'offline'
+    });
+
+    const editForm = ref({
+      name: '',
+      experience: '',
+      expertise: '',
+      profileSummary: '',
+      profilePhoto: null,
+      backgroundBanner: null,
+      chatCharge: '',
+      voiceCharge: '',
+      videoCharge: '',
+      status: 'offline'
+    });
+
+    const editProfilePhotoUploaded = ref(false);
+    const editProfilePhotoFileName = ref('');
+    const editBannerUploaded = ref(false);
+    const editBannerFileName = ref('');
+
+    const profilePhotoUploaded = ref(false);
+    const profilePhotoFileName = ref('');
+    const bannerUploaded = ref(false);
+    const bannerFileName = ref('');
+
+    const loadExperts = async () => {
+      try {
+        loading.value = true;
+        const response = await expertService.getExperts();
+        if (response.success) {
+          experts.value = response.data || [];
+        } else {
+          toast.error('Failed to load experts');
+        }
+      } catch (error) {
+        console.error('Load experts error:', error);
+        toast.error('Failed to load experts');
+        experts.value = [];
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const goBack = () => {
+      window.close();
+    };
+
+    const openExpertModal = () => {
+      showExpertModal.value = true;
+    };
+
+    const handleImageUpload = (event, type) => {
+      const file = event.target.files[0];
+      if (file) {
+        if (type === 'profilePhoto') {
+          expertForm.value.profilePhoto = file;
+          profilePhotoUploaded.value = true;
+          profilePhotoFileName.value = file.name;
+        } else if (type === 'backgroundBanner') {
+          expertForm.value.backgroundBanner = file;
+          bannerUploaded.value = true;
+          bannerFileName.value = file.name;
+        }
+      }
+    };
+
+    const submitExpert = async () => {
+      try {
+        loading.value = true;
+        toast.info('Creating expert profile...');
+        
+        const expertData = {
+          name: expertForm.value.name,
+          experience: expertForm.value.experience,
+          expertise: expertForm.value.expertise,
+          profileSummary: expertForm.value.profileSummary,
+          chatCharge: expertForm.value.chatCharge,
+          voiceCharge: expertForm.value.voiceCharge,
+          videoCharge: expertForm.value.videoCharge,
+          status: expertForm.value.status
+        };
+        
+        const response = await expertService.createExpert(expertData);
+        
+        if (response.success) {
+          const newExpert = response.data;
+          
+          // Upload profile photo if provided
+          if (expertForm.value.profilePhoto) {
+            try {
+              await expertService.uploadProfilePhoto(newExpert._id, expertForm.value.profilePhoto);
+            } catch (uploadError) {
+              console.warn('Profile photo upload failed:', uploadError);
+            }
+          }
+          
+          // Upload banner if provided
+          if (expertForm.value.backgroundBanner) {
+            try {
+              await expertService.uploadBanner(newExpert._id, expertForm.value.backgroundBanner);
+            } catch (uploadError) {
+              console.warn('Banner upload failed:', uploadError);
+            }
+          }
+          
+          toast.success('✓ Expert profile created successfully!');
+          showExpertModal.value = false;
+          
+          // Reset form
+          expertForm.value = {
+            name: '',
+            experience: '',
+            expertise: '',
+            profileSummary: '',
+            profilePhoto: null,
+            backgroundBanner: null,
+            chatCharge: '',
+            voiceCharge: '',
+            videoCharge: '',
+            status: 'offline'
+          };
+          profilePhotoUploaded.value = false;
+          profilePhotoFileName.value = '';
+          bannerUploaded.value = false;
+          bannerFileName.value = '';
+          
+          // Reload experts
+          await loadExperts();
+        } else {
+          toast.error('Failed to create expert profile');
+        }
+      } catch (error) {
+        console.error('Submit expert error:', error);
+        toast.error('❌ Failed to create expert profile');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const toggleDropdown = (expertId) => {
+      activeDropdown.value = activeDropdown.value === expertId ? null : expertId;
+    };
+
+    const viewExpert = (expert) => {
+      selectedExpert.value = expert;
+      showViewModal.value = true;
+      activeDropdown.value = null;
+    };
+
+    const editExpert = (expert) => {
+      editingExpert.value = expert;
+      editForm.value = {
+        name: expert.name,
+        experience: expert.experience,
+        expertise: expert.expertise,
+        profileSummary: expert.profileSummary,
+        profilePhoto: null,
+        backgroundBanner: null,
+        chatCharge: expert.chatCharge,
+        voiceCharge: expert.voiceCharge,
+        videoCharge: expert.videoCharge,
+        status: expert.status
+      };
+      editProfilePhotoUploaded.value = false;
+      editProfilePhotoFileName.value = '';
+      editBannerUploaded.value = false;
+      editBannerFileName.value = '';
+      showEditModal.value = true;
+      activeDropdown.value = null;
+    };
+
+    const handleEditImageUpload = (event, type) => {
+      const file = event.target.files[0];
+      if (file) {
+        if (type === 'profilePhoto') {
+          editForm.value.profilePhoto = file;
+          editProfilePhotoUploaded.value = true;
+          editProfilePhotoFileName.value = file.name;
+        } else if (type === 'backgroundBanner') {
+          editForm.value.backgroundBanner = file;
+          editBannerUploaded.value = true;
+          editBannerFileName.value = file.name;
+        }
+      }
+    };
+
+    const updateExpert = async () => {
+      try {
+        loading.value = true;
+        toast.info('Updating expert profile...');
+        
+        const expertData = {
+          name: editForm.value.name,
+          experience: editForm.value.experience,
+          expertise: editForm.value.expertise,
+          profileSummary: editForm.value.profileSummary,
+          chatCharge: editForm.value.chatCharge,
+          voiceCharge: editForm.value.voiceCharge,
+          videoCharge: editForm.value.videoCharge,
+          status: editForm.value.status
+        };
+        
+        const response = await expertService.updateExpert(editingExpert.value._id, expertData);
+        
+        if (response.success) {
+          // Upload profile photo if provided
+          if (editForm.value.profilePhoto) {
+            try {
+              await expertService.uploadProfilePhoto(editingExpert.value._id, editForm.value.profilePhoto);
+            } catch (uploadError) {
+              console.warn('Profile photo upload failed:', uploadError);
+            }
+          }
+          
+          // Upload banner if provided
+          if (editForm.value.backgroundBanner) {
+            try {
+              await expertService.uploadBanner(editingExpert.value._id, editForm.value.backgroundBanner);
+            } catch (uploadError) {
+              console.warn('Banner upload failed:', uploadError);
+            }
+          }
+          
+          toast.success('✓ Expert profile updated successfully!');
+          showEditModal.value = false;
+          
+          // Reload experts
+          await loadExperts();
+        } else {
+          toast.error('Failed to update expert profile');
+        }
+      } catch (error) {
+        console.error('Update expert error:', error);
+        toast.error('❌ Failed to update expert profile');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deleteExpert = async (expertId) => {
+      if (!confirm('Are you sure you want to delete this expert?')) return;
+      
+      try {
+        loading.value = true;
+        const response = await expertService.deleteExpert(expertId);
+        
+        if (response.success) {
+          toast.success('✓ Expert deleted successfully!');
+          await loadExperts();
+        } else {
+          toast.error('Failed to delete expert');
+        }
+      } catch (error) {
+        console.error('Delete expert error:', error);
+        toast.error('❌ Failed to delete expert');
+      } finally {
+        loading.value = false;
+      }
+      
+      activeDropdown.value = null;
+    };
+
+    const getStatusBadge = (status) => {
+      const statusConfig = {
+        online: { class: 'bg-success', text: 'Online', color: '#28a745' },
+        offline: { class: 'bg-secondary', text: 'Offline', color: '#6c757d' },
+        busy: { class: 'bg-warning', text: 'Busy', color: '#ffc107' },
+        queue: { class: 'bg-info', text: 'In Queue', color: '#17a2b8' }
+      };
+      return statusConfig[status] || statusConfig.offline;
+    };
+
+    onMounted(() => {
+      loadExperts();
+    });
+
+    return () => (
+      <div class="container-fluid px-2 px-sm-3 px-lg-4">
+        <div class="row">
+          <div class="col-12">
+            {/* Header */}
+            <div class="bg-gradient-primary rounded-3 rounded-lg-4 p-3 p-md-4 mb-3 mb-md-4 text-white shadow-lg">
+              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2 gap-md-3">
+                <button 
+                  class="btn btn-light btn-sm rounded-pill px-3" 
+                  onClick={goBack}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+                >
+                  <ArrowLeftIcon style={{ width: '1rem', height: '1rem' }} />
+                  <span class="d-none d-sm-inline">Close</span>
+                  <span class="d-sm-none">×</span>
+                </button>
+                <div class="flex-grow-1">
+                  <h1 class="mb-1 fw-bold fs-3 fs-md-2 text-dark">Astrologer Management</h1>
+                  <p class="mb-0 text-dark d-none d-sm-block" style={{ opacity: 0.8, fontSize: '0.9rem' }}>
+                    Manage spiritual experts and their profiles
+                  </p>
+                </div>
+                <button 
+                  class="btn btn-light btn-sm btn-md-lg rounded-pill px-3 px-md-4 shadow-sm align-self-stretch align-self-md-auto"
+                  onClick={openExpertModal}
+                  disabled={loading.value}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: '600', minHeight: '40px' }}
+                >
+                  <PlusIcon style={{ width: '1rem', height: '1rem' }} />
+                  <span class="d-none d-sm-inline">Add Expert</span>
+                  <span class="d-sm-none">Add</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div class="row g-2 g-md-3 mb-3 mb-md-4">
+              <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-2 p-md-3">
+                    <div class="text-primary mb-1 mb-md-2">
+                      <UserIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
+                      <UserIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
+                    </div>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{experts.value.length}</h4>
+                    <small class="text-muted" style={{ fontSize: '0.75rem' }}>Total Experts</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-2 p-md-3">
+                    <div class="text-success mb-1 mb-md-2">
+                      <UserIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
+                      <UserIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
+                    </div>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{experts.value.filter(e => e.status === 'online').length}</h4>
+                    <small class="text-muted" style={{ fontSize: '0.75rem' }}>Online Now</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-2 p-md-3">
+                    <div class="text-warning mb-1 mb-md-2">
+                      <StarIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
+                      <StarIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
+                    </div>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">4.7</h4>
+                    <small class="text-muted" style={{ fontSize: '0.75rem' }}>Avg Rating</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-body text-center p-2 p-md-3">
+                    <div class="text-info mb-1 mb-md-2">
+                      <CurrencyRupeeIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
+                      <CurrencyRupeeIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
+                    </div>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">₹65</h4>
+                    <small class="text-muted" style={{ fontSize: '0.75rem' }}>Avg Price</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Experts Grid */}
+            <div class="row g-3">
+              {experts.value.map(expert => (
+                <div key={expert._id} class="col-12 col-md-6 col-xl-4">
+                  <div class="card border-0 shadow-sm h-100 position-relative overflow-hidden" style={{ borderRadius: '12px' }}>
+                    {/* Disabled Overlay */}
+                    {expert.isActive === false && (
+                      <div 
+                        class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                        style={{ 
+                          backgroundColor: 'rgba(255,255,255,0.9)',
+                          zIndex: 10,
+                          backdropFilter: 'blur(2px)'
+                        }}
+                      >
+                        <div class="text-center">
+                          <div class="text-muted mb-2" style={{ fontSize: '3rem' }}>⏸️</div>
+                          <h6 class="text-muted fw-bold">Expert Disabled</h6>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Background Banner */}
+                    {expert.backgroundBanner && (
+                      <div 
+                        class="position-absolute top-0 start-0 w-100"
+                        style={{ 
+                          height: '60px',
+                          backgroundImage: `url(${expert.backgroundBanner})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          opacity: 0.2,
+                          zIndex: 0
+                        }}
+                      ></div>
+                    )}
+                    
+                    <div class="card-body p-3 position-relative" style={{ zIndex: 1 }}>
+                      {/* Expert Header */}
+                      <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-3 flex-grow-1">
+                          <div class="position-relative">
+                            <div 
+                              class="rounded-circle bg-white d-flex align-items-center justify-content-center overflow-hidden shadow-sm"
+                              style={{ width: '50px', height: '50px', minWidth: '50px', border: '2px solid #fff' }}
+                            >
+                              {expert.profilePhoto ? (
+                                <img 
+                                  src={expert.profilePhoto} 
+                                  alt={expert.name}
+                                  class="w-100 h-100 object-fit-cover"
+                                  style={{ objectFit: 'cover' }}
+                                />
+                              ) : (
+                                <UserIcon style={{ width: '1.5rem', height: '1.5rem', color: '#6c757d' }} />
+                              )}
+                            </div>
+                            <span 
+                              class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
+                              style={{ 
+                                width: '12px', 
+                                height: '12px', 
+                                backgroundColor: expert.status === 'online' ? '#10b981' : expert.status === 'busy' ? '#f59e0b' : '#6b7280'
+                              }}
+                            ></span>
+                          </div>
+                          <div class="flex-grow-1 min-w-0">
+                            <h6 class="fw-bold mb-1 text-truncate">{expert.name}</h6>
+                            <div class="d-flex align-items-center gap-1 mb-1">
+                              <StarIcon style={{ width: '0.875rem', height: '0.875rem', color: '#fbbf24' }} />
+                              <small class="text-muted">{expert.rating} ({expert.reviews})</small>
+                            </div>
+                            <span 
+                              class="badge rounded-pill px-2 py-1"
+                              style={{ 
+                                backgroundColor: getStatusBadge(expert.status).color + '20',
+                                color: getStatusBadge(expert.status).color,
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              {getStatusBadge(expert.status).text}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="dropdown">
+                          <button 
+                            class="btn btn-light rounded-circle p-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleDropdown(expert._id);
+                            }}
+                            style={{ width: '32px', height: '32px', border: 'none' }}
+                          >
+                            <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem', color: '#6b7280' }} />
+                          </button>
+                          {activeDropdown.value === expert._id && (
+                            <div 
+                              class="dropdown-menu show position-absolute shadow" 
+                              style={{ 
+                                zIndex: 1050, 
+                                borderRadius: '8px',
+                                right: '0',
+                                left: 'auto',
+                                top: '100%',
+                                minWidth: '150px'
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button class="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => viewExpert(expert)}>
+                                <EyeIcon style={{ width: '1rem', height: '1rem' }} />
+                                <span>View</span>
+                              </button>
+                              <button class="dropdown-item d-flex align-items-center gap-2 py-2" onClick={() => editExpert(expert)}>
+                                <PencilIcon style={{ width: '1rem', height: '1rem' }} />
+                                <span>Edit</span>
+                              </button>
+                              <button 
+                                class="dropdown-item d-flex align-items-center gap-2 py-2" 
+                                onClick={() => toggleExpertStatus(expert._id, expert.isActive ? 'active' : 'inactive')}
+                              >
+                                {expert.isActive ? (
+                                  <>
+                                    <span style={{ width: '1rem', height: '1rem', fontSize: '0.875rem' }}>⏸️</span>
+                                    <span>Disable</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span style={{ width: '1rem', height: '1rem', fontSize: '0.875rem' }}>▶️</span>
+                                    <span>Enable</span>
+                                  </>
+                                )}
+                              </button>
+                              <hr class="dropdown-divider my-1" />
+                              <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" onClick={() => deleteExpert(expert._id)}>
+                                <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expert Details */}
+                      <div class="mb-3">
+                        <div class="row g-2 mb-2">
+                          <div class="col-12">
+                            <small class="text-muted d-block"><strong>Experience:</strong> {expert.experience}</small>
+                          </div>
+                          <div class="col-12">
+                            <small class="text-muted d-block"><strong>Expertise:</strong> {expert.expertise}</small>
+                          </div>
+                        </div>
+                        <div class="bg-light rounded p-2">
+                          <small class="text-muted" style={{ lineHeight: '1.4' }}>
+                            {expert.profileSummary.length > 80 
+                              ? expert.profileSummary.substring(0, 80) + '...' 
+                              : expert.profileSummary
+                            }
+                          </small>
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div class="row g-2">
+                        <div class="col-4">
+                          <div class="text-center p-2 bg-primary text-white rounded">
+                            <ChatBubbleLeftRightIcon style={{ width: '1rem', height: '1rem' }} class="mb-1" />
+                            <div class="fw-bold" style={{ fontSize: '0.75rem' }}>₹{expert.chatCharge}</div>
+                            <div style={{ fontSize: '0.625rem', opacity: 0.9 }}>Chat</div>
+                          </div>
+                        </div>
+                        <div class="col-4">
+                          <div class="text-center p-2 bg-success text-white rounded">
+                            <PhoneIcon style={{ width: '1rem', height: '1rem' }} class="mb-1" />
+                            <div class="fw-bold" style={{ fontSize: '0.75rem' }}>₹{expert.voiceCharge}</div>
+                            <div style={{ fontSize: '0.625rem', opacity: 0.9 }}>Voice</div>
+                          </div>
+                        </div>
+                        <div class="col-4">
+                          <div class="text-center p-2 bg-info text-white rounded">
+                            <VideoCameraIcon style={{ width: '1rem', height: '1rem' }} class="mb-1" />
+                            <div class="fw-bold" style={{ fontSize: '0.75rem' }}>₹{expert.videoCharge}</div>
+                            <div style={{ fontSize: '0.625rem', opacity: 0.9 }}>Video</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {experts.value.length === 0 && (
+              <div class="text-center py-5">
+                <UserIcon style={{ width: '4rem', height: '4rem', color: '#dee2e6' }} class="mb-3" />
+                <h5 class="text-muted mb-2">No experts found</h5>
+                <p class="text-muted mb-3">Start by adding your first expert to the system</p>
+                <button class="btn btn-primary rounded-pill px-4" onClick={openExpertModal}>
+                  <PlusIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                  Add First Expert
+                </button>
+              </div>
+            )}
+
+            {/* Add Expert Modal */}
+            {showExpertModal.value && (
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                <div class="modal-dialog modal-dialog-scrollable">
+                  <div class="modal-content">
+                    <div class="modal-header border-0 pb-0">
+                      <h5 class="modal-title fw-bold">Add New Expert</h5>
+                      <button 
+                        type="button" 
+                        class="btn-close" 
+                        onClick={() => showExpertModal.value = false}
+                      ></button>
+                    </div>
+                    <div class="modal-body px-3 px-md-4">
+                      <form onSubmit={(e) => { e.preventDefault(); submitExpert(); }}>
+                        <div class="row g-3">
+                          {/* Expert Name */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertName">
+                              <UserIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Expert Name *
+                            </label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="expertName"
+                              name="expertName"
+                              v-model={expertForm.value.name}
+                              placeholder="Enter expert name"
+                              required 
+                            />
+                          </div>
+
+                          {/* Experience */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertExperience">
+                              <ChartBarIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Experience *
+                            </label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="expertExperience"
+                              name="expertExperience"
+                              v-model={expertForm.value.experience}
+                              placeholder="e.g., 10 years"
+                              required 
+                            />
+                          </div>
+
+                          {/* Expertise */}
+                          <div class="col-12">
+                            <label class="form-label fw-semibold" for="expertExpertise">
+                              <StarIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Expertise *
+                            </label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="expertExpertise"
+                              name="expertExpertise"
+                              v-model={expertForm.value.expertise}
+                              placeholder="e.g., Astrology, Tarot Reading"
+                              required 
+                            />
+                          </div>
+
+                          {/* Profile Summary */}
+                          <div class="col-12">
+                            <label class="form-label fw-semibold" for="expertSummary">Profile Summary *</label>
+                            <textarea 
+                              class="form-control" 
+                              id="expertSummary"
+                              name="expertSummary"
+                              rows="3"
+                              v-model={expertForm.value.profileSummary}
+                              placeholder="Brief description about the expert"
+                              required
+                            ></textarea>
+                          </div>
+
+                          {/* Profile Photo */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertPhoto">
+                              <PhotoIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Profile Photo
+                            </label>
+                            <input 
+                              type="file" 
+                              class="form-control" 
+                              id="expertPhoto"
+                              name="expertPhoto"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload(e, 'profilePhoto')}
+                            />
+                            {profilePhotoUploaded.value && (
+                              <small class="text-success mt-1 d-block">✓ {profilePhotoFileName.value}</small>
+                            )}
+                          </div>
+
+                          {/* Background Banner */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertBanner">
+                              <PhotoIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Background Banner
+                            </label>
+                            <input 
+                              type="file" 
+                              class="form-control" 
+                              id="expertBanner"
+                              name="expertBanner"
+                              accept="image/*"
+                              onChange={(e) => handleImageUpload(e, 'backgroundBanner')}
+                            />
+                            {bannerUploaded.value && (
+                              <small class="text-success mt-1 d-block">✓ {bannerFileName.value}</small>
+                            )}
+                          </div>
+
+                          {/* Pricing Plans */}
+                          <div class="col-12">
+                            <h6 class="fw-semibold mb-3">
+                              <CreditCardIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Pricing Plans *
+                            </h6>
+                            <div class="row g-2 g-md-3">
+                              <div class="col-12 col-md-4">
+                                <label class="form-label" for="expertChatCharge">
+                                  <ChatBubbleLeftRightIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                                  Chat (₹/min)
+                                </label>
+                                <input 
+                                  type="number" 
+                                  class="form-control" 
+                                  id="expertChatCharge"
+                                  name="expertChatCharge"
+                                  v-model={expertForm.value.chatCharge}
+                                  placeholder="50"
+                                  required 
+                                />
+                              </div>
+                              <div class="col-12 col-md-4">
+                                <label class="form-label" for="expertVoiceCharge">
+                                  <PhoneIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                                  Voice (₹/min)
+                                </label>
+                                <input 
+                                  type="number" 
+                                  class="form-control" 
+                                  id="expertVoiceCharge"
+                                  name="expertVoiceCharge"
+                                  v-model={expertForm.value.voiceCharge}
+                                  placeholder="80"
+                                  required 
+                                />
+                              </div>
+                              <div class="col-12 col-md-4">
+                                <label class="form-label" for="expertVideoCharge">
+                                  <VideoCameraIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                                  Video (₹/min)
+                                </label>
+                                <input 
+                                  type="number" 
+                                  class="form-control" 
+                                  id="expertVideoCharge"
+                                  name="expertVideoCharge"
+                                  v-model={expertForm.value.videoCharge}
+                                  placeholder="120"
+                                  required 
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="expertStatus">Status *</label>
+                            <select class="form-select" id="expertStatus" name="expertStatus" v-model={expertForm.value.status} required>
+                              <option value="offline">Offline</option>
+                              <option value="online">Online</option>
+                              <option value="busy">Busy</option>
+                              <option value="queue">In Queue</option>
+                            </select>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                      <button 
+                        type="button" 
+                        class="btn btn-secondary rounded-pill px-4" 
+                        onClick={() => showExpertModal.value = false}
+                        disabled={loading.value}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-primary rounded-pill px-4" 
+                        onClick={submitExpert}
+                        disabled={loading.value}
+                      >
+                        {loading.value ? (
+                          <>
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            Creating...
+                          </>
+                        ) : (
+                          'Create Expert'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Expert Modal */}
+            {showEditModal.value && editingExpert.value && (
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                <div class="modal-dialog modal-dialog-scrollable">
+                  <div class="modal-content">
+                    <div class="modal-header border-0 pb-0">
+                      <h5 class="modal-title fw-bold">Edit Expert</h5>
+                      <button 
+                        type="button" 
+                        class="btn-close" 
+                        onClick={() => showEditModal.value = false}
+                      ></button>
+                    </div>
+                    <div class="modal-body px-3 px-md-4">
+                      <form onSubmit={(e) => { e.preventDefault(); updateExpert(); }}>
+                        <div class="row g-3">
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertName">
+                              <UserIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Expert Name *
+                            </label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="editExpertName"
+                              name="editExpertName"
+                              v-model={editForm.value.name}
+                              placeholder="Enter expert name"
+                              required 
+                            />
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertExperience">
+                              <ChartBarIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Experience *
+                            </label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="editExpertExperience"
+                              name="editExpertExperience"
+                              v-model={editForm.value.experience}
+                              placeholder="e.g., 10 years"
+                              required 
+                            />
+                          </div>
+                          <div class="col-12">
+                            <label class="form-label fw-semibold" for="editExpertExpertise">
+                              <StarIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Expertise *
+                            </label>
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              id="editExpertExpertise"
+                              name="editExpertExpertise"
+                              v-model={editForm.value.expertise}
+                              placeholder="e.g., Astrology, Tarot Reading"
+                              required 
+                            />
+                          </div>
+                          <div class="col-12">
+                            <label class="form-label fw-semibold" for="editExpertSummary">Profile Summary *</label>
+                            <textarea 
+                              class="form-control" 
+                              id="editExpertSummary"
+                              name="editExpertSummary"
+                              rows="3"
+                              v-model={editForm.value.profileSummary}
+                              placeholder="Brief description about the expert"
+                              required
+                            ></textarea>
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertPhoto">
+                              <PhotoIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Profile Photo
+                            </label>
+                            <input 
+                              type="file" 
+                              class="form-control" 
+                              id="editExpertPhoto"
+                              name="editExpertPhoto"
+                              accept="image/*"
+                              onChange={(e) => handleEditImageUpload(e, 'profilePhoto')}
+                            />
+                            {editProfilePhotoUploaded.value && (
+                              <small class="text-success mt-1 d-block">✓ {editProfilePhotoFileName.value}</small>
+                            )}
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertBanner">
+                              <PhotoIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Background Banner
+                            </label>
+                            <input 
+                              type="file" 
+                              class="form-control" 
+                              id="editExpertBanner"
+                              name="editExpertBanner"
+                              accept="image/*"
+                              onChange={(e) => handleEditImageUpload(e, 'backgroundBanner')}
+                            />
+                            {editBannerUploaded.value && (
+                              <small class="text-success mt-1 d-block">✓ {editBannerFileName.value}</small>
+                            )}
+                          </div>
+                          <div class="col-12">
+                            <h6 class="fw-semibold mb-3">
+                              <CreditCardIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                              Pricing Plans *
+                            </h6>
+                            <div class="row g-2 g-md-3">
+                              <div class="col-12 col-md-4">
+                                <label class="form-label" for="editExpertChatCharge">
+                                  <ChatBubbleLeftRightIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                                  Chat (₹/min)
+                                </label>
+                                <input 
+                                  type="number" 
+                                  class="form-control" 
+                                  id="editExpertChatCharge"
+                                  name="editExpertChatCharge"
+                                  v-model={editForm.value.chatCharge}
+                                  placeholder="50"
+                                  required 
+                                />
+                              </div>
+                              <div class="col-12 col-md-4">
+                                <label class="form-label" for="editExpertVoiceCharge">
+                                  <PhoneIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                                  Voice (₹/min)
+                                </label>
+                                <input 
+                                  type="number" 
+                                  class="form-control" 
+                                  id="editExpertVoiceCharge"
+                                  name="editExpertVoiceCharge"
+                                  v-model={editForm.value.voiceCharge}
+                                  placeholder="80"
+                                  required 
+                                />
+                              </div>
+                              <div class="col-12 col-md-4">
+                                <label class="form-label" for="editExpertVideoCharge">
+                                  <VideoCameraIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
+                                  Video (₹/min)
+                                </label>
+                                <input 
+                                  type="number" 
+                                  class="form-control" 
+                                  id="editExpertVideoCharge"
+                                  name="editExpertVideoCharge"
+                                  v-model={editForm.value.videoCharge}
+                                  placeholder="120"
+                                  required 
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editExpertStatus">Status *</label>
+                            <select class="form-select" id="editExpertStatus" name="editExpertStatus" v-model={editForm.value.status} required>
+                              <option value="offline">Offline</option>
+                              <option value="online">Online</option>
+                              <option value="busy">Busy</option>
+                              <option value="queue">In Queue</option>
+                            </select>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                      <button 
+                        type="button" 
+                        class="btn btn-secondary rounded-pill px-4" 
+                        onClick={() => showEditModal.value = false}
+                        disabled={loading.value}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-primary rounded-pill px-4" 
+                        onClick={updateExpert}
+                        disabled={loading.value}
+                      >
+                        {loading.value ? (
+                          <>
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            Updating...
+                          </>
+                        ) : (
+                          'Update Expert'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View Expert Modal */}
+            {showViewModal.value && selectedExpert.value && (
+              <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => showViewModal.value = false}>
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
+                  <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header border-0 pb-2">
+                      <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <EyeIcon style={{ width: '1.5rem', height: '1.5rem' }} />
+                        {selectedExpert.value.name}
+                      </h5>
+                      <button type="button" class="btn-close" onClick={() => showViewModal.value = false}></button>
+                    </div>
+                    <div class="modal-body pt-2" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                      <div class="text-center mb-4">
+                        <div 
+                          class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3 overflow-hidden"
+                          style={{ width: '80px', height: '80px' }}
+                        >
+                          {selectedExpert.value.profilePhoto ? (
+                            <img 
+                              src={selectedExpert.value.profilePhoto} 
+                              alt={selectedExpert.value.name}
+                              class="w-100 h-100 object-fit-cover"
+                              style={{ objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <UserIcon style={{ width: '2.5rem', height: '2.5rem', color: '#6c757d' }} />
+                          )}
+                        </div>
+                        <h4 class="fw-bold mb-1">{selectedExpert.value.name}</h4>
+                        <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                          <StarIcon style={{ width: '1rem', height: '1rem', color: '#ffc107' }} />
+                          <span class="small">{selectedExpert.value.rating} ({selectedExpert.value.reviews} reviews)</span>
+                        </div>
+                        <span 
+                          class="badge rounded-pill px-3 py-2"
+                          style={{ 
+                            backgroundColor: getStatusBadge(selectedExpert.value.status).color + '20',
+                            color: getStatusBadge(selectedExpert.value.status).color
+                          }}
+                        >
+                          {getStatusBadge(selectedExpert.value.status).text}
+                        </span>
+                      </div>
+                      
+                      <div class="mb-3">
+                        <h6 class="fw-semibold mb-2 small text-muted">Experience</h6>
+                        <p class="mb-0">{selectedExpert.value.experience}</p>
+                      </div>
+                      
+                      <div class="mb-3">
+                        <h6 class="fw-semibold mb-2 small text-muted">Expertise</h6>
+                        <p class="mb-0">{selectedExpert.value.expertise}</p>
+                      </div>
+                      
+                      <div class="mb-3">
+                        <h6 class="fw-semibold mb-2 small text-muted">Profile Summary</h6>
+                        <p class="mb-0">{selectedExpert.value.profileSummary}</p>
+                      </div>
+                      
+                      {selectedExpert.value.backgroundBanner && (
+                        <div class="mb-3">
+                          <h6 class="fw-semibold mb-2 small text-muted d-flex align-items-center gap-1">
+                            <PhotoIcon style={{ width: '16px', height: '16px' }} />
+                            Background Banner
+                          </h6>
+                          <img src={selectedExpert.value.backgroundBanner} alt="Background Banner" class="img-fluid rounded-3" />
+                        </div>
+                      )}
+                      
+                      <div class="mb-3">
+                        <h6 class="fw-semibold mb-2 small text-muted d-flex align-items-center gap-1">
+                          <CreditCardIcon style={{ width: '16px', height: '16px' }} />
+                          Pricing Plans
+                        </h6>
+                        <div class="row g-2">
+                          <div class="col-12 col-sm-4">
+                            <div class="card border-0 bg-light text-center p-2">
+                              <ChatBubbleLeftRightIcon style={{ width: '1.25rem', height: '1.25rem', color: '#6c757d' }} class="mb-2 mx-auto" />
+                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.chatCharge}</h6>
+                              <small class="text-muted">per minute</small>
+                              <div class="mt-1">
+                                <small class="fw-semibold">Chat</small>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-12 col-sm-4">
+                            <div class="card border-0 bg-light text-center p-2">
+                              <PhoneIcon style={{ width: '1.25rem', height: '1.25rem', color: '#6c757d' }} class="mb-2 mx-auto" />
+                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.voiceCharge}</h6>
+                              <small class="text-muted">per minute</small>
+                              <div class="mt-1">
+                                <small class="fw-semibold">Voice Call</small>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-12 col-sm-4">
+                            <div class="card border-0 bg-light text-center p-2">
+                              <VideoCameraIcon style={{ width: '1.25rem', height: '1.25rem', color: '#6c757d' }} class="mb-2 mx-auto" />
+                              <h6 class="fw-bold mb-1">₹{selectedExpert.value.videoCharge}</h6>
+                              <small class="text-muted">per minute</small>
+                              <div class="mt-1">
+                                <small class="fw-semibold">Video Call</small>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-2">
+                      <button type="button" class="btn btn-secondary rounded-pill px-3 btn-sm" onClick={() => showViewModal.value = false}>
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+};

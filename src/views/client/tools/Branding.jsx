@@ -1,5 +1,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import { ArrowLeftIcon, PlusIcon, PhotoIcon, TrashIcon, EyeIcon, PencilIcon, EllipsisVerticalIcon, CalendarIcon, ChartBarIcon, SwatchIcon, GlobeAltIcon, ShareIcon } from '@heroicons/vue/24/outline';
 import brandAssetService from '../../../services/brandAssetService.js';
 
@@ -7,6 +8,7 @@ export default {
   name: 'ClientBranding',
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const brandAssets = ref([]);
     const loading = ref(false);
     const showUploadModal = ref(false);
@@ -126,7 +128,7 @@ export default {
     // Add new brand asset
     const addBrandAsset = async () => {
       if (!formData.value.headingText || !formData.value.brandLogoName || !formData.value.webLinkUrl || !formData.value.socialLink) {
-        alert('Please fill all required fields');
+        toast.error('Please fill all required fields');
         return;
       }
 
@@ -167,7 +169,7 @@ export default {
                 }
               }
             } catch (imageError) {
-              alert('Brand asset created but logo image upload failed');
+              toast.warning('Brand asset created but logo image upload failed');
             }
           }
           
@@ -196,7 +198,7 @@ export default {
                 }
               }
             } catch (bgImageError) {
-              alert('Brand asset created but background image upload failed');
+              toast.warning('Brand asset created but background image upload failed');
             }
           }
           
@@ -207,11 +209,12 @@ export default {
           backgroundImageUploaded.value = false;
           backgroundImageFileName.value = '';
           showUploadModal.value = false;
+          toast.success('Brand asset created successfully!');
         } else {
-          alert('Failed to create brand asset: ' + response.error);
+          toast.error('Failed to create brand asset: ' + response.error);
         }
       } catch (error) {
-        alert('Error creating brand asset');
+        toast.error('Error creating brand asset');
       } finally {
         loading.value = false;
       }
@@ -232,7 +235,7 @@ export default {
     // Update brand asset
     const updateBrandAsset = async () => {
       if (!editFormData.value.headingText || !editFormData.value.brandLogoName || !editFormData.value.webLinkUrl || !editFormData.value.socialLink) {
-        alert('Please fill all required fields');
+        toast.error('Please fill all required fields');
         return;
       }
 
@@ -279,7 +282,7 @@ export default {
                 }
               }
             } catch (imageError) {
-              alert('Asset updated but logo image upload failed');
+              toast.warning('Asset updated but logo image upload failed');
             }
           } else if (originalAsset && originalAsset.brandLogoImage) {
             // Preserve existing image if no new image uploaded
@@ -314,7 +317,7 @@ export default {
                 }
               }
             } catch (bgImageError) {
-              alert('Asset updated but background image upload failed');
+              toast.warning('Asset updated but background image upload failed');
             }
           } else if (originalAsset && originalAsset.backgroundLogoImage) {
             // Preserve existing background image if no new image uploaded
@@ -332,11 +335,12 @@ export default {
           editImageFileName.value = '';
           editBackgroundImageUploaded.value = false;
           editBackgroundImageFileName.value = '';
+          toast.success('Brand asset updated successfully!');
         } else {
-          alert('Failed to update brand asset: ' + response.error);
+          toast.error('Failed to update brand asset: ' + response.error);
         }
       } catch (error) {
-        alert('Error updating brand asset');
+        toast.error('Error updating brand asset');
       } finally {
         loading.value = false;
       }
@@ -352,31 +356,36 @@ export default {
             brandAssets.value[index] = { ...brandAssets.value[index], isActive: response.data.isActive };
           }
           activeDropdown.value = null;
-          alert(`Brand asset ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+          toast.success(`Brand asset ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
         } else {
-          alert('Failed to toggle status: ' + response.error);
+          toast.error('Failed to toggle status: ' + response.error);
         }
       } catch (error) {
         console.error('Error toggling status:', error);
-        alert('Error toggling status');
+        toast.error('Error toggling status');
       }
     };
 
     // Delete brand asset
     const deleteAsset = async (id) => {
-      if (!confirm('Are you sure you want to delete this brand asset?')) return;
+      const shouldDelete = confirm('⚠️ Are you sure you want to delete this brand asset?\n\nThis action cannot be undone.');
+      if (!shouldDelete) {
+        toast.info('Delete cancelled');
+        return;
+      }
       
       loading.value = true;
       try {
         const response = await brandAssetService.deleteBrandAsset(id);
         if (response.success) {
           brandAssets.value = brandAssets.value.filter(a => (a._id || a.id) !== id);
+          toast.success('Brand asset deleted successfully!');
         } else {
-          alert('Failed to delete brand asset: ' + response.error);
+          toast.error('Failed to delete brand asset: ' + response.error);
         }
       } catch (error) {
         console.error('Error deleting brand asset:', error);
-        alert('Error deleting brand asset');
+        toast.error('Error deleting brand asset');
       } finally {
         loading.value = false;
       }
@@ -491,18 +500,18 @@ export default {
                       </div>
                     )}
                     
-                    {/* Dropdown in top-right corner */}
-                    <div class="position-absolute" style={{ top: '12px', right: '12px', zIndex: 10 }}>
+                    {/* Dropdown above bottom border */}
+                    <div class="position-absolute" style={{ bottom: '70px', right: '12px', zIndex: 10 }}>
                       <div class="dropdown position-relative">
                         <button 
                           class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                           onClick={() => toggleDropdown(asset._id || asset.id)}
-                          style={{ width: '32px', height: '32px', transition: 'all 0.2s ease' }}
+                          style={{ width: '32px', height: '32px', transition: 'all 0.2s ease', backgroundColor: 'white', border: 'none' }}
                         >
-                          <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem' }} />
+                          <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem', color: 'black' }} />
                         </button>
                         {activeDropdown.value === (asset._id || asset.id) && (
-                          <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
+                          <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', bottom: '100%', zIndex: 1000, marginBottom: '8px' }}>
                             {asset.isActive && (
                               <>
                                 <button 
@@ -552,8 +561,8 @@ export default {
                           />
                         </div>
                         <div class="flex-grow-1">
-                          <h5 class="mb-1 fw-bold" style={{ fontSize: '1.1rem', color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>{asset.headingText || 'Brand Asset'}</h5>
-                          <p class="mb-0 fw-semibold" style={{ fontSize: '0.95rem', color: '#fff', textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>{asset.brandLogoName || 'Logo Name'}</p>
+                          <h5 class="mb-1 fw-bold" style={{ fontSize: '1.3rem', color: '#FFD700', textShadow: '2px 2px 4px rgba(0,0,0,0.8)', wordBreak: 'break-word', lineHeight: '1.2' }}>{asset.headingText || 'Brand Asset'}</h5>
+                          <p class="mb-0 fw-semibold" style={{ fontSize: '1rem', color: '#87CEEB', textShadow: '1px 1px 3px rgba(0,0,0,0.7)', wordBreak: 'break-word' }}>{asset.brandLogoName || 'Logo Name'}</p>
                         </div>
                       </div>
                       <div class="d-flex justify-content-between align-items-start mb-2">

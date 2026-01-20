@@ -12,7 +12,8 @@ import {
   TicketIcon,
   ArrowRightIcon,
   ClockIcon,
-  BuildingOffice2Icon
+  BuildingOffice2Icon,
+  VideoCameraIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -119,6 +120,15 @@ export default {
         route: '/client/tools/sponsors',
         color: '#7c3aed',
         category: 'Marketing'
+      },
+      { 
+        id: 12, 
+        name: 'Live Avatar', 
+        icon: VideoCameraIcon, 
+        description: 'Create and manage interactive live avatar experiences', 
+        route: '/client/tools/live-avatar',
+        color: '#ff6b6b',
+        category: 'Content'
       }
     ];
 

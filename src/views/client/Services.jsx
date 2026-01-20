@@ -16,31 +16,31 @@ export default {
     const services = [
       { 
         id: 1, 
-        name: 'Astro', 
+        name: 'Expert connect', 
         icon: StarIcon, 
         description: 'Professional astrology consultations and horoscope readings', 
         route: '/client/astro',
         color: '#8b5cf6',
         category: 'Spiritual'
       },
-      { 
-        id: 2, 
-        name: 'Healing', 
-        icon: HeartIcon, 
-        description: 'Spiritual healing sessions and wellness treatments', 
-        route: '/client/healing',
-        color: '#10b981',
-        category: 'Wellness'
-      },
-      { 
-        id: 3, 
-        name: 'Yoga', 
-        icon: UserGroupIcon, 
-        description: 'Yoga classes, meditation sessions and mindfulness training', 
-        route: '/client/yoga',
-        color: '#06b6d4',
-        category: 'Fitness'
-      },
+      // { 
+      //   id: 2, 
+      //   name: 'Healing', 
+      //   icon: HeartIcon, 
+      //   description: 'Spiritual healing sessions and wellness treatments', 
+      //   route: '/client/healing',
+      //   color: '#10b981',
+      //   category: 'Wellness'
+      // },
+      // { 
+      //   id: 3, 
+      //   name: 'Yoga', 
+      //   icon: UserGroupIcon, 
+      //   description: 'Yoga classes, meditation sessions and mindfulness training', 
+      //   route: '/client/yoga',
+      //   color: '#06b6d4',
+      //   category: 'Fitness'
+      // },
       { 
         id: 4, 
         name: 'Brahma Bazar', 
@@ -106,12 +106,12 @@ export default {
             <div class="mb-5">
               <div class="d-flex align-items-center justify-content-between mb-3">
                 <div>
-                  <h1 class="display-5 fw-bold text-dark mb-2">Our Services</h1>
+                  <h1 class="display-5 fw-bold text-dark mb-2">Services</h1>
                   <p class="lead text-muted mb-0">Explore our spiritual and wellness services for your journey</p>
                 </div>
                 <div class="text-end">
                   <div class="badge bg-light text-dark px-3 py-2 fs-6">
-                    {services.length} Services Available
+                    Services
                   </div>
                 </div>
               </div>
