@@ -13,7 +13,10 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   UserIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  SparklesIcon,
+  AcademicCapIcon,
+  BuildingLibraryIcon
 } from '@heroicons/vue/24/outline';
 import { useToast } from 'vue-toastification';
 import liveAvatarService from '../../../services/liveAvatarService';
@@ -50,6 +53,7 @@ export default {
       description: '',
       agentId: '',
       gender: 'Male',
+      category: 'Deity',
       image: null,
       videos: null,
       link: ''
@@ -216,6 +220,7 @@ export default {
           description: newAvatar.value.description,
           agentId: newAvatar.value.agentId,
           gender: newAvatar.value.gender,
+          category: newAvatar.value.category,
           link: newAvatar.value.link,
           videoUrl,
           imageUrl
@@ -227,7 +232,7 @@ export default {
         }
         
         // Reset form
-        newAvatar.value = { name: '', description: '', agentId: '', gender: 'Male', image: null, videos: null, link: '' };
+        newAvatar.value = { name: '', description: '', agentId: '', gender: 'Male', category: 'Deity', image: null, videos: null, link: '' };
         videoUploaded.value = false;
         videoFileName.value = '';
         imageUploaded.value = false;
@@ -263,6 +268,7 @@ export default {
           description: editingAvatar.value.description,
           agentId: editingAvatar.value.agentId,
           gender: editingAvatar.value.gender,
+          category: editingAvatar.value.category,
           link: editingAvatar.value.link
         };
         
@@ -676,6 +682,19 @@ export default {
                       </div>
                       
                       <div class="mb-3">
+                        <h6 class="fw-semibold mb-2 small text-muted">Category</h6>
+                        <span class={`badge ${
+                          selectedAvatar.value.category === 'Deity' ? 'bg-primary' :
+                          selectedAvatar.value.category === 'Rashami' ? 'bg-success' :
+                          selectedAvatar.value.category === 'Expert' ? 'bg-warning text-dark' : 'bg-secondary'
+                        } px-3 py-2`}>
+                          {selectedAvatar.value.category === 'Deity' ? '🕉️ Deity' :
+                           selectedAvatar.value.category === 'Rashami' ? '🌟 Rashami' :
+                           selectedAvatar.value.category === 'Expert' ? '👨‍🏫 Expert' : selectedAvatar.value.category}
+                        </span>
+                      </div>
+                      
+                      <div class="mb-3">
                         <h6 class="fw-semibold mb-2 small text-muted">Gender</h6>
                         <p class="mb-0">{selectedAvatar.value.gender === 'Male' ? '👨 Male' : '👩 Female'}</p>
                       </div>
@@ -854,21 +873,30 @@ export default {
                           <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold small" for="avatar-gender">Gender *</label>
                             <select class="form-select rounded-3" id="avatar-gender" name="avatarGender" v-model={newAvatar.value.gender} required>
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
+                              <option value="Male">👨 Male</option>
+                              <option value="Female">👩 Female</option>
                             </select>
                           </div>
                           <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold small" for="avatar-link">Link (Optional)</label>
-                            <input 
-                              type="url" 
-                              class="form-control rounded-3" 
-                              id="avatar-link"
-                              name="avatarLink"
-                              v-model={newAvatar.value.link}
-                              placeholder="https://example.com"
-                            />
+                            <label class="form-label fw-semibold small" for="avatar-category">Category *</label>
+                            <select class="form-select rounded-3" id="avatar-category" name="avatarCategory" v-model={newAvatar.value.category} required>
+                              <option value="Deity">🕉️ Deity</option>
+                              <option value="Rashami">🌟 Rashami</option>
+                              <option value="Expert">👨‍🏫 Expert</option>
+                            </select>
                           </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label class="form-label fw-semibold small" for="avatar-link">Link (Optional)</label>
+                          <input 
+                            type="url" 
+                            class="form-control rounded-3" 
+                            id="avatar-link"
+                            name="avatarLink"
+                            v-model={newAvatar.value.link}
+                            placeholder="https://example.com"
+                          />
                         </div>
                         
                         <div class="mb-3">
@@ -1012,14 +1040,22 @@ export default {
                         </div>
                         
                         <div class="row">
-                          <div class="col-md-6 mb-3">
+                          <div class="col-md-4 mb-3">
                             <label class="form-label fw-semibold small" for="edit-avatar-gender">Gender *</label>
                             <select class="form-select rounded-3" id="edit-avatar-gender" name="editAvatarGender" v-model={editingAvatar.value.gender} required>
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
+                              <option value="Male">👨 Male</option>
+                              <option value="Female">👩 Female</option>
                             </select>
                           </div>
-                          <div class="col-md-6 mb-3">
+                          <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold small" for="edit-avatar-category">Category *</label>
+                            <select class="form-select rounded-3" id="edit-avatar-category" name="editAvatarCategory" v-model={editingAvatar.value.category} required>
+                              <option value="Deity">Deity</option>
+                              <option value="Rashami">Rashami</option>
+                              <option value="Expert">Expert</option>
+                            </select>
+                          </div>
+                          <div class="col-md-4 mb-3">
                             <label class="form-label fw-semibold small" for="edit-avatar-link">Link (Optional)</label>
                             <input 
                               type="url" 
