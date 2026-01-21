@@ -84,8 +84,9 @@ export const getobject = async (key, expiresIn = 604800) => {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: actualKey,
       ResponseContentDisposition: 'inline',
-      ResponseContentType: actualKey.endsWith('.txt') ? 'text/plain; charset=utf-8' : undefined,
-      ResponseCacheControl: 'max-age=31536000',
+      ResponseContentType: actualKey.match(/\.(mp4|webm|ogg)$/i) ? 'video/mp4' : 
+                           actualKey.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image/jpeg' : undefined,
+      ResponseCacheControl: 'max-age=31536000, public',
       ResponseExpires: new Date(Date.now() + expiresIn * 1000).toISOString()
     });
 

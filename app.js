@@ -32,6 +32,7 @@ import expertCategoryRoutes from './routes/expertCategories.js';
 import expertRoutes from './routes/experts.js';
 import meditationRoutes from './routes/meditations.js';
 import liveAvatarRoutes from './routes/liveAvatars.js';
+import brahmAvatarRoutes from './routes/brahmAvatars.js';
 import chantingRoutes from './routes/chantings.js';
 import prathanaRoutes from './routes/prathanas.js';
 import publicRoutes from './routes/public.js';
@@ -130,6 +131,9 @@ app.use('/api/meditations', meditationRoutes);
 
 // Live Avatar Routes
 app.use('/api/live-avatars', liveAvatarRoutes);
+
+// Brahm Avatar Routes
+app.use('/api/brahm-avatars', brahmAvatarRoutes);
 
 // Chanting Routes
 app.use('/api/chantings', chantingRoutes);
