@@ -130,6 +130,11 @@ const routes = [
         path: 'utility',
         name: 'MobileUtility',
         component: () => import('../views/mobile/MobileUtility.jsx')
+      },
+      {
+        path: 'brahm-avatar',
+        name: 'MobileBrahmAvatarReels',
+        component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')
       }
     ]
   },
@@ -425,6 +430,11 @@ const routes = [
         path: 'tools/live-avatar',
         name: 'ClientLiveAvatar',
         component: () => import('../views/client/tools/LiveAvatar.jsx')
+      },
+      {
+        path: 'tools/brahm-avatar',
+        name: 'ClientBrahmAvatar',
+        component: () => import('../views/client/tools/BrahmAvatar.jsx')
       },
       {
         path: 'support',

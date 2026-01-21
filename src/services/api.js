@@ -64,14 +64,15 @@ class ApiService {
         tokenSource = 'admin (endpoint match)';
       } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') ||
         endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || endpoint.includes('/brand-assets') ||
-        endpoint.includes('/meditations') || endpoint.includes('/chantings')) {
-        // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS, MEDITATIONS & CHANTINGS: Always use client token
+        endpoint.includes('/meditations') || endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars')) {
+        // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS, MEDITATIONS, CHANTINGS & BRAHM-AVATARS: Always use client token
         token = getTokenForRole('client');
         tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 
                      endpoint.includes('/founder-messages') ? 'client (founder-messages endpoint)' : 
                      endpoint.includes('/brand-assets') ? 'client (brand-assets endpoint)' :
                      endpoint.includes('/meditations') ? 'client (meditations endpoint)' :
                      endpoint.includes('/chantings') ? 'client (chantings endpoint)' :
+                     endpoint.includes('/brahm-avatars') ? 'client (brahm-avatars endpoint)' :
                      'client (endpoint match)';
       } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {

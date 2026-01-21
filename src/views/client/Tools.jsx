@@ -13,7 +13,8 @@ import {
   ArrowRightIcon,
   ClockIcon,
   BuildingOffice2Icon,
-  VideoCameraIcon
+  VideoCameraIcon,
+  FilmIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -128,6 +129,15 @@ export default {
         description: 'Create and manage interactive live avatar experiences', 
         route: '/client/tools/live-avatar',
         color: '#ff6b6b',
+        category: 'Content'
+      },
+      { 
+        id: 13, 
+        name: 'Brahm Avatar', 
+        icon: FilmIcon, 
+        description: 'Create and manage spiritual reels and short video content', 
+        route: '/client/tools/brahm-avatar',
+        color: '#ff9500',
         category: 'Content'
       }
     ];

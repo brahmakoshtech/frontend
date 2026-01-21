@@ -58,10 +58,37 @@ export default {
     const editImageFileName = ref('');
     const editUploadProgress = ref({ video: 0, image: 0 });
 
+    // Helper function to decode HTML entities in URLs
+    const decodeUrl = (url) => {
+      if (!url) return url;
+      return url
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/g, "'")
+        .replace(/&#x2F;/g, '/')
+        .replace(/&#x3D;/g, '=');
+    };
+
     const loadMeditations = async () => {
       try {
         loading.value = true;
         const data = await meditationService.getAll();
+        
+        // Decode URLs for proper display
+        if (Array.isArray(data)) {
+          data.forEach(meditation => {
+            if (meditation.videoUrl) {
+              meditation.videoUrl = decodeUrl(meditation.videoUrl);
+            }
+            if (meditation.imageUrl) {
+              meditation.imageUrl = decodeUrl(meditation.imageUrl);
+            }
+          });
+        }
+        
         meditations.value = data;
       } catch (error) {
         console.error('Error loading meditations:', error);
@@ -328,9 +355,6 @@ export default {
           }
         }
         
-        closeEditModal();
-        editUploadProgress.value = { video: 0, image: 0 };
-        alert('Meditation updated successfully!');
         closeEditModal();
         editUploadProgress.value = { video: 0, image: 0 };
         alert('Meditation updated successfully!');
