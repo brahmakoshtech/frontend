@@ -1,4 +1,5 @@
 import { ref, onMounted, computed } from 'vue';
+import logo from '../../assets/logo.jpeg';
 
 export default {
   name: 'PartnerDashboard',
@@ -186,18 +187,20 @@ export default {
         )}
         
         {/* Fixed Sidebar */}
-        <div style={`position: fixed; top: 0; left: 0; width: ${sidebarCollapsed.value ? '80px' : '260px'}; height: 100vh; background-color: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); z-index: 50; transition: width 0.3s ease;`}>
+        <div style={`position: fixed; top: 0; left: 0; width: ${sidebarCollapsed.value ? '80px' : '260px'}; height: 100vh; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); box-shadow: 2px 0 8px rgba(0,0,0,0.1); z-index: 50; transition: width 0.3s ease;`}>
           {/* Sidebar Header */}
-          <div style="display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 24px; border-bottom: 1px solid #e5e7eb; margin: 0;">
-            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #7c3aed, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                  <span style="color: white; font-weight: bold; font-size: 14px;">BK</span>
-                </div>
-                <span style={`font-size: 20px; font-weight: bold; color: #1f2937; ${sidebarCollapsed.value ? 'display: none;' : ''}`}>BrahmKosh</span>
-              </div>
+          <div style="display: flex; align-items: center; justify-content: center; height: 80px; padding: 0 24px; border-bottom: 1px solid #2d2d3e; margin: 0;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+              <img 
+                src={logo} 
+                alt="Brahmakosh Logo" 
+                style="width: 40px; height: 40px; border-radius: 8px; object-fit: contain;"
+              />
               {!sidebarCollapsed.value && (
-                <p style="font-size: 12px; color: #6b7280; margin: 0; padding-left: 44px;">Partner Dashboard</p>
+                <div>
+                  <div style="font-size: 18px; font-weight: bold; color: white; line-height: 1.2;">BrahmKosh</div>
+                  <div style="font-size: 11px; color: #9ca3af; line-height: 1;">Partner Dashboard</div>
+                </div>
               )}
             </div>
           </div>
@@ -223,8 +226,8 @@ export default {
                 }}
                 style={`width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 4px; text-align: left; border-radius: 8px; transition: all 0.2s; border: none; cursor: pointer; justify-content: ${sidebarCollapsed.value ? 'center' : 'flex-start'}; ${
                   activeTab.value === item.id
-                    ? 'background: linear-gradient(135deg, #7c3aed, #2563eb); color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'
-                    : 'color: #6b7280; background: transparent;'
+                    ? 'background: #2d2d3e; color: #6366f1; border-left: 3px solid #6366f1;'
+                    : 'color: #b4b4c0; background: transparent;'
                 }`}
               >
                 <span style="font-size: 18px;">{item.icon}</span>
@@ -234,7 +237,7 @@ export default {
           </nav>
           
           {/* Logout Button */}
-          <div style="position: absolute; bottom: 0; width: 100%; padding: 24px; border-top: 1px solid #e5e7eb; z-index: 100;">
+          <div style="position: absolute; bottom: 0; width: 100%; padding: 24px; border-top: 1px solid #2d2d3e; z-index: 100;">
             <div
               onClick={() => {
                 console.log('Logout clicked');
@@ -247,7 +250,7 @@ export default {
                   window.location.replace('/partner/login');
                 }, 100);
               }}
-              style={`width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; color: #dc2626; background: transparent; border: none; border-radius: 8px; transition: background-color 0.2s; cursor: pointer; justify-content: ${sidebarCollapsed.value ? 'center' : 'flex-start'};`}
+              style={`width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; color: #b4b4c0; background: transparent; border: none; border-radius: 8px; transition: background-color 0.2s; cursor: pointer; justify-content: ${sidebarCollapsed.value ? 'center' : 'flex-start'};`}
             >
               <span style="font-size: 18px;">
                 <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20">
