@@ -53,18 +53,44 @@ class ApiService {
     let token = options.token;
     console.log('token', token);
     let tokenSource = 'provided';
-
+  
     if (!token) {
-      // Determine role from endpoint
-      if (endpoint.includes('/super-admin/') || endpoint.includes('/auth/super-admin/')) {
+      // PUBLIC ENDPOINTS - No token required
+      const publicEndpoints = [
+        '/mobile/user/register/',
+        '/mobile/user/login',
+        '/mobile/user/check-email',
+        '/mobile/user/search-location',
+        '/mobile/user/reverse-geocode',
+        '/mobile/user/get-location',
+        '/auth/user/login',
+        '/auth/user/register',
+        '/auth/user/forgot-password',
+        '/auth/user/verify-reset-otp',
+        '/auth/user/reset-password',
+        '/auth/user/resend-reset-otp',
+        '/auth/super-admin/login',
+        '/auth/admin/login',
+        '/auth/client/login',
+        '/auth/client/register'
+      ];
+  
+      const isPublicEndpoint = publicEndpoints.some(pub => endpoint.includes(pub));
+  
+      if (isPublicEndpoint) {
+        // Public endpoint - no token needed
+        token = null;
+        tokenSource = 'none (public endpoint)';
+      } else if (endpoint.includes('/super-admin/') || endpoint.includes('/auth/super-admin/')) {
         token = getTokenForRole('super_admin');
         tokenSource = 'super_admin (endpoint match)';
       } else if (endpoint.includes('/admin/') || endpoint.includes('/auth/admin/')) {
         token = getTokenForRole('admin');
         tokenSource = 'admin (endpoint match)';
       } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') ||
-        endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || endpoint.includes('/brand-assets') ||
-        endpoint.includes('/meditations') || endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars')) {
+        endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || 
+        endpoint.includes('/brand-assets') || endpoint.includes('/meditations') || 
+        endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars')) {
         // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS, MEDITATIONS, CHANTINGS & BRAHM-AVATARS: Always use client token
         token = getTokenForRole('client');
         tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 
@@ -74,34 +100,35 @@ class ApiService {
                      endpoint.includes('/chantings') ? 'client (chantings endpoint)' :
                      endpoint.includes('/brahm-avatars') ? 'client (brahm-avatars endpoint)' :
                      'client (endpoint match)';
-      } else if (endpoint.includes('/user/') || endpoint.includes('/auth/user/') || endpoint.includes('/users/') ||
-        endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || endpoint.includes('/mobile/user/')) {
-        // CRITICAL: Mobile endpoints (chat, voice, user profile) MUST use user token ONLY
-        // These endpoints are ONLY for 'user' role - NEVER use other tokens
+      } else if (endpoint.includes('/user/') || endpoint.includes('/users/') ||
+        endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
+        endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent')) {
+        // AUTHENTICATED USER ENDPOINTS - Require user token
+        // (Excluding public registration/login endpoints which are handled above)
         token = getTokenForRole('user');
-        tokenSource = 'user (mobile endpoint - user role required)';
-
+        tokenSource = 'user (authenticated endpoint)';
+  
         // Verify token is actually a user token
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             if (payload.role !== 'user') {
-              console.error('[API Error] Wrong token role for mobile endpoint:', {
+              console.error('[API Error] Wrong token role for user endpoint:', {
                 endpoint,
                 tokenRole: payload.role,
                 requiredRole: 'user',
-                message: 'Rejecting non-user token for mobile endpoint'
+                message: 'Rejecting non-user token for user endpoint'
               });
-              token = null; // Reject wrong token
+              token = null;
               tokenSource = 'rejected (wrong role)';
             }
           } catch (e) {
             console.warn('[API Warning] Could not verify token role:', e);
           }
         }
-
-        // Warn if no user token found but other tokens exist
-        if (!token) {
+  
+        // Only warn if no user token for authenticated endpoints
+        if (!token && !isPublicEndpoint) {
           const otherTokens = {
             super_admin: !!localStorage.getItem('token_super_admin'),
             admin: !!localStorage.getItem('token_admin'),
@@ -111,7 +138,7 @@ class ApiService {
           if (hasOtherTokens) {
             console.error('[API Error]', {
               endpoint,
-              message: 'Mobile endpoint requires user token, but user is not logged in. Other roles are logged in. Please logout and login as a user.',
+              message: 'User endpoint requires user token, but user is not logged in. Other roles are logged in. Please logout and login as a user.',
               otherTokens,
               availableTokens: Object.keys(otherTokens).filter(k => otherTokens[k])
             });
@@ -131,16 +158,14 @@ class ApiService {
         }
       }
     }
-
+  
     // Debug logging
     // console.log('[API Request]', {
     //   endpoint,
     //   hasToken: !!token,
     //   tokenSource
     // });
-   
-
-
+  
     // Merge headers without dropping Authorization when options.headers is provided
     const config = {
       ...options,
@@ -150,14 +175,14 @@ class ApiService {
         ...(options.headers || {}),
       },
     };
-
+  
     // Remove token from options to avoid sending it in body
     delete config.token;
-
+  
     if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
       config.body = JSON.stringify(config.body);
     }
-
+  
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
       
@@ -180,7 +205,7 @@ class ApiService {
           throw new Error(`Expected JSON response but received ${contentType || 'unknown content type'}`);
         }
       }
-
+  
       // Debug logging for errors
       if (!response.ok) {
         // Check for role mismatch errors
@@ -194,7 +219,7 @@ class ApiService {
             hasToken: !!token,
             tokenSource
           });
-
+  
           // Show user-friendly error for role mismatch
           if (data.currentRole && data.requiredRole) {
             const errorMsg = `You are logged in as '${data.currentRole}' but this feature requires '${data.requiredRole}' role. Please logout and login as a user.`;
@@ -222,7 +247,7 @@ class ApiService {
           throw error;
         }
       }
-
+  
       return data;
     } catch (error) {
       console.error('[API Exception]', {
