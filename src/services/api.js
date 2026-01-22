@@ -578,13 +578,23 @@ async deleteClientUser(id) {
   });
 }
 
-async getUserCompleteDetails(userId) {
-  return this.request(`/client/users/${userId}/complete-details`);
-}
+  // User Kundali endpoints - Use user token
+  async getUserOwnCompleteDetails() {
+    return this.request('/users/me/complete-details');
+  }
 
-async getUserAstrology(userId) {
-  return this.request(`/client/users/${userId}/astrology`);
-}
+  async getUserOwnAstrology() {
+    return this.request('/users/me/astrology');
+  }
+
+  // Client endpoints - Use client token
+  async getUserCompleteDetails(userId) {
+    return this.request(`/client/users/${userId}/complete-details`);
+  }
+
+  async getUserAstrology(userId) {
+    return this.request(`/client/users/${userId}/astrology`);
+  }
 
 async getClientDashboard() {
   return this.request('/client/dashboard/overview');
@@ -876,6 +886,11 @@ const api = {
   // Direct request method
   request: apiService.request.bind(apiService),
 
+  // User own data methods
+  getUserOwnCompleteDetails: apiService.getUserOwnCompleteDetails.bind(apiService),
+  getUserOwnAstrology: apiService.getUserOwnAstrology.bind(apiService),
+
+  // Client methods for user data
   getUserCompleteDetails: apiService.getUserCompleteDetails.bind(apiService),
   getUserAstrology: apiService.getUserAstrology.bind(apiService)
 };

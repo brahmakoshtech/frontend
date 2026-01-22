@@ -411,6 +411,11 @@ const routes = [
         component: () => import('../views/client/activity/activityTools/SelfReflection.jsx')
       },
       {
+        path: 'activity/silence',
+        name: 'ClientSilence',
+        component: () => import('../views/client/activity/activityTools/Silence.jsx')
+      },
+      {
         path: 'tools/push-notification',
         name: 'ClientPushNotification',
         component: () => import('../views/client/tools/PushNotification.jsx')

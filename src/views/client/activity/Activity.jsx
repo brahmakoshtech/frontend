@@ -1,13 +1,13 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { 
-  ArrowLeftIcon, 
-  ClockIcon, 
-  UserIcon, 
-  EyeIcon, 
-  CalendarIcon, 
-  ChartBarIcon, 
-  HeartIcon, 
+import {
+  ArrowLeftIcon,
+  ClockIcon,
+  UserIcon,
+  EyeIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  HeartIcon,
   SparklesIcon,
   ArrowRightIcon,
   StarIcon,
@@ -20,7 +20,7 @@ export default {
   setup() {
     const router = useRouter();
     const loading = ref(false);
-    
+
     const spiritualActivities = [
       {
         id: 1,
@@ -66,6 +66,21 @@ export default {
         rating: 4.9,
         sessions: 203,
         trending: true
+      },
+      {
+        id: 11,
+        name: 'Silence',
+        icon: EyeIcon,
+        description: 'Deep silence meditation, inner stillness, and peaceful contemplation practices',
+        color: '#6b7280',
+        participants: 4521,
+        duration: '20-45 min',
+        route: '/client/activity/silence',
+        category: 'Stillness',
+        difficulty: 'Advanced',
+        rating: 4.9,
+        sessions: 78,
+        trending: false
       },
       {
         id: 4,
@@ -171,7 +186,8 @@ export default {
         rating: 4.4,
         sessions: 87,
         trending: false
-      }
+      },
+
     ];
 
     const stats = ref({
@@ -200,7 +216,8 @@ export default {
         'Physical': 'bg-success',
         'Awareness': 'bg-primary',
         'Positivity': 'bg-warning',
-        'Growth': 'bg-info'
+        'Growth': 'bg-info',
+        'Stillness': 'bg-dark'
       };
       return colors[category] || 'bg-secondary';
     };
@@ -276,8 +293,8 @@ export default {
             <div class="mb-5">
               <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between mb-3 gap-3">
                 <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-3 w-100">
-                  <button 
-                    class="btn btn-outline-secondary btn-sm rounded-pill px-3" 
+                  <button
+                    class="btn btn-outline-secondary btn-sm rounded-pill px-3"
                     onClick={goBack}
                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                   >
@@ -370,9 +387,9 @@ export default {
             <div class="row g-4">
               {spiritualActivities.map(activity => (
                 <div key={activity.id} class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-                  <div 
-                    class="activity-card card h-100 border-0 shadow-sm position-relative overflow-hidden" 
-                    style={{ 
+                  <div
+                    class="activity-card card h-100 border-0 shadow-sm position-relative overflow-hidden"
+                    style={{
                       '--activity-color': activity.color,
                       background: `linear-gradient(135deg, ${activity.color}08 0%, ${activity.color}15 30%, #f8fafc 100%)`
                     }}
@@ -397,21 +414,21 @@ export default {
                     <div class="card-body p-4">
                       {/* Icon */}
                       <div class="mb-4">
-                        <div 
+                        <div
                           class="activity-icon d-inline-flex align-items-center justify-content-center rounded-3"
-                          style={{ 
-                            width: '72px', 
+                          style={{
+                            width: '72px',
                             height: '72px',
                             backgroundColor: `${activity.color}15`,
                             border: `2px solid ${activity.color}25`
                           }}
                         >
-                          <activity.icon 
-                            style={{ 
-                              width: '2rem', 
+                          <activity.icon
+                            style={{
+                              width: '2rem',
                               height: '2rem',
                               color: activity.color
-                            }} 
+                            }}
                           />
                         </div>
                       </div>
@@ -422,7 +439,7 @@ export default {
                         <p class="card-text text-muted mb-3 lh-base" style={{ fontSize: '0.9rem' }}>
                           {activity.description}
                         </p>
-                        
+
                         {/* Difficulty Level */}
                         <div class="mb-2">
                           <span class={`badge bg-light ${getDifficultyColor(activity.difficulty)} px-2 py-1`} style={{ fontSize: '0.7rem' }}>
@@ -437,7 +454,7 @@ export default {
                           <small class="text-muted">Duration</small>
                           <span class="fw-semibold text-dark" style={{ fontSize: '0.85rem' }}>{activity.duration}</span>
                         </div>
-                        <div 
+                        <div
                           class="arrow-btn d-flex align-items-center justify-content-center rounded-circle"
                           style={{
                             width: '40px',
@@ -452,7 +469,7 @@ export default {
                     </div>
 
                     {/* Hover Effect Overlay */}
-                    <div 
+                    <div
                       class="hover-overlay position-absolute top-0 start-0 w-100 h-100"
                       style={{
                         background: `linear-gradient(135deg, ${activity.color}15 0%, ${activity.color}25 100%)`,
