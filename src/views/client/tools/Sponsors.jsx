@@ -346,23 +346,24 @@ export default {
                     
                     <div class="card-body p-4">
                       <div class="d-flex align-items-start mb-3">
-                        <div class="position-relative me-3">
-                          <div class="logo-container" style={{ position: 'relative' }}>
+                        <div class="position-relative me-3 flex-shrink-0">
+                          <div class="logo-container d-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
                             {sponsor.logo ? (
                               <img 
                                 src={sponsor.logo} 
                                 alt={sponsor.name}
-                                class="rounded border border-3 border-white shadow-lg"
+                                class="rounded-circle border border-3 border-white shadow-lg"
                                 style={{ 
                                   width: '70px', 
                                   height: '70px', 
                                   objectFit: 'cover',
+                                  objectPosition: 'center',
                                   transition: 'transform 0.3s ease'
                                 }}
                               />
                             ) : (
                               <div 
-                                class="d-inline-flex align-items-center justify-content-center rounded border border-3 border-white shadow-lg"
+                                class="d-flex align-items-center justify-content-center rounded-circle border border-3 border-white shadow-lg"
                                 style={{ 
                                   width: '70px', 
                                   height: '70px',
@@ -820,7 +821,7 @@ export default {
                           <img 
                             src={selectedSponsor.value.logo} 
                             alt={selectedSponsor.value.name}
-                            class="rounded border border-3 border-white shadow-lg"
+                            class="rounded-circle border border-3 border-white shadow-lg"
                             style={{ width: '100px', height: '100px', objectFit: 'cover' }}
                           />
                         </div>

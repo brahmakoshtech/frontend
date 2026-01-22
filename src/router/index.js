@@ -2,6 +2,25 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuth } from '../store/auth.js';
 
 const routes = [
+  // Partner Routes
+  {
+    path: '/partner/login',
+    name: 'PartnerLogin',
+    component: () => import('../views/partner/PartnerLogin.jsx'),
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/partner/register',
+    name: 'PartnerRegister',
+    component: () => import('../views/partner/PartnerRegister.jsx'),
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/partner/dashboard',
+    name: 'PartnerDashboard',
+    component: () => import('../views/partner/PartnerDashboard.jsx'),
+    meta: { requiresAuth: true, requiresRole: 'partner' }
+  },
   // Auth Routes - Separate login pages
   {
     path: '/super-admin/login',
@@ -304,7 +323,7 @@ const routes = [
       {
         path: 'users/:userId/kundali',
         name: 'UserKundali',
-        component: () => import('../views/client/Kundali.jsx')
+        component: () => import('../views/client/UserKundali.jsx')
       },
       {
         path: 'users/:userId/charts',
@@ -493,6 +512,7 @@ const getRoleFromPath = (path) => {
   if (path.startsWith('/super-admin')) return 'super_admin';
   if (path.startsWith('/admin')) return 'admin';
   if (path.startsWith('/client')) return 'client';
+  if (path.startsWith('/partner')) return 'partner';
   if (path.startsWith('/mobile/user')) return 'user'; // Check mobile/user before /user
   if (path.startsWith('/user')) return 'user';
   return null;
@@ -504,7 +524,8 @@ const getRoleFromToken = (token) => {
     const tokenToCheck = token || localStorage.getItem('token_super_admin') || 
                          localStorage.getItem('token_admin') || 
                          localStorage.getItem('token_client') || 
-                         localStorage.getItem('token_user');
+                         localStorage.getItem('token_user') ||
+                         localStorage.getItem('partner_token');
     if (tokenToCheck) {
       const tokenParts = tokenToCheck.split('.');
       if (tokenParts.length === 3) {
@@ -521,6 +542,9 @@ const getRoleFromToken = (token) => {
 // Helper to check if a specific role is authenticated
 const isRoleAuthenticated = (role) => {
   if (!role) return false;
+  if (role === 'partner') {
+    return !!localStorage.getItem('partner_token');
+  }
   const token = localStorage.getItem(`token_${role}`);
   return !!token;
 };
@@ -558,6 +582,8 @@ router.beforeEach(async (to, from, next) => {
       next('/admin/login');
     } else if (to.path.startsWith('/client')) {
       next('/client/login');
+    } else if (to.path.startsWith('/partner')) {
+      next('/partner/login');
     } else {
       next('/user/login');
     }
@@ -569,6 +595,8 @@ router.beforeEach(async (to, from, next) => {
       next('/admin/overview');
     } else if (targetRole === 'client') {
       next('/client/overview');
+    } else if (targetRole === 'partner') {
+      next('/partner/dashboard');
     } else if (targetRole === 'user') {
       // Check if user is accessing web frontend or mobile
       // If coming from web routes, redirect to web dashboard
@@ -596,6 +624,8 @@ router.beforeEach(async (to, from, next) => {
         next('/admin/login');
       } else if (targetRole === 'client') {
         next('/client/login');
+      } else if (targetRole === 'partner') {
+        next('/partner/login');
       } else {
         next('/user/login');
       }

@@ -500,8 +500,8 @@ export default {
                       </div>
                     )}
                     
-                    {/* Dropdown above bottom border */}
-                    <div class="position-absolute" style={{ bottom: '70px', right: '12px', zIndex: 10 }}>
+                    {/* Dropdown at top-right corner */}
+                    <div class="position-absolute" style={{ top: '12px', right: '12px', zIndex: 10 }}>
                       <div class="dropdown position-relative">
                         <button 
                           class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
@@ -511,7 +511,7 @@ export default {
                           <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem', color: 'black' }} />
                         </button>
                         {activeDropdown.value === (asset._id || asset.id) && (
-                          <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', bottom: '100%', zIndex: 1000, marginBottom: '8px' }}>
+                          <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000, marginTop: '8px' }}>
                             {asset.isActive && (
                               <>
                                 <button 
@@ -560,9 +560,9 @@ export default {
                             }}
                           />
                         </div>
-                        <div class="flex-grow-1">
-                          <h5 class="mb-1 fw-bold" style={{ fontSize: '1.3rem', color: '#FFD700', textShadow: '2px 2px 4px rgba(0,0,0,0.8)', wordBreak: 'break-word', lineHeight: '1.2' }}>{asset.headingText || 'Brand Asset'}</h5>
-                          <p class="mb-0 fw-semibold" style={{ fontSize: '1rem', color: '#87CEEB', textShadow: '1px 1px 3px rgba(0,0,0,0.7)', wordBreak: 'break-word' }}>{asset.brandLogoName || 'Logo Name'}</p>
+                        <div class="flex-grow-1" style={{ minWidth: 0, paddingRight: '40px' }}>
+                          <h5 class="mb-1 fw-bold text-truncate" style={{ fontSize: '1.1rem', color: '#FFD700', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }} title={asset.headingText || 'Brand Asset'}>{asset.headingText || 'Brand Asset'}</h5>
+                          <p class="mb-0 fw-semibold text-truncate" style={{ fontSize: '0.9rem', color: '#87CEEB', textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }} title={asset.brandLogoName || 'Logo Name'}>{asset.brandLogoName || 'Logo Name'}</p>
                         </div>
                       </div>
                       <div class="d-flex justify-content-between align-items-start mb-2">

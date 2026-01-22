@@ -1,8 +1,11 @@
-// frontend/src/views/client/UserKundali.jsx
-
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../services/api.js';
+import BirthDetails from '../../components/kundali/BirthDetails.jsx';
+import AstroDetails from '../../components/kundali/AstroDetails.jsx';
+import PlanetaryPosition from '../../components/kundali/PlanetaryPosition.jsx';
+import BirthChart from '../../components/kundali/BirthChart.jsx';
+import SkeletonLoader from '../../components/kundali/SkeletonLoader.jsx';
 
 export default {
   name: 'UserKundali',
@@ -14,6 +17,7 @@ export default {
     const userDetails = ref(null);
     const loading = ref(true);
     const error = ref(null);
+    const activeTab = ref('overview');
 
     const fetchUserDetails = async () => {
       try {
@@ -32,295 +36,333 @@ export default {
       router.back();
     };
 
+    const tabs = [
+      { id: 'overview', label: 'Overview', icon: '📊', color: '#007bff' },
+      { id: 'birth-details', label: 'Birth Details', icon: '👤', color: '#17a2b8' },
+      { id: 'astro-details', label: 'Astrological', icon: '⭐', color: '#ffc107' },
+      { id: 'planets', label: 'Planets', icon: '🪐', color: '#6f42c1' },
+      { id: 'charts', label: 'Charts', icon: '📈', color: '#28a745' }
+    ];
+
     onMounted(() => {
       fetchUserDetails();
     });
 
     return () => (
-      <div class="container-fluid py-4">
+      <div class="container-fluid px-3 px-lg-4">
         {loading.value ? (
           <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
+            <div class="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-2">Loading Kundali details...</p>
+            <p class="text-muted">Loading kundali data...</p>
           </div>
         ) : error.value ? (
-          <div class="alert alert-danger">
-            <h5>Error Loading Kundali</h5>
-            <p>{error.value}</p>
-            <button onClick={goBack} class="btn btn-secondary">Go Back</button>
+          <div class="text-center py-5">
+            <div class="mb-4 p-4 rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px' }}>
+              <span style={{ fontSize: '4rem' }}>⚠️</span>
+            </div>
+            <h4 class="text-muted mb-3">Oops! Something went wrong</h4>
+            <p class="text-muted mb-4">{error.value}</p>
+            <button class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm" onClick={goBack} style={{ fontWeight: '600' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" class="me-2">
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+              Go Back
+            </button>
           </div>
         ) : userDetails.value ? (
           <div>
-            {/* Header */}
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card border-0 shadow-sm">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h2 class="mb-1">🌟 Kundali Report</h2>
-                        <h4 class="text-primary mb-0">{userDetails.value.user.profile?.name || 'Unknown'}</h4>
-                      </div>
-                      <button onClick={goBack} class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Back to Users
+            {/* Enhanced Hero Header */}
+            <div class="bg-gradient-primary rounded-4 p-4 mb-4 text-white shadow-lg">
+              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3">
+                <button 
+                  class="btn btn-light btn-sm rounded-pill px-3" 
+                  onClick={goBack}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg>
+                  <span class="d-none d-sm-inline">Back</span>
+                </button>
+                <div class="flex-grow-1">
+                  <h1 class="mb-1 fw-bold fs-2 text-white d-flex align-items-center">
+                    <span class="me-3" style={{ fontSize: '2.5rem' }}>🔮</span>
+                    Kundali Analysis
+                  </h1>
+                  {userDetails.value.user && (
+                    <>
+                      <p class="mb-0 text-white" style={{ opacity: 0.9, fontSize: '1.1rem' }}>
+                        <strong>{userDetails.value.user.profile?.name || userDetails.value.user.email}</strong>
+                        {userDetails.value.user.profile?.dob && (
+                          <span> • Born: {new Date(userDetails.value.user.profile.dob).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        )}
+                      </p>
+                      <small class="text-white d-block mt-1" style={{ opacity: 0.8 }}>
+                        {userDetails.value.user.profile?.placeOfBirth && (
+                          <span>📍 {userDetails.value.user.profile.placeOfBirth}</span>
+                        )}
+                        {userDetails.value.user.profile?.timeOfBirth && (
+                          <span> • ⏰ {userDetails.value.user.profile.timeOfBirth}</span>
+                        )}
+                      </small>
+                    </>
+                  )}
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-light text-dark px-3 py-2 rounded-pill fw-semibold">
+                    ✨ Premium Analysis
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Enhanced Tab Navigation */}
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+              <div class="card-header bg-white border-0 rounded-top-4 p-0">
+                <ul class="nav nav-pills nav-fill p-3" style={{ gap: '0.5rem' }}>
+                  {tabs.map(tab => (
+                    <li key={tab.id} class="nav-item">
+                      <button
+                        class={`nav-link rounded-pill px-4 py-3 fw-semibold border-0 ${
+                          activeTab.value === tab.id 
+                            ? 'active text-white shadow-sm' 
+                            : 'text-dark bg-light'
+                        }`}
+                        onClick={() => activeTab.value = tab.id}
+                        style={{
+                          transition: 'all 0.3s ease',
+                          fontSize: '0.9rem',
+                          backgroundColor: activeTab.value === tab.id ? tab.color : undefined,
+                          transform: activeTab.value === tab.id ? 'translateY(-2px)' : 'none'
+                        }}
+                      >
+                        <span class="d-none d-md-inline">{tab.icon} {tab.label}</span>
+                        <span class="d-md-none" style={{ fontSize: '1.2rem' }}>{tab.icon}</span>
                       </button>
-                    </div>
-                  </div>
-                </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
-            {/* Basic Information */}
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card border-0 shadow-sm">
-                  <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>Personal Information</h5>
-                  </div>
-                  <div class="card-body">
-                    <div class="row">
-                      <div class="col-md-6">
-                        <table class="table table-borderless">
-                          <tr><td><strong>Name:</strong></td><td>{userDetails.value.user.profile?.name || 'N/A'}</td></tr>
-                          <tr><td><strong>Email:</strong></td><td>{userDetails.value.user.email}</td></tr>
-                          <tr><td><strong>Mobile:</strong></td><td>{userDetails.value.user.mobile || 'N/A'}</td></tr>
-                        </table>
+            {/* Enhanced Tab Content */}
+            <div class="tab-content">
+              {activeTab.value === 'overview' && (
+                <div class="row g-4">
+                  <div class="col-lg-6">
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+                      <div class="card-header bg-primary text-white rounded-top-4 p-4">
+                        <h5 class="mb-0 fw-bold d-flex align-items-center">
+                          <span class="me-2" style={{ fontSize: '1.5rem' }}>👤</span>
+                          Personal Information
+                        </h5>
                       </div>
-                      <div class="col-md-6">
-                        <table class="table table-borderless">
-                          <tr><td><strong>Date of Birth:</strong></td><td>{userDetails.value.user.profile?.dob ? new Date(userDetails.value.user.profile.dob).toLocaleDateString() : 'N/A'}</td></tr>
-                          <tr><td><strong>Time of Birth:</strong></td><td>{userDetails.value.user.profile?.timeOfBirth || 'N/A'}</td></tr>
-                          <tr><td><strong>Place of Birth:</strong></td><td>{userDetails.value.user.profile?.placeOfBirth || 'N/A'}</td></tr>
-                          <tr><td><strong>Gowthra:</strong></td><td>{userDetails.value.user.profile?.gowthra || 'N/A'}</td></tr>
-                        </table>
+                      <div class="card-body p-4">
+                        {userDetails.value.user ? (
+                          <div class="row g-3">
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Name</small>
+                                <strong class="text-dark">{userDetails.value.user.profile?.name || 'N/A'}</strong>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Email</small>
+                                <strong class="text-dark">{userDetails.value.user.email}</strong>
+                              </div>
+                            </div>
+                            <div class="col-12">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Date of Birth</small>
+                                <strong class="text-dark">{userDetails.value.user.profile?.dob ? new Date(userDetails.value.user.profile.dob).toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                }) : 'N/A'}</strong>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Time of Birth</small>
+                                <strong class="text-dark">{userDetails.value.user.profile?.timeOfBirth || 'N/A'}</strong>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Place of Birth</small>
+                                <strong class="text-dark">{userDetails.value.user.profile?.placeOfBirth || 'N/A'}</strong>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div class="text-center py-4">
+                            <div class="spinner-border text-primary mb-2" role="status">
+                              <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mb-0">Loading personal information...</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-lg-6">
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+                      <div class="card-header bg-success text-white rounded-top-4 p-4">
+                        <h5 class="mb-0 fw-bold d-flex align-items-center">
+                          <span class="me-2" style={{ fontSize: '1.5rem' }}>⭐</span>
+                          Quick Astrological Info
+                        </h5>
+                      </div>
+                      <div class="card-body p-4">
+                        {userDetails.value.astrology ? (
+                          <div class="row g-3">
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Ascendant</small>
+                                <strong class="text-dark">{userDetails.value.astrology.astroDetails?.ascendant || 'N/A'}</strong>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Moon Sign</small>
+                                <strong class="text-dark">{userDetails.value.astrology.astroDetails?.sign || 'N/A'}</strong>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Nakshatra</small>
+                                <strong class="text-dark">{userDetails.value.astrology.astroDetails?.nakshatra || 'N/A'}</strong>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="p-3 rounded-3 border" style={{ backgroundColor: '#f8f9fa', borderColor: '#e9ecef !important' }}>
+                                <small class="text-muted d-block mb-1">Gowthra</small>
+                                <strong class="text-dark">{userDetails.value.user.profile?.gowthra || 'N/A'}</strong>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div class="text-center py-4">
+                            <div class="mb-3" style={{ fontSize: '3rem' }}>⚠️</div>
+                            <h6 class="text-muted mb-2">Astrology Data Unavailable</h6>
+                            <p class="text-muted mb-0 small">Complete birth details required for astrology calculations</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {activeTab.value === 'birth-details' && (
+                <div class="card border-0 shadow-lg rounded-4">
+                  <div class="card-header bg-info text-white rounded-top-4 p-4">
+                    <h5 class="mb-0 fw-bold d-flex align-items-center">
+                      <span class="me-2" style={{ fontSize: '1.5rem' }}>👤</span>
+                      Complete Birth Details
+                    </h5>
+                  </div>
+                  <div class="card-body p-4">
+                    {userDetails.value.astrology ? (
+                      <BirthDetails data={userDetails.value.astrology} />
+                    ) : (
+                      <div class="text-center py-5">
+                        <div class="mb-3" style={{ fontSize: '4rem' }}>📋</div>
+                        <h5 class="text-muted mb-3">Birth Details Not Available</h5>
+                        <p class="text-muted">Complete birth information is required to display detailed birth analysis.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab.value === 'astro-details' && (
+                <div class="row g-4">
+                  <div class="col-12">
+                    <div class="card border-0 shadow-lg rounded-4">
+                      <div class="card-header bg-warning text-dark rounded-top-4 p-4">
+                        <h5 class="mb-0 fw-bold d-flex align-items-center">
+                          <span class="me-2" style={{ fontSize: '1.5rem' }}>⭐</span>
+                          Astrological Analysis
+                        </h5>
+                      </div>
+                      <div class="card-body p-4">
+                        {userDetails.value.astrology ? (
+                          <AstroDetails data={userDetails.value.astrology} />
+                        ) : (
+                          <div class="text-center py-5">
+                            <div class="spinner-border text-warning mb-3" role="status">
+                              <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted">Loading astrological data...</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab.value === 'planets' && (
+                <div class="row g-4">
+                  <div class="col-12">
+                    <div class="card border-0 shadow-lg rounded-4">
+                      <div class="card-header bg-secondary text-white rounded-top-4 p-4">
+                        <h5 class="mb-0 fw-bold d-flex align-items-center">
+                          <span class="me-2" style={{ fontSize: '1.5rem' }}>🪐</span>
+                          Planetary Positions
+                        </h5>
+                      </div>
+                      <div class="card-body p-4">
+                        {userDetails.value.astrology ? (
+                          <PlanetaryPosition data={userDetails.value.astrology} />
+                        ) : (
+                          <div class="text-center py-5">
+                            <div class="spinner-border mb-3" role="status" style={{ color: '#6f42c1' }}>
+                              <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted">Loading planetary data...</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab.value === 'charts' && (
+                <div class="row g-4">
+                  <div class="col-12">
+                    <div class="card border-0 shadow-lg rounded-4">
+                      <div class="card-header bg-dark text-white rounded-top-4 p-4">
+                        <h5 class="mb-0 fw-bold d-flex align-items-center">
+                          <span class="me-2" style={{ fontSize: '1.5rem' }}>📈</span>
+                          Birth Charts
+                        </h5>
+                      </div>
+                      <div class="card-body p-4">
+                        {userDetails.value.astrology ? (
+                          <BirthChart data={userDetails.value.astrology} />
+                        ) : (
+                          <div class="text-center py-5">
+                            <div class="spinner-border text-success mb-3" role="status">
+                              <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted">Loading birth charts...</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Kundali Content */}
-            {userDetails.value.astrology ? (
-              <>
-                {/* Birth Chart Section */}
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <div class="card border-0 shadow-sm">
-                      <div class="card-header bg-gradient-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-star me-2"></i>Birth Chart Details</h5>
-                      </div>
-                      <div class="card-body">
-                        <div class="row">
-                          <div class="col-lg-6">
-                            <h6 class="text-info mb-3">Birth Coordinates</h6>
-                            <div class="table-responsive">
-                              <table class="table table-sm">
-                                <tr><td><strong>Date:</strong></td><td>{userDetails.value.astrology.birthDetails.day}/{userDetails.value.astrology.birthDetails.month}/{userDetails.value.astrology.birthDetails.year}</td></tr>
-                                <tr><td><strong>Time:</strong></td><td>{userDetails.value.astrology.birthDetails.hour}:{userDetails.value.astrology.birthDetails.minute.toString().padStart(2, '0')}</td></tr>
-                                <tr><td><strong>Latitude:</strong></td><td>{userDetails.value.astrology.birthDetails.latitude}°</td></tr>
-                                <tr><td><strong>Longitude:</strong></td><td>{userDetails.value.astrology.birthDetails.longitude}°</td></tr>
-                                <tr><td><strong>Ayanamsha:</strong></td><td>{userDetails.value.astrology.birthDetails.ayanamsha}°</td></tr>
-                                <tr><td><strong>Sunrise:</strong></td><td>{userDetails.value.astrology.birthDetails.sunrise}</td></tr>
-                                <tr><td><strong>Sunset:</strong></td><td>{userDetails.value.astrology.birthDetails.sunset}</td></tr>
-                              </table>
-                            </div>
-                          </div>
-                          <div class="col-lg-6">
-                            <h6 class="text-success mb-3">Astrological Details</h6>
-                            <div class="table-responsive">
-                              <table class="table table-sm">
-                                <tr><td><strong>Ascendant:</strong></td><td><span class="badge bg-primary fs-6">{userDetails.value.astrology.astroDetails.ascendant}</span></td></tr>
-                                <tr><td><strong>Moon Sign:</strong></td><td><span class="badge bg-info fs-6">{userDetails.value.astrology.astroDetails.sign}</span></td></tr>
-                                <tr><td><strong>Sign Lord:</strong></td><td>{userDetails.value.astrology.astroDetails.SignLord}</td></tr>
-                                <tr><td><strong>Nakshatra:</strong></td><td><span class="badge bg-warning text-dark fs-6">{userDetails.value.astrology.astroDetails.Naksahtra}</span></td></tr>
-                                <tr><td><strong>Nakshatra Lord:</strong></td><td>{userDetails.value.astrology.astroDetails.NaksahtraLord}</td></tr>
-                                <tr><td><strong>Charan:</strong></td><td>{userDetails.value.astrology.astroDetails.Charan}</td></tr>
-                                <tr><td><strong>Varna:</strong></td><td>{userDetails.value.astrology.astroDetails.Varna}</td></tr>
-                                <tr><td><strong>Gan:</strong></td><td>{userDetails.value.astrology.astroDetails.Gan}</td></tr>
-                                <tr><td><strong>Yoni:</strong></td><td>{userDetails.value.astrology.astroDetails.Yoni}</td></tr>
-                                <tr><td><strong>Nadi:</strong></td><td>{userDetails.value.astrology.astroDetails.Nadi}</td></tr>
-                              </table>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Planetary Positions */}
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <div class="card border-0 shadow-sm">
-                      <div class="card-header bg-gradient-warning text-dark">
-                        <h5 class="mb-0"><i class="fas fa-globe me-2"></i>Planetary Positions</h5>
-                      </div>
-                      <div class="card-body">
-                        <div class="row">
-                          {userDetails.value.astrology.planets.map(planet => (
-                            <div key={planet.id} class="col-md-6 col-lg-4 col-xl-3 mb-4">
-                              <div class="card border-0 shadow-sm h-100 planet-card">
-                                <div class="card-body text-center">
-                                  <div class="planet-icon mb-2">
-                                    <i class="fas fa-circle text-primary fa-2x"></i>
-                                  </div>
-                                  <h6 class="card-title text-primary mb-2">{planet.name}</h6>
-                                  <div class="mb-2">
-                                    <span class="badge bg-light text-dark">{planet.sign}</span>
-                                    {planet.isRetro === 'true' && <span class="badge bg-danger ms-1">R</span>}
-                                  </div>
-                                  <div class="planet-details">
-                                    <small class="text-muted d-block">House: <strong>{planet.house}</strong></small>
-                                    <small class="text-muted d-block">Degree: <strong>{planet.normDegree.toFixed(2)}°</strong></small>
-                                    <small class="text-muted d-block">Nakshatra: <strong>{planet.nakshatra}</strong></small>
-                                    <small class="text-success d-block mt-1"><strong>{planet.planet_awastha}</strong></small>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shadow Planets */}
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <div class="card border-0 shadow-sm">
-                      <div class="card-header bg-gradient-danger text-white">
-                        <h5 class="mb-0"><i class="fas fa-moon me-2"></i>Shadow Planets (Rahu & Ketu)</h5>
-                      </div>
-                      <div class="card-body">
-                        <div class="row justify-content-center">
-                          {userDetails.value.astrology.planetsExtended.map(planet => (
-                            <div key={planet.id} class="col-md-6 col-lg-4 mb-4">
-                              <div class="card border-0 shadow-sm h-100 shadow-planet-card">
-                                <div class="card-body text-center">
-                                  <div class="planet-icon mb-2">
-                                    <i class="fas fa-moon text-danger fa-2x"></i>
-                                  </div>
-                                  <h6 class="card-title text-danger mb-2">{planet.name}</h6>
-                                  <div class="mb-2">
-                                    <span class="badge bg-light text-dark">{planet.sign}</span>
-                                    <span class="badge bg-warning ms-1">R</span>
-                                  </div>
-                                  <div class="planet-details">
-                                    <small class="text-muted d-block">House: <strong>{planet.house}</strong></small>
-                                    <small class="text-muted d-block">Degree: <strong>{planet.normDegree.toFixed(2)}°</strong></small>
-                                    <small class="text-muted d-block">Nakshatra: <strong>{planet.nakshatra}</strong></small>
-                                    <small class="text-success d-block mt-1"><strong>{planet.planet_awastha}</strong></small>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Birth Chart Visualization */}
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <div class="card border-0 shadow-sm">
-                      <div class="card-header bg-gradient-secondary text-white">
-                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Birth Chart Visualization</h5>
-                      </div>
-                      <div class="card-body">
-                        <div class="row">
-                          <div class="col-lg-6 mb-4">
-                            <h6 class="text-center mb-3">North Indian Chart</h6>
-                            <div class="chart-container border rounded p-4 text-center" style={{ height: '400px', backgroundColor: '#f8f9fa' }}>
-                              <div class="d-flex align-items-center justify-content-center h-100">
-                                <div class="text-muted">
-                                  <i class="fas fa-chart-area fa-4x mb-3"></i>
-                                  <h6>North Indian Chart</h6>
-                                  <p>Chart visualization will be implemented here</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="col-lg-6 mb-4">
-                            <h6 class="text-center mb-3">South Indian Chart</h6>
-                            <div class="chart-container border rounded p-4 text-center" style={{ height: '400px', backgroundColor: '#f8f9fa' }}>
-                              <div class="d-flex align-items-center justify-content-center h-100">
-                                <div class="text-muted">
-                                  <i class="fas fa-th fa-4x mb-3"></i>
-                                  <h6>South Indian Chart</h6>
-                                  <p>Chart visualization will be implemented here</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div class="row">
-                <div class="col-12">
-                  <div class="alert alert-warning">
-                    <div class="d-flex align-items-center">
-                      <i class="fas fa-exclamation-triangle fa-3x me-4"></i>
-                      <div>
-                        <h4 class="alert-heading">Astrology Data Not Available</h4>
-                        <p class="mb-0">{userDetails.value.astrologyError || 'Complete birth details required for astrology calculations'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         ) : null}
-
-        <style jsx>{`
-          .planet-card:hover {
-            transform: translateY(-5px);
-            transition: all 0.3s ease;
-          }
-          
-          .shadow-planet-card:hover {
-            transform: translateY(-5px);
-            transition: all 0.3s ease;
-          }
-          
-          .chart-container {
-            border: 2px dashed #dee2e6 !important;
-          }
-          
-          .planet-details small {
-            line-height: 1.4;
-          }
-          
-          .bg-gradient-primary {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-          }
-          
-          .bg-gradient-info {
-            background: linear-gradient(45deg, #17a2b8, #138496);
-          }
-          
-          .bg-gradient-warning {
-            background: linear-gradient(45deg, #ffc107, #e0a800);
-          }
-          
-          .bg-gradient-danger {
-            background: linear-gradient(45deg, #dc3545, #c82333);
-          }
-          
-          .bg-gradient-secondary {
-            background: linear-gradient(45deg, #6c757d, #5a6268);
-          }
-        `}</style>
       </div>
     );
   }

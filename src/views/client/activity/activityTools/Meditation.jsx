@@ -1,5 +1,6 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick, triggerRef } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import { 
   ArrowLeftIcon, 
   PlusIcon, 
@@ -23,6 +24,7 @@ export default {
   name: 'MeditationActivity',
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const showModal = ref(false);
     const showAddModal = ref(false);
     const showEditModal = ref(false);
@@ -69,7 +71,17 @@ export default {
         .replace(/&#39;/g, "'")
         .replace(/&#x27;/g, "'")
         .replace(/&#x2F;/g, '/')
-        .replace(/&#x3D;/g, '=');
+        .replace(/&#x3D;/g, '=')
+        .replace(/&apos;/g, "'");
+    };
+
+    // Force Vue reactivity update
+    const forceUpdate = () => {
+      const temp = meditations.value;
+      meditations.value = [];
+      nextTick(() => {
+        meditations.value = temp;
+      });
     };
 
     const loadMeditations = async () => {
@@ -92,7 +104,7 @@ export default {
         meditations.value = data;
       } catch (error) {
         console.error('Error loading meditations:', error);
-        alert('Error loading meditations');
+        toast.error('Error loading meditations');
       } finally {
         loading.value = false;
       }
@@ -216,7 +228,7 @@ export default {
             videoUrl = fileUrl;
           } catch (error) {
             console.error('Video upload failed:', error);
-            alert('Video upload failed: ' + (error.message || 'Unknown error'));
+            toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
             loading.value = false;
             return;
           }
@@ -242,7 +254,7 @@ export default {
             imageUrl = fileUrl;
           } catch (error) {
             console.error('Image upload failed:', error);
-            alert('Image upload failed: ' + (error.message || 'Unknown error'));
+            toast.error('Image upload failed: ' + (error.message || 'Unknown error'));
             loading.value = false;
             return;
           }
@@ -257,17 +269,15 @@ export default {
           imageUrl
         });
         
-        // Add new meditation to list without reloading
-        if (response.success && response.data) {
-          meditations.value.unshift(response.data);
-        }
+        // Reload all meditations instead of manually adding
+        await loadMeditations();
         
         closeAddModal();
         uploadProgress.value = { video: 0, image: 0 };
-        alert('Meditation added successfully!');
+        toast.success('Meditation added successfully!');
       } catch (error) {
         console.error('Error creating meditation:', error);
-        alert('Error creating meditation');
+        toast.error('Error creating meditation');
       } finally {
         loading.value = false;
       }
@@ -304,7 +314,7 @@ export default {
             updateData.videoUrl = fileUrl;
           } catch (error) {
             console.error('Video upload failed:', error);
-            alert('Video upload failed: ' + (error.message || 'Unknown error'));
+            toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
             loading.value = false;
             return;
           }
@@ -330,7 +340,7 @@ export default {
             updateData.imageUrl = fileUrl;
           } catch (error) {
             console.error('Image upload failed:', error);
-            alert('Image upload failed: ' + (error.message || 'Unknown error'));
+            toast.error('Image upload failed: ' + (error.message || 'Unknown error'));
             loading.value = false;
             return;
           }
@@ -339,51 +349,34 @@ export default {
         // Update meditation
         const response = await meditationService.updateDirect(editingMeditation.value._id, updateData);
         
-        // Update meditation in list without reloading
-        if (response.success && response.data) {
-          const index = meditations.value.findIndex(m => m._id === editingMeditation.value._id);
-          if (index !== -1) {
-            // Preserve existing URLs if not updated
-            const updatedMeditation = {
-              ...response.data,
-              videoUrl: response.data.videoUrl || editingMeditation.value.videoUrl,
-              imageUrl: response.data.imageUrl || editingMeditation.value.imageUrl,
-              videoKey: response.data.videoKey || editingMeditation.value.videoKey,
-              imageKey: response.data.imageKey || editingMeditation.value.imageKey
-            };
-            meditations.value[index] = updatedMeditation;
-          }
-        }
+        // Reload all meditations instead of manually updating
+        await loadMeditations();
         
         closeEditModal();
         editUploadProgress.value = { video: 0, image: 0 };
-        alert('Meditation updated successfully!');
+        toast.success('Meditation updated successfully!');
       } catch (error) {
         console.error('Error updating meditation:', error);
-        alert('Error updating meditation');
+        toast.error('Error updating meditation');
       } finally {
         loading.value = false;
       }
     };
 
     const deleteMeditation = async (id) => {
-      console.log('🗑️ DELETE BUTTON CLICKED - Meditation ID:', id);
-      
       if (confirm('Are you sure you want to PERMANENTLY DELETE this meditation?')) {
         try {
           loading.value = true;
-          console.log('Calling DELETE API...');
           
           const response = await meditationService.delete(id);
-          console.log('✅ DELETE API Response:', response);
           
           // Remove meditation from list without reloading
-          meditations.value = meditations.value.filter(m => m._id !== id);
+          await loadMeditations();
           
-          alert('Meditation deleted successfully!');
+          toast.success('Meditation deleted successfully!');
         } catch (error) {
-          console.error('❌ Error deleting meditation:', error);
-          alert('Error deleting meditation: ' + (error.message || 'Unknown error'));
+          console.error('Error deleting meditation:', error);
+          toast.error('Error deleting meditation: ' + (error.message || 'Unknown error'));
         } finally {
           loading.value = false;
         }
@@ -417,10 +410,8 @@ export default {
     };
 
     const toggleStatus = async (meditation) => {
-      console.log('🔄 TOGGLE STATUS CLICKED - Meditation ID:', meditation._id, 'Current status:', meditation.isActive);
       try {
         const response = await meditationService.toggleStatus(meditation._id);
-        console.log('✅ Toggle status successful. New status:', response.data.isActive);
         const index = meditations.value.findIndex(m => m._id === meditation._id);
         if (index !== -1) {
           meditations.value[index] = {
@@ -429,10 +420,10 @@ export default {
           };
         }
         openDropdownId.value = null;
-        alert(`Meditation ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+        toast.success(`Meditation ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
       } catch (error) {
-        console.error('❌ Error toggling status:', error);
-        alert('Error updating status');
+        console.error('Error toggling status:', error);
+        toast.error('Error updating status');
       }
     };
 

@@ -1,5 +1,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import { 
   ArrowLeftIcon, 
   PlusIcon, 
@@ -22,6 +23,7 @@ export default {
   name: 'ChantingActivity',
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const showAddModal = ref(false);
     const showEditModal = ref(false);
     const showModal = ref(false);
@@ -132,9 +134,9 @@ export default {
         console.error('Error loading chantings:', error);
         const errorMsg = error.message || 'Error loading chantings';
         if (errorMsg.includes('404') || errorMsg.includes('not found')) {
-          alert('Chanting API endpoint not found. Please ensure the server is deployed with the latest routes.');
+          toast.error('Chanting API endpoint not found. Please ensure the server is deployed with the latest routes.');
         } else {
-          alert(errorMsg);
+          toast.error(errorMsg);
         }
         chantings.value = []; // Set empty array on error
       } finally {
@@ -233,7 +235,7 @@ export default {
         : formData.value.name;
       
       if (!chantingName || !formData.value.description) {
-        alert('Name and Description are required');
+        toast.error('Name and Description are required');
         return;
       }
       
@@ -264,7 +266,7 @@ export default {
             videoUrl = fileUrl;
           } catch (error) {
             console.error('Video upload failed:', error);
-            alert('Video upload failed: ' + (error.message || 'Unknown error'));
+            toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
             loading.value = false;
             return;
           }
@@ -290,7 +292,7 @@ export default {
             imageUrl = fileUrl;
           } catch (error) {
             console.error('Image upload failed:', error);
-            alert('Image upload failed: ' + (error.message || 'Unknown error'));
+            toast.error('Image upload failed: ' + (error.message || 'Unknown error'));
             loading.value = false;
             return;
           }
@@ -315,10 +317,10 @@ export default {
         await loadChantings();
         closeAddModal();
         uploadProgress.value = { video: 0, image: 0 };
-        alert('Chanting added successfully!');
+        toast.success('Chanting added successfully!');
       } catch (error) {
         console.error('Error creating chanting:', error);
-        alert('Error creating chanting');
+        toast.error('Error creating chanting');
       } finally {
         loading.value = false;
       }
@@ -331,7 +333,7 @@ export default {
         : editFormData.value.name;
       
       if (!chantingName || !editFormData.value.description) {
-        alert('Name and Description are required');
+        toast.error('Name and Description are required');
         return;
       }
       
@@ -415,10 +417,10 @@ export default {
         await loadChantings();
         closeEditModal();
         editUploadProgress.value = { video: 0, image: 0 };
-        alert('Chanting updated successfully!');
+        toast.success('Chanting updated successfully!');
       } catch (error) {
         console.error('Error updating chanting:', error);
-        alert('Error updating chanting');
+        toast.error('Error updating chanting');
       } finally {
         loading.value = false;
       }
@@ -430,10 +432,10 @@ export default {
           loading.value = true;
           await chantingService.delete(id);
           await loadChantings();
-          alert('Chanting deleted successfully!');
+          toast.success('Chanting deleted successfully!');
         } catch (error) {
           console.error('Error deleting chanting:', error);
-          alert('Error deleting chanting: ' + (error.message || 'Unknown error'));
+          toast.error('Error deleting chanting: ' + (error.message || 'Unknown error'));
         } finally {
           loading.value = false;
         }
@@ -455,10 +457,10 @@ export default {
           };
         }
         openDropdownId.value = null;
-        alert(`Chanting ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+        toast.success(`Chanting ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
       } catch (error) {
         console.error('Error toggling status:', error);
-        alert('Error updating status');
+        toast.error('Error updating status');
       }
     };
 

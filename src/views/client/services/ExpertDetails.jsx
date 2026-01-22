@@ -35,19 +35,19 @@ export default {
           expert.value = response.data;
         } else {
           toast.error('Failed to load expert details');
-          router.push('/client/expert-management');
+          router.push('/client/experts');
         }
       } catch (error) {
         console.error('Load expert details error:', error);
         toast.error('Failed to load expert details');
-        router.push('/client/expert-management');
+        router.push('/client/experts');
       } finally {
         loading.value = false;
       }
     };
 
     const goBack = () => {
-      router.push('/client/expert-management');
+      router.push('/client/experts');
     };
 
     const getStatusBadge = (status) => {

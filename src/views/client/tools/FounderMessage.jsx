@@ -32,6 +32,8 @@ export default {
       content: '',
       founderImage: null
     });
+    const newImageUploaded = ref(false);
+    const newImageFileName = ref('');
     const expandedMessages = ref(new Set());
 
     const toggleExpand = (messageId) => {
@@ -373,7 +375,7 @@ export default {
                 </div>
                 <button 
                   class="btn btn-light btn-lg rounded-pill px-4 shadow-sm"
-                  onClick={() => showAddModal.value = true}
+                  onClick={() => { showAddModal.value = true; }}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}
                 >
                   <PlusIcon style={{ width: '1.2rem', height: '1.2rem' }} />
@@ -405,7 +407,7 @@ export default {
                         <p class="text-muted mb-4">Create your first founder message to connect with your audience</p>
                         <button 
                           class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm"
-                          onClick={() => showAddModal.value = true}
+                          onClick={() => { showAddModal.value = true; }}
                           style={{ fontWeight: '600' }}
                         >
                           <PlusIcon style={{ width: '1.2rem', height: '1.2rem' }} class="me-2" />

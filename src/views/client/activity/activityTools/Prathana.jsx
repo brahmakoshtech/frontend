@@ -1,5 +1,6 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import { 
   ArrowLeftIcon, 
   PlusIcon, 
@@ -24,6 +25,7 @@ export default {
   name: 'PrathanaActivity',
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const showModal = ref(false);
     const showAddModal = ref(false);
     const showEditModal = ref(false);
@@ -83,7 +85,7 @@ export default {
         prayers.value = data;
       } catch (error) {
         console.error('Error loading prayers:', error);
-        alert('Error loading prayers');
+        toast.error('Error loading prayers');
       } finally {
         loading.value = false;
       }
@@ -261,10 +263,10 @@ export default {
         
         closeAddModal();
         uploadProgress.value = { video: 0, thumbnail: 0 };
-        alert('Prayer added successfully!');
+        toast.success('Prayer added successfully!');
       } catch (error) {
         console.error('Error creating prayer:', error);
-        alert('Error creating prayer');
+        toast.error('Error creating prayer');
       } finally {
         loading.value = false;
       }
@@ -356,10 +358,10 @@ export default {
         
         closeEditModal();
         editUploadProgress.value = { video: 0, thumbnail: 0 };
-        alert('Prayer updated successfully!');
+        toast.success('Prayer updated successfully!');
       } catch (error) {
         console.error('Error updating prayer:', error);
-        alert('Error updating prayer');
+        toast.error('Error updating prayer');
       } finally {
         loading.value = false;
       }
@@ -379,10 +381,10 @@ export default {
           // Remove prayer from list without reloading
           prayers.value = prayers.value.filter(p => p._id !== id);
           
-          alert('Prayer deleted successfully!');
+          toast.success('Prayer deleted successfully!');
         } catch (error) {
           console.error('❌ Error deleting prayer:', error);
-          alert('Error deleting prayer: ' + (error.message || 'Unknown error'));
+          toast.error('Error deleting prayer: ' + (error.message || 'Unknown error'));
         } finally {
           loading.value = false;
         }
@@ -425,10 +427,10 @@ export default {
           };
         }
         openDropdownId.value = null;
-        alert(`Prayer ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
+        toast.success(`Prayer ${response.data.isActive ? 'enabled' : 'disabled'} successfully!`);
       } catch (error) {
         console.error('❌ Error toggling status:', error);
-        alert('Error updating status');
+        toast.error('Error updating status');
       }
     };
 
