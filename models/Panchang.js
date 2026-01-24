@@ -37,36 +37,61 @@ const panchangSchema = new mongoose.Schema({
     nakshatra: String,
     yog: String,
     karan: String,
-    paksha: String,
-    ritu: String,
-    month: String,
-    moonSign: String,
-    sunSign: String,
-    ayanamsha: Number,
-    vikramSamvat: String,
-    shakaSamvat: String,
-    vkramSamvatName: String,
-    shakaSamvatName: String,
-    dishaShool: String,
-    dishaShoolRemedies: String,
-    kundliMuhurta: String,
-    rahukaal: String,
-    guliKaal: String,
-    yamagandaKaal: String,
-    abhijitMuhurta: String,
     sunrise: String,
     sunset: String,
-    moonrise: String,
-    moonset: String
+    vedicSunrise: String,        // Added
+    vedicSunset: String          // Added
   },
   advancedPanchang: {
+    day: String,
     sunrise: String,
     sunset: String,
     moonrise: String,
     moonset: String,
+    vedicSunrise: String,        // Added
+    vedicSunset: String,         // Added
     sunSignChange: String,
     moonSignChange: String,
     ayana: String,
+    paksha: String,              // Added
+    ritu: String,                // Added
+    sunSign: String,             // Added
+    moonSign: String,            // Added
+    panchangYog: String,         // Added
+    vikramSamvat: Number,        // Added (changed to Number)
+    shakaSamvat: Number,         // Added (changed to Number)
+    vkramSamvatName: String,     // Added
+    shakaSamvatName: String,     // Added
+    dishaShool: String,          // Added
+    dishaShoolRemedies: String,  // Added
+    nakShool: {                  // Added
+      direction: String,
+      remedies: String
+    },
+    moonNivas: String,           // Added
+    hinduMaah: {                 // Added
+      adhikStatus: Boolean,
+      purnimanta: String,
+      amanta: String,
+      amantaId: Number,
+      purnimantaId: Number
+    },
+    abhijitMuhurta: {
+      start: String,
+      end: String
+    },
+    rahukaal: {
+      start: String,
+      end: String
+    },
+    guliKaal: {
+      start: String,
+      end: String
+    },
+    yamghantKaal: {              // Added (was yamagandaKaal)
+      start: String,
+      end: String
+    },
     panchang: {
       tithi: mongoose.Schema.Types.Mixed,
       nakshatra: mongoose.Schema.Types.Mixed,
@@ -79,6 +104,9 @@ const panchangSchema = new mongoose.Schema({
     night: [mongoose.Schema.Types.Mixed]
   },
   dailyNakshatraPrediction: {
+    birthMoonSign: String,       // Added
+    birthMoonNakshatra: String,  // Added
+    predictionDate: String,      // Added
     nakshatra: String,
     prediction: mongoose.Schema.Types.Mixed,
     bot_response: String,

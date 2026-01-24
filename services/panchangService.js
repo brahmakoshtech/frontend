@@ -231,7 +231,7 @@ class PanchangService {
   processPanchangData(userId, dateKey, currentDate, latitude, longitude, basicPanchang, advancedPanchang, chaughadiya, nakshatraPrediction) {
     return {
       userId,
-      dateKey, // Store date key for easy querying
+      dateKey,
       requestDate: new Date(currentDate),
       location: {
         latitude: parseFloat(latitude),
@@ -243,36 +243,61 @@ class PanchangService {
         nakshatra: basicPanchang.nakshatra || '',
         yog: basicPanchang.yog || '',
         karan: basicPanchang.karan || '',
-        paksha: basicPanchang.paksha || '',
-        ritu: basicPanchang.ritu || '',
-        month: basicPanchang.month || '',
-        moonSign: basicPanchang.moon_sign || basicPanchang.moonSign || '',
-        sunSign: basicPanchang.sun_sign || basicPanchang.sunSign || '',
-        ayanamsha: basicPanchang.ayanamsha || 0,
-        vikramSamvat: basicPanchang.vikram_samvat || basicPanchang.vikramSamvat || '',
-        shakaSamvat: basicPanchang.shaka_samvat || basicPanchang.shakaSamvat || '',
-        vkramSamvatName: basicPanchang.vkram_samvat_name || basicPanchang.vkramSamvatName || '',
-        shakaSamvatName: basicPanchang.shaka_samvat_name || basicPanchang.shakaSamvatName || '',
-        dishaShool: basicPanchang.disha_shool || basicPanchang.dishaShool || '',
-        dishaShoolRemedies: basicPanchang.disha_shool_remedies || basicPanchang.dishaShoolRemedies || '',
-        kundliMuhurta: basicPanchang.kundali_muhurta || basicPanchang.kundliMuhurta || '',
-        rahukaal: basicPanchang.rahukaal || '',
-        guliKaal: basicPanchang.guliKaal || basicPanchang.gulikai || '',
-        yamagandaKaal: basicPanchang.yamaganda || basicPanchang.yamagandaKaal || '',
-        abhijitMuhurta: basicPanchang.abhijit_muhurta || basicPanchang.abhijitMuhurta || '',
         sunrise: basicPanchang.sunrise || '',
         sunset: basicPanchang.sunset || '',
-        moonrise: basicPanchang.moonrise || '',
-        moonset: basicPanchang.moonset || ''
+        vedicSunrise: basicPanchang.vedic_sunrise || '',
+        vedicSunset: basicPanchang.vedic_sunset || ''
       },
       advancedPanchang: {
+        day: advancedPanchang.day || '',
         sunrise: advancedPanchang.sunrise || '',
         sunset: advancedPanchang.sunset || '',
         moonrise: advancedPanchang.moonrise || '',
         moonset: advancedPanchang.moonset || '',
-        sunSignChange: advancedPanchang.sun_sign_change || advancedPanchang.sunSignChange || '',
-        moonSignChange: advancedPanchang.moon_sign_change || advancedPanchang.moonSignChange || '',
+        vedicSunrise: advancedPanchang.vedic_sunrise || '',
+        vedicSunset: advancedPanchang.vedic_sunset || '',
+        sunSignChange: advancedPanchang.sun_sign_change || '',
+        moonSignChange: advancedPanchang.moon_sign_change || '',
         ayana: advancedPanchang.ayana || '',
+        paksha: advancedPanchang.paksha || '',
+        ritu: advancedPanchang.ritu || '',
+        sunSign: advancedPanchang.sun_sign || '',
+        moonSign: advancedPanchang.moon_sign || '',
+        panchangYog: advancedPanchang.panchang_yog || '',
+        vikramSamvat: advancedPanchang.vikram_samvat || 0,
+        shakaSamvat: advancedPanchang.shaka_samvat || 0,
+        vkramSamvatName: advancedPanchang.vkram_samvat_name || '',
+        shakaSamvatName: advancedPanchang.shaka_samvat_name || '',
+        dishaShool: advancedPanchang.disha_shool || '',
+        dishaShoolRemedies: advancedPanchang.disha_shool_remedies || '',
+        nakShool: {
+          direction: advancedPanchang.nak_shool?.direction || '',
+          remedies: advancedPanchang.nak_shool?.remedies || ''
+        },
+        moonNivas: advancedPanchang.moon_nivas || '',
+        hinduMaah: {
+          adhikStatus: advancedPanchang.hindu_maah?.adhik_status || false,
+          purnimanta: advancedPanchang.hindu_maah?.purnimanta || '',
+          amanta: advancedPanchang.hindu_maah?.amanta || '',
+          amantaId: advancedPanchang.hindu_maah?.amanta_id || 0,
+          purnimantaId: advancedPanchang.hindu_maah?.purnimanta_id || 0
+        },
+        abhijitMuhurta: {
+          start: advancedPanchang.abhijit_muhurta?.start || '',
+          end: advancedPanchang.abhijit_muhurta?.end || ''
+        },
+        rahukaal: {
+          start: advancedPanchang.rahukaal?.start || '',
+          end: advancedPanchang.rahukaal?.end || ''
+        },
+        guliKaal: {
+          start: advancedPanchang.guliKaal?.start || '',
+          end: advancedPanchang.guliKaal?.end || ''
+        },
+        yamghantKaal: {
+          start: advancedPanchang.yamghant_kaal?.start || '',
+          end: advancedPanchang.yamghant_kaal?.end || ''
+        },
         panchang: {
           tithi: advancedPanchang.tithi || {},
           nakshatra: advancedPanchang.nakshatra || {},
@@ -281,10 +306,13 @@ class PanchangService {
         }
       },
       chaughadiyaMuhurta: {
-        day: chaughadiya.day || [],
-        night: chaughadiya.night || []
+        day: chaughadiya.chaughadiya?.day || [],
+        night: chaughadiya.chaughadiya?.night || []
       },
       dailyNakshatraPrediction: {
+        birthMoonSign: nakshatraPrediction.birth_moon_sign || '',
+        birthMoonNakshatra: nakshatraPrediction.birth_moon_nakshatra || '',
+        predictionDate: nakshatraPrediction.prediction_date || '',
         nakshatra: nakshatraPrediction.nakshatra || '',
         prediction: nakshatraPrediction.prediction || {},
         bot_response: nakshatraPrediction.bot_response || '',
