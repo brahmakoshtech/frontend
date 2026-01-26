@@ -56,6 +56,23 @@ export default {
 
     return () => (
       <div class="container-fluid px-4">
+        {/* Navbar */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '12px',
+          padding: '1rem 1.5rem',
+          marginBottom: '2rem',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(0, 0, 0, 0.05)'
+        }}>
+          <p style={{ 
+            margin: 0, 
+            fontSize: '1rem', 
+            color: '#1e293b', 
+            textAlign: 'center',
+            fontWeight: 500
+          }}>Access your AI-powered tools and features</p>
+        </div>
         <style>{`
           .tool-card {
             cursor: pointer;
@@ -89,29 +106,6 @@ export default {
           }
         `}</style>
         
-        {/* Header Section */}
-        <div class="mb-5">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h3 class="fw-bold text-dark mb-2">Welcome, {user.value?.email || 'User'}!</h3>
-              <p class="lead text-muted mb-0">Access your AI-powered tools and features</p>
-            </div>
-            <div class="text-end">
-              <button
-                onClick={() => handleCardClick('/mobile/user/profile')}
-                class="btn btn-primary px-4 py-2"
-                style={{
-                  borderRadius: '12px',
-                  fontWeight: '500'
-                }}
-              >
-                View Profile
-              </button>
-            </div>
-          </div>
-          <hr class="border-2 opacity-25" />
-        </div>
-
         {/* Tools Grid */}
         <div class="row g-4">
           {tools.map(tool => (

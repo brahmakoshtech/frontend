@@ -123,7 +123,7 @@ const routes = [
       {
         path: 'activities',
         name: 'MobileActivities',
-        component: () => import('../views/mobile/MobileActivities.jsx')
+        component: () => import('../views/mobile/SpiritualCheck-in/SpiritualActivities.jsx')
       },
       {
         path: 'ask-bi',
@@ -154,6 +154,26 @@ const routes = [
         path: 'brahm-avatar',
         name: 'MobileBrahmAvatarReels',
         component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')
+      },
+      {
+        path: 'meditate',
+        name: 'MobileMeditate',
+        component: () => import('../views/mobile/SpiritualCheck-in/MobileMeditate.jsx')
+      },
+      {
+        path: 'pray',
+        name: 'MobilePray',
+        component: () => import('../views/mobile/SpiritualCheck-in/MobilePray.jsx')
+      },
+      {
+        path: 'chant',
+        name: 'MobileChant',
+        component: () => import('../views/mobile/SpiritualCheck-in/MobileChant.jsx')
+      },
+      {
+        path: 'silence',
+        name: 'MobileSilence',
+        component: () => import('../views/mobile/SpiritualCheck-in/MobileSilence.jsx')
       }
     ]
   },
@@ -289,6 +309,16 @@ const routes = [
         path: 'services',
         name: 'ClientServices',
         component: () => import('../views/client/Services.jsx')
+      },
+      {
+        path: 'spiritual-checkin',
+        name: 'ClientSpiritualCheckin',
+        component: () => import('../views/client/SpiritualCheckin.jsx')
+      },
+      {
+        path: 'spiritual-management/:category?',
+        name: 'ClientSpiritualManagement',
+        component: () => import('../views/client/SpiritualManagement.jsx')
       },
       {
         path: 'astro',

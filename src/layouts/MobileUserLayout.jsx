@@ -106,7 +106,7 @@ export default {
               { id: 'home', label: 'Home', icon: '🏠' },
               { id: 'activities', label: 'Spiritual Check-In', icon: '🧘' },
               { id: 'ask-bi', label: 'ASK BI (Live Avatar)', icon: '🤖' },
-              { id: 'sadhana', label: 'Sadhana  (Services)', icon: '🕉️' },
+              { id: 'sadhana', label: 'Connect  (Services)', icon: '🕉️' },
               { id: 'rewards', label: 'Rewards', icon: '🏆' },
               { id: 'brahma-bazar', label: 'Brahma Bazar', icon: '🛒' },
               { id: 'utility', label: 'Utility', icon: '⚙️' },
@@ -173,6 +173,24 @@ export default {
 
         {/* Main Content */}
         <div style={{ flex: 1, marginLeft: '260px', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' }}>
+          {/* Header */}
+          <header style={{
+            background: 'white',
+            padding: '1rem 2rem',
+            borderBottom: '1px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b', fontWeight: 600 }}>User Portal</h1>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: 0, fontSize: '1rem', color: '#1e293b', fontWeight: 500 }}>Welcome, {user.value?.email || 'Spiritual Seeker'}!</p>
+            </div>
+          </header>
+          
           <main style={{ padding: '2rem', flex: 1, minHeight: 'calc(100vh - 70px)' }}>
             <RouterView />
           </main>

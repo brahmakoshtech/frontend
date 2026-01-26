@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useAuth } from '../store/auth.js';
+import { toggleSidebar, sidebarState } from './Sidebar.jsx';
 
 export default {
   name: 'Header',
@@ -13,6 +14,12 @@ export default {
       const routeName = route.name || '';
       return routeName.replace(/([A-Z])/g, ' $1').trim() || 'Dashboard';
     });
+
+    const handleToggleSidebar = () => {
+      console.log('Header toggle clicked, current sidebar state:', sidebarState.value);
+      toggleSidebar();
+      console.log('After toggle, sidebar state:', sidebarState.value);
+    };
 
     const toggleMenu = () => {
       showMenu.value = !showMenu.value;
@@ -38,9 +45,39 @@ export default {
     });
 
     return () => (
-      <header style={{ background: 'white', borderBottom: '1px solid #e5e7eb', height: '70px', zIndex: 100 }}>
+      <header style={{ 
+        background: 'white', 
+        borderBottom: '1px solid #e5e7eb', 
+        height: '80px', 
+        zIndex: 50, 
+        position: 'sticky', 
+        top: 0,
+        width: '100%'
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%', padding: '0 2rem' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1f2937', margin: 0 }}>{pageTitle.value}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button 
+              onClick={handleToggleSidebar}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                fontSize: '1.5rem', 
+                cursor: 'pointer', 
+                padding: '0.5rem',
+                color: '#1f2937',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1f2937', margin: 0 }}>{pageTitle.value}</h1>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div 
               class="user-menu" 

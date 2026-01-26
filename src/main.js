@@ -6,6 +6,28 @@ import { useAuth } from './store/auth.js'
 import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 
+// Add global CSS for layout fixes
+const globalStyles = `
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  
+  #app {
+    min-height: 100vh;
+  }
+`;
+
+// Inject global styles
+const styleSheet = document.createElement('style');
+styleSheet.textContent = globalStyles;
+document.head.appendChild(styleSheet);
+
 const app = createApp(App)
 app.use(router)
 app.use(Toast, {

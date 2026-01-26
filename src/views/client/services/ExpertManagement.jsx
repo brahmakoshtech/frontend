@@ -38,7 +38,20 @@ export default {
     const editingExpert = ref(null);
     const experts = ref([]);
     const categories = ref([]);
-    const selectedCategoryId = ref(route.query.category || '');
+    const selectedCategoryId = ref('');
+    
+    // Initialize category from URL query if it's a valid ObjectId
+    const initializeCategoryFromURL = () => {
+      const categoryFromURL = route.query.category || '';
+      // Only set if it's a valid ObjectId format (24 hex characters)
+      if (categoryFromURL && /^[0-9a-fA-F]{24}$/.test(categoryFromURL)) {
+        selectedCategoryId.value = categoryFromURL;
+      } else {
+        selectedCategoryId.value = '';
+      }
+    };
+    
+    initializeCategoryFromURL();
     const filteredExperts = ref([]);
     const pageTitle = ref('Expert Management');
 
@@ -88,10 +101,14 @@ export default {
       try {
         loading.value = true;
         console.log('Loading experts with categoryId:', categoryId);
-        const response = await expertService.getExperts(categoryId, true); // Include inactive experts
+        const response = await expertService.getExperts(true, categoryId); // Include inactive experts
         console.log('Experts API response:', response);
         if (response.success) {
           console.log('Experts data:', response.data);
+          // Debug: Check review counts in expert data
+          response.data.forEach(expert => {
+            console.log(`Expert ${expert.name}: rating=${expert.rating}, reviews=${expert.reviews}, reviewCount=${expert.reviewCount}`);
+          });
           experts.value = response.data || [];
           // No need for client-side filtering anymore
           filteredExperts.value = experts.value;
@@ -441,6 +458,30 @@ export default {
       activeDropdown.value = null;
     };
 
+    // Refresh expert data to get updated review counts
+    const refreshExpertData = async () => {
+      await loadExperts(selectedCategoryId.value || null);
+    };
+
+    // Function to update expert review count locally
+    const updateExpertReviewCount = (expertId, newCount, newRating = null) => {
+      const expertIndex = experts.value.findIndex(e => e._id === expertId);
+      if (expertIndex !== -1) {
+        experts.value[expertIndex].reviews = newCount;
+        if (newRating !== null) {
+          experts.value[expertIndex].rating = newRating;
+        }
+        // Update filtered experts as well
+        const filteredIndex = filteredExperts.value.findIndex(e => e._id === expertId);
+        if (filteredIndex !== -1) {
+          filteredExperts.value[filteredIndex].reviews = newCount;
+          if (newRating !== null) {
+            filteredExperts.value[filteredIndex].rating = newRating;
+          }
+        }
+      }
+    };
+
     const getStatusBadge = (status) => {
       const statusConfig = {
         online: { class: 'bg-success', text: 'Online', color: '#28a745' },
@@ -450,6 +491,10 @@ export default {
       };
       return statusConfig[status] || statusConfig.offline;
     };
+
+    // Expose refresh function for external use (e.g., after adding review)
+    window.refreshExpertData = refreshExpertData;
+    window.updateExpertReviewCount = updateExpertReviewCount;
 
 
 
@@ -658,7 +703,7 @@ export default {
                             <h6 class="fw-bold mb-1 text-truncate">{expert.name}</h6>
                             <div class="d-flex align-items-center gap-1 mb-1">
                               <StarIcon style={{ width: '0.875rem', height: '0.875rem', color: '#fbbf24' }} />
-                              <small class="text-muted">{expert.rating || 'N/A'} ({expert.reviews || 0})</small>
+                              <small class="text-muted">{expert.rating || 'N/A'} ({expert.reviews || expert.reviewCount || 0} reviews)</small>
                             </div>
                             <span 
                               class="badge rounded-pill px-2 py-1"
