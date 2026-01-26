@@ -1,9 +1,11 @@
 import express from 'express';
 import LiveAvatar from '../models/LiveAvatar.js';
 import { extractS3KeyFromUrl } from '../utils/s3.js';
+import dailyPredictionRoutes from './public/dailyPrediction.js';
 
 const router = express.Router();
 
+router.use('/', dailyPredictionRoutes);
 // GET /api/public/live-avatars - Get all active live avatars (public endpoint)
 router.get('/live-avatars', async (req, res) => {
   try {

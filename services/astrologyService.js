@@ -28,6 +28,8 @@ class AstrologyService {
    * Main method: Get complete astrology data
    * Checks DB first, then fetches from API if needed
    */
+
+  
   async getCompleteAstrologyData(userId, profile, forceRefresh = false) {
     try {
       // Step 1: Check if data exists in DB (unless force refresh)

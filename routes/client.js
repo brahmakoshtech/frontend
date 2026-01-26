@@ -809,4 +809,5 @@ router.delete('/users/:userId/numerology', authenticate, authorize('client', 'ad
   }
 });
 
+
 export default router;

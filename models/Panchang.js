@@ -50,8 +50,6 @@ const panchangSchema = new mongoose.Schema({
     moonset: String,
     vedicSunrise: String,        // Added
     vedicSunset: String,         // Added
-    sunSignChange: String,
-    moonSignChange: String,
     ayana: String,
     paksha: String,              // Added
     ritu: String,                // Added
