@@ -26,6 +26,7 @@ import uploadRoutes from './routes/upload.js';
 import mediaRoutes from './routes/media.js';
 // import testimonialRoutes from './routes/testimonials.js'; // Using organized routes instead
 import testimonialRoutes from './routes/testimonials/index.js';
+import reviewRoutes from './routes/reviews.js';
 import founderMessageRoutes from './routes/founderMessages/index.js';
 import brandAssetRoutes from './routes/brandAssets/index.js';
 import sponsorRoutes from './routes/sponsors.js';
@@ -36,6 +37,11 @@ import liveAvatarRoutes from './routes/liveAvatars.js';
 import brahmAvatarRoutes from './routes/brahmAvatars.js';
 import chantingRoutes from './routes/chantings.js';
 import prathanaRoutes from './routes/prathanas.js';
+import spiritualActivityRoutes from './routes/spiritualActivities.js';
+import spiritualConfigurationRoutes from './routes/spiritualConfigurations.js';
+import spiritualClipRoutes from './routes/spiritualClips.js';
+
+import spiritualStatsRoutes from './routes/spiritualStats.js';
 import publicRoutes from './routes/public.js';
 import { initializeSuperAdmin } from './config/initSuperAdmin.js';
 import realtimeAgentRoutes from './routes/mobile/realtimeAgent.js';
@@ -118,6 +124,9 @@ app.use('/api/media', mediaRoutes);
 // Testimonial Routes
 app.use('/api/testimonials', testimonialRoutes);
 
+// Review Routes
+app.use('/api/reviews', reviewRoutes);
+
 // Sponsor Routes
 app.use('/api/sponsors', sponsorRoutes);
 
@@ -142,11 +151,25 @@ app.use('/api/chantings', chantingRoutes);
 // Prathana Routes
 app.use('/api/prathanas', prathanaRoutes);
 
+// Spiritual Activity Routes
+app.use('/api/spiritual-activities', spiritualActivityRoutes);
+
+// Spiritual Configuration Routes
+app.use('/api/spiritual-configurations', spiritualConfigurationRoutes);
+
+// Spiritual Clip Routes
+app.use('/api/spiritual-clips', spiritualClipRoutes);
+
+
+
 // Founder Message Routes
 app.use('/api/founder-messages', founderMessageRoutes);
 
 // Brand Asset Routes
 app.use('/api/brand-assets', brandAssetRoutes);
+
+// Spiritual Stats Routes
+app.use('/api/spiritual-stats', spiritualStatsRoutes);
 
 // Public Routes (No Authentication Required)
 app.use('/api/public', publicRoutes);

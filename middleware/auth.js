@@ -119,7 +119,7 @@ export const authenticate = async (req, res, next) => {
 };
 
 // Role-based authorization middleware
-export const authorize = (...roles) => {
+export const authorize = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ 
@@ -128,7 +128,10 @@ export const authorize = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Handle both array and spread arguments
+    const allowedRoles = Array.isArray(roles) ? roles : [roles];
+
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ 
         success: false, 
         message: 'Access denied. Insufficient permissions.' 

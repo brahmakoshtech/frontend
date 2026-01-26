@@ -17,6 +17,8 @@ import FounderMessage from '../models/FounderMessage.js';
 import BrandAsset from '../models/BrandAsset.js';
 import Meditation from '../models/Meditation.js';
 import Chanting from '../models/Chanting.js';
+import Review from '../models/Review.js';
+import SpiritualClip from '../models/SpiritualClip.js';
 
 dotenv.config();
 
@@ -98,8 +100,13 @@ const runMigration = async () => {
       founderMessages: { updated: 0, skipped: 0, errors: 0 },
       brandAssets: { updated: 0, skipped: 0, errors: 0 },
       meditations: { updated: 0, skipped: 0, errors: 0 },
-      chantings: { updated: 0, skipped: 0, errors: 0 }
+      chantings: { updated: 0, skipped: 0, errors: 0 },
+      reviews: { updated: 0, skipped: 0, errors: 0 },
+      spiritualClips: { updated: 0, skipped: 0, errors: 0 }
     };
+    
+    // Migrate Reviews
+    results.reviews = await migrateModel(Review, 'Reviews', 'userImage', 'userImageKey');
     
     // Migrate Testimonials
     results.testimonials = await migrateModel(Testimonial, 'Testimonials', 'image', 'imageKey');
@@ -201,6 +208,52 @@ const runMigration = async () => {
     }
     results.chantings = { updated: chantUpdated, skipped: chantings.length - chantUpdated, errors: 0 };
     console.log(`  ✅ Chantings: ${chantUpdated} updated`);
+    
+    // Migrate SpiritualClips (has both videoUrl and audioUrl)
+    console.log(`\n=== Migrating SpiritualClips ===`);
+    const spiritualClips = await SpiritualClip.find({
+      $or: [
+        { videoUrl: { $exists: true, $ne: null, $ne: '' } },
+        { audioUrl: { $exists: true, $ne: null, $ne: '' } }
+      ],
+      $or: [
+        { videoKey: { $exists: false } },
+        { videoKey: null },
+        { videoKey: '' },
+        { audioKey: { $exists: false } },
+        { audioKey: null },
+        { audioKey: '' }
+      ]
+    });
+    
+    console.log(`Found ${spiritualClips.length} SpiritualClip records to migrate`);
+    let clipUpdated = 0;
+    for (const clip of spiritualClips) {
+      let needsSave = false;
+      
+      if (clip.videoUrl && !clip.videoKey) {
+        const key = extractS3KeyFromUrl(clip.videoUrl);
+        if (key) {
+          clip.videoKey = key;
+          needsSave = true;
+        }
+      }
+      
+      if (clip.audioUrl && !clip.audioKey) {
+        const key = extractS3KeyFromUrl(clip.audioUrl);
+        if (key) {
+          clip.audioKey = key;
+          needsSave = true;
+        }
+      }
+      
+      if (needsSave) {
+        await clip.save();
+        clipUpdated++;
+      }
+    }
+    results.spiritualClips = { updated: clipUpdated, skipped: spiritualClips.length - clipUpdated, errors: 0 };
+    console.log(`  ✅ SpiritualClips: ${clipUpdated} updated`);
     
     // Summary
     console.log('\n' + '='.repeat(50));
