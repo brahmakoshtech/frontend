@@ -48,21 +48,7 @@ const upload = multer({
 // GET all spiritual activities
 router.get('/', authenticate, async (req, res) => {
   try {
-    let query = { isDeleted: false };
-    
-    // Only filter by clientId for users, not for clients or admins
-    if (req.user.role === 'user') {
-      let clientId;
-      try {
-        clientId = await getClientId(req);
-        query.clientId = clientId;
-      } catch (clientIdError) {
-        return res.status(401).json({
-          success: false,
-          message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
-        });
-      }
-    }
+    const query = { isDeleted: false };
     
     if (req.query.includeInactive !== 'true') {
       query.isActive = true;
@@ -98,19 +84,8 @@ router.get('/', authenticate, async (req, res) => {
 // GET single spiritual activity
 router.get('/:id', authenticate, async (req, res) => {
   try {
-    let clientId;
-    try {
-      clientId = await getClientId(req);
-    } catch (clientIdError) {
-      return res.status(401).json({
-        success: false,
-        message: clientIdError.message || 'Unable to determine client ID. Please ensure your token is valid.'
-      });
-    }
-    
     const activity = await SpiritualActivity.findOne({
       _id: req.params.id,
-      clientId: clientId,
       isDeleted: false
     }).populate('clientId', 'clientId');
     
