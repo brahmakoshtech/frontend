@@ -256,9 +256,10 @@ export default {
     );
     
     const filteredRecentActivities = computed(() => 
-      userStats.value.recentActivities?.filter(activity => 
-        activity.type === currentCategory.value
-      ) || []
+      userStats.value.recentActivities?.filter(activity => {
+        console.log('Filtering activity:', activity.type, 'Current category:', currentCategory.value);
+        return activity.type === currentCategory.value;
+      }) || []
     );
     
     const filteredClips = computed(() => 
@@ -520,15 +521,73 @@ export default {
       }
     };
 
+    // Helper function to format user name
+    const formatUserName = (userDetails) => {
+      if (userDetails?.name && !userDetails.name.startsWith('User-')) {
+        return userDetails.name;
+      }
+      
+      if (userDetails?.email) {
+        const username = userDetails.email.split('@')[0];
+        // Remove numbers and format properly
+        const cleanName = username
+          .replace(/[0-9]/g, '') // Remove numbers
+          .replace(/[._-]/g, ' ') // Replace separators with spaces
+          .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+          .split(' ')
+          .filter(word => word.length > 0)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        
+        return cleanName || username;
+      }
+      
+      return userDetails?.name || 'Unknown User';
+    };
+
     const fetchUserStats = async () => {
       try {
+        console.log('Fetching user stats for category:', currentCategory.value);
         const response = await spiritualStatsService.getUserStats();
         if (response.success) {
+          console.log('User stats received:', response.data);
+          console.log('Recent activities:', response.data.recentActivities);
+          console.log('Category stats:', response.data.categoryStats);
           userStats.value = response.data;
         }
       } catch (error) {
         console.error('Fetch stats error:', error);
         // Keep default values on error
+      }
+    };
+
+    // Test function to manually save a silence session
+    const testSaveSilenceSession = async () => {
+      try {
+        const testSessionData = {
+          type: 'silence',
+          title: 'Test Silence Session',
+          targetDuration: 5,
+          actualDuration: 5,
+          karmaPoints: 15,
+          emotion: 'calm',
+          status: 'completed',
+          completionPercentage: 100
+        };
+        
+        console.log('Testing silence session save:', testSessionData);
+        const response = await spiritualStatsService.saveSession(testSessionData);
+        console.log('Test save response:', response);
+        
+        if (response.success) {
+          toast.success('Test silence session saved!');
+          await fetchUserStats(); // Refresh stats
+        } else {
+          toast.error('Failed to save test session: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Test save error:', error);
+        toast.error('Error saving test session: ' + error.message);
       }
     };
 
@@ -1070,6 +1129,16 @@ export default {
         currentCategory.value = route.params.category;
       }
       
+      // Check if user is logged in
+      const userToken = localStorage.getItem('token_user');
+      console.log('User token check:', userToken ? 'Token exists' : 'No token found');
+      
+      if (!userToken) {
+        console.error('User not logged in - redirecting to login');
+        router.push('/user/login');
+        return;
+      }
+      
       fetchConfigurations();
       fetchClips();
       fetchUserStats();
@@ -1098,6 +1167,16 @@ export default {
                     Manage {currentCategoryInfo.value.name.toLowerCase()} configurations and clips
                   </p>
                 </div>
+                {/* Test button for silence category */}
+                {currentCategory.value === 'silence' && (
+                  <button 
+                    class="btn btn-warning btn-sm rounded-pill px-3" 
+                    onClick={testSaveSilenceSession}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <span>🧪 Test Save</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1977,7 +2056,7 @@ export default {
                                       <td>
                                         <div>
                                           <span class="fw-medium text-primary d-block">{activity.userDetails?.email || 'Unknown User'}</span>
-                                          <small class="text-muted">{activity.userDetails?.name || 'No Name'}</small>
+                                          <small class="text-muted">{formatUserName(activity.userDetails) || 'No Name'}</small>
                                         </div>
                                       </td>
                                       <td>
@@ -2837,7 +2916,7 @@ export default {
                         <h6 class="fw-bold mb-2 text-primary">👤 User Information</h6>
                         <div class="row">
                           <div class="col-md-6">
-                            <strong>Name:</strong> {selectedActivity.value.userDetails.name || 'Not provided'}
+                            <strong>Name:</strong> {formatUserName(selectedActivity.value.userDetails) || 'Not provided'}
                           </div>
                           <div class="col-md-6">
                             <strong>Email:</strong> {selectedActivity.value.userDetails.email || 'Not provided'}

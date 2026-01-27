@@ -103,9 +103,12 @@ export default {
           completionPercentage: Math.round(completionPercentage)
         };
         
+        console.log('Saving silence session:', sessionData);
         const response = await spiritualStatsService.saveSession(sessionData);
         if (response.success) {
           console.log('Silence session saved successfully:', response.data?.statusMessage || response.message);
+        } else {
+          console.error('Failed to save silence session:', response.message);
         }
       } catch (error) {
         console.error('Error saving silence session:', error);
