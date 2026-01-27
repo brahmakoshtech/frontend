@@ -1167,16 +1167,7 @@ export default {
                     Manage {currentCategoryInfo.value.name.toLowerCase()} configurations and clips
                   </p>
                 </div>
-                {/* Test button for silence category */}
-                {currentCategory.value === 'silence' && (
-                  <button 
-                    class="btn btn-warning btn-sm rounded-pill px-3" 
-                    onClick={testSaveSilenceSession}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                  >
-                    <span>🧪 Test Save</span>
-                  </button>
-                )}
+
               </div>
             </div>
 
