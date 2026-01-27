@@ -55,127 +55,233 @@ export default {
     };
 
     return () => (
-      <div class="container-fluid px-4">
-        {/* Navbar */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '12px',
-          padding: '1rem 1.5rem',
-          marginBottom: '2rem',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          border: '1px solid rgba(0, 0, 0, 0.05)'
-        }}>
-          <p style={{ 
-            margin: 0, 
-            fontSize: '1rem', 
-            color: '#1e293b', 
-            textAlign: 'center',
-            fontWeight: 500
-          }}>Access your AI-powered tools and features</p>
+      <div class="mobile-dashboard">
+        {/* Header */}
+        <div class="dashboard-header">
+          <p>Access your AI-powered tools and features</p>
         </div>
+        
         <style>{`
+          .mobile-dashboard {
+            padding: 1rem;
+            min-height: 100vh;
+            background: #f8fafc;
+          }
+          
+          .dashboard-header {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            text-align: center;
+          }
+          
+          .dashboard-header p {
+            margin: 0;
+            font-size: 1rem;
+            color: #1e293b;
+            font-weight: 500;
+          }
+          
+          .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+          }
+          
+          @media (max-width: 768px) {
+            .mobile-dashboard {
+              padding: 0.75rem;
+            }
+            
+            .tools-grid {
+              grid-template-columns: 1fr;
+              gap: 1rem;
+            }
+            
+            .dashboard-header {
+              padding: 0.75rem 1rem;
+              margin-bottom: 1.5rem;
+            }
+            
+            .dashboard-header p {
+              font-size: 0.9rem;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .mobile-dashboard {
+              padding: 0.5rem;
+            }
+            
+            .tools-grid {
+              gap: 0.75rem;
+            }
+            
+            .dashboard-header {
+              padding: 0.5rem 0.75rem;
+              margin-bottom: 1rem;
+            }
+          }
+          
           .tool-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             cursor: pointer;
             transition: all 0.3s ease;
-            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
           }
+          
           .tool-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
           }
-          .tool-icon {
+          
+          .tool-icon-container {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
             transition: all 0.3s ease;
           }
-          .tool-card:hover .tool-icon {
-            transform: rotate(10deg) scale(1.1);
+          
+          .tool-card:hover .tool-icon-container {
+            transform: scale(1.1);
           }
-          .arrow-btn {
+          
+          .tool-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+          }
+          
+          .tool-description {
+            font-size: 0.9rem;
+            color: #64748b;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+          }
+          
+          .tool-action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          
+          .tool-action-text {
+            font-size: 0.8rem;
+            color: #94a3b8;
+          }
+          
+          .tool-arrow {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: all 0.3s ease;
           }
-          .tool-card:hover .arrow-btn {
+          
+          .tool-card:hover .tool-arrow {
             transform: scale(1.2);
-            background-color: var(--tool-color) !important;
-            color: white !important;
           }
-          .hover-overlay {
-            opacity: 0;
-            transition: opacity 0.3s ease;
+          
+          @media (max-width: 768px) {
+            .tool-card {
+              padding: 1.25rem;
+            }
+            
+            .tool-icon-container {
+              width: 50px;
+              height: 50px;
+            }
+            
+            .tool-title {
+              font-size: 1rem;
+            }
+            
+            .tool-description {
+              font-size: 0.85rem;
+            }
           }
-          .tool-card:hover .hover-overlay {
-            opacity: 1;
+          
+          @media (max-width: 480px) {
+            .tool-card {
+              padding: 1rem;
+            }
+            
+            .tool-icon-container {
+              width: 45px;
+              height: 45px;
+            }
+            
+            .tool-title {
+              font-size: 0.95rem;
+            }
+            
+            .tool-description {
+              font-size: 0.8rem;
+            }
+            
+            .tool-arrow {
+              width: 28px;
+              height: 28px;
+            }
           }
         `}</style>
         
         {/* Tools Grid */}
-        <div class="row g-4">
+        <div class="tools-grid">
           {tools.map(tool => (
-            <div key={tool.id} class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
+            <div 
+              key={tool.id}
+              class="tool-card"
+              style={{
+                background: `linear-gradient(135deg, ${tool.color}08 0%, ${tool.color}15 30%, #ffffff 100%)`
+              }}
+              onClick={() => handleCardClick(tool.route)}
+            >
               <div 
-                class="tool-card card h-100 border-0 shadow-sm position-relative overflow-hidden" 
-                style={{ 
-                  '--tool-color': tool.color,
-                  background: `linear-gradient(135deg, ${tool.color}08 0%, ${tool.color}15 30%, #f8fafc 100%)`
+                class="tool-icon-container"
+                style={{
+                  backgroundColor: `${tool.color}15`,
+                  border: `2px solid ${tool.color}25`
                 }}
-                onClick={() => handleCardClick(tool.route)}
               >
-                <div class="card-body p-4">
-                  {/* Icon */}
-                  <div class="mb-4">
-                    <div 
-                      class="tool-icon d-inline-flex align-items-center justify-content-center rounded-3"
-                      style={{ 
-                        width: '72px', 
-                        height: '72px',
-                        backgroundColor: `${tool.color}15`,
-                        border: `2px solid ${tool.color}25`
-                      }}
-                    >
-                      <tool.icon 
-                        style={{ 
-                          width: '2rem', 
-                          height: '2rem',
-                          color: tool.color
-                        }} 
-                      />
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div class="mb-4">
-                    <h5 class="card-title fw-bold mb-2 text-dark">{tool.name}</h5>
-                    <p class="card-text text-muted mb-0 lh-base" style={{ fontSize: '0.95rem' }}>
-                      {tool.description}
-                    </p>
-                  </div>
-
-                  {/* Action Button */}
-                  <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center text-muted" style={{ fontSize: '0.85rem' }}>
-                      <span>Tap to access</span>
-                    </div>
-                    <div 
-                      class="arrow-btn d-flex align-items-center justify-content-center rounded-circle"
-                      style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: `${tool.color}10`,
-                        color: tool.color
-                      }}
-                    >
-                      <ArrowRightIcon style={{ width: '1.25rem', height: '1.25rem' }} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hover Effect Overlay */}
+                <tool.icon 
+                  style={{ 
+                    width: '1.5rem', 
+                    height: '1.5rem',
+                    color: tool.color
+                  }} 
+                />
+              </div>
+              
+              <div class="tool-title">{tool.name}</div>
+              <div class="tool-description">{tool.description}</div>
+              
+              <div class="tool-action">
+                <div class="tool-action-text">Tap to access</div>
                 <div 
-                  class="hover-overlay position-absolute top-0 start-0 w-100 h-100"
+                  class="tool-arrow"
                   style={{
-                    background: `linear-gradient(135deg, ${tool.color}15 0%, ${tool.color}25 100%)`,
-                    pointerEvents: 'none',
-                    borderRadius: '16px'
+                    backgroundColor: `${tool.color}10`,
+                    color: tool.color
                   }}
-                ></div>
+                >
+                  <ArrowRightIcon style={{ width: '1rem', height: '1rem' }} />
+                </div>
               </div>
             </div>
           ))}

@@ -1,13 +1,57 @@
 import { RouterView } from 'vue-router';
 import { useAuth } from '../store/auth.js';
 import { useRouter } from 'vue-router';
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { 
+  Bars3Icon, 
+  XMarkIcon, 
+  HomeIcon, 
+  HeartIcon, 
+  ChatBubbleLeftRightIcon, 
+  TrophyIcon, 
+  ShoppingBagIcon, 
+  CogIcon, 
+  UserIcon, 
+  MicrophoneIcon, 
+  CpuChipIcon,
+  SparklesIcon
+} from '@heroicons/vue/24/outline';
 
 export default {
   name: 'MobileUserLayout',
   setup() {
     const router = useRouter();
     const { user, token, logout } = useAuth();
+    const sidebarCollapsed = ref(false);
+    const isMobile = ref(false);
+
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      const wasMobile = isMobile.value;
+      isMobile.value = width < 1024;
+      
+      // Only auto-collapse when switching from desktop to mobile
+      if (!wasMobile && isMobile.value) {
+        sidebarCollapsed.value = true;
+      }
+      // Auto-expand when switching from mobile to desktop
+      else if (wasMobile && !isMobile.value) {
+        sidebarCollapsed.value = false;
+      }
+    };
+
+    onMounted(() => {
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkScreenSize);
+    });
+
+    const toggleSidebar = () => {
+      sidebarCollapsed.value = !sidebarCollapsed.value;
+    };
     const activePage = computed(() => {
       const path = router.currentRoute.value.path;
       if (path.includes('/chat')) return 'chat';
@@ -24,6 +68,11 @@ export default {
     });
 
     const setActivePage = (page) => {
+      // Auto-close sidebar on mobile after navigation
+      if (isMobile.value) {
+        sidebarCollapsed.value = true;
+      }
+      
       if (page === 'home') {
         router.push('/mobile/user/dashboard');
       } else if (page === 'chat') {
@@ -54,11 +103,29 @@ export default {
       router.push('/user/login');
     };
 
+
+
     return () => (
       <div style={{ display: 'flex', minHeight: '100vh' }}>
+        {/* Overlay for mobile */}
+        {!sidebarCollapsed.value && isMobile.value && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 999
+            }}
+            onClick={toggleSidebar}
+          />
+        )}
+        
         {/* Sidebar */}
         <aside style={{
-          width: '260px',
+          width: sidebarCollapsed.value ? '70px' : '260px',
           height: '100vh',
           background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
           color: 'white',
@@ -69,17 +136,36 @@ export default {
           top: 0,
           zIndex: 1000,
           overflow: 'hidden',
-          boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)'
+          boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.3s ease',
+          transform: (isMobile.value && sidebarCollapsed.value) ? 'translateX(-100%)' : 'translateX(0)'
         }}>
-          <div style={{ padding: '1rem', borderBottom: '1px solid #2d2d3e', minWidth: 0, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: 'white', whiteSpace: 'nowrap' }}>Brahmakosh</h2>
-                <p style={{ fontSize: '0.75rem', margin: '0.25rem 0 0 0', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
-                  User Portal
-                </p>
+          <div style={{ padding: (sidebarCollapsed.value && !isMobile.value) ? '0.5rem' : '1rem', borderBottom: '1px solid #2d2d3e', minWidth: 0, overflow: 'hidden', textAlign: (sidebarCollapsed.value && !isMobile.value) ? 'center' : 'left' }}>
+            {!(sidebarCollapsed.value && !isMobile.value) ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: 'white', whiteSpace: 'nowrap' }}>Brahmakosh</h2>
+                  <p style={{ fontSize: '0.75rem', margin: '0.25rem 0 0 0', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                    User Portal
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ fontSize: '2rem', padding: '0.5rem 0' }}>
+                <button
+                  onClick={toggleSidebar}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'white',
+                    padding: 0
+                  }}
+                >
+                  <XMarkIcon style={{ width: '2rem', height: '2rem' }} />
+                </button>
+              </div>
+            )}
           </div>
           
           <nav 
@@ -103,17 +189,17 @@ export default {
               }
             `}</style>
             {[
-              { id: 'home', label: 'Home', icon: '🏠' },
-              { id: 'activities', label: 'Spiritual Check-In', icon: '🧘' },
-              { id: 'ask-bi', label: 'ASK BI (Live Avatar)', icon: '🤖' },
-              { id: 'sadhana', label: 'Connect  (Services)', icon: '🕉️' },
-              { id: 'rewards', label: 'Rewards', icon: '🏆' },
-              { id: 'brahma-bazar', label: 'Brahma Bazar', icon: '🛒' },
-              { id: 'utility', label: 'Utility', icon: '⚙️' },
-              { id: 'profile', label: 'Profile', icon: '👤' },
-              { id: 'chat', label: 'Chat', icon: '💬' },
-              { id: 'voice', label: 'Voice', icon: '🎤' },
-              { id: 'realtime-agent', label: 'Real Time Agent', icon: '🤖' }
+              { id: 'home', label: 'Home', icon: HomeIcon },
+              { id: 'activities', label: 'Spiritual Check-In', icon: HeartIcon },
+              { id: 'ask-bi', label: 'ASK BI (Live Avatar)', icon: CpuChipIcon },
+              { id: 'sadhana', label: 'Connect  (Services)', icon: SparklesIcon },
+              { id: 'rewards', label: 'Rewards', icon: TrophyIcon },
+              { id: 'brahma-bazar', label: 'Brahma Bazar', icon: ShoppingBagIcon },
+              { id: 'utility', label: 'Utility', icon: CogIcon },
+              { id: 'profile', label: 'Profile', icon: UserIcon },
+              { id: 'chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
+              { id: 'voice', label: 'Voice', icon: MicrophoneIcon },
+              { id: 'realtime-agent', label: 'Real Time Agent', icon: CpuChipIcon }
             ].map(item => (
               <button
                 key={item.id}
@@ -121,24 +207,35 @@ export default {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  padding: '1rem 1.5rem',
+                  justifyContent: (sidebarCollapsed.value && !isMobile.value) ? 'center' : 'flex-start',
+                  padding: (sidebarCollapsed.value && !isMobile.value) ? '0.75rem' : '1rem 1.5rem',
+                  margin: (sidebarCollapsed.value && !isMobile.value) ? '0.25rem' : '0',
                   color: activePage.value === item.id ? '#6366f1' : '#b4b4c0',
                   textDecoration: 'none',
-                  transition: 'all 0.2s',
-                  borderLeft: `3px solid ${activePage.value === item.id ? '#6366f1' : 'transparent'}`,
+                  transition: 'all 0.3s ease',
+                  borderLeft: (sidebarCollapsed.value && !isMobile.value) ? 'none' : `3px solid ${activePage.value === item.id ? '#6366f1' : 'transparent'}`,
                   background: activePage.value === item.id ? '#2d2d3e' : 'transparent',
                   minWidth: 0,
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
-                  width: '100%',
+                  width: (sidebarCollapsed.value && !isMobile.value) ? '50px' : '100%',
+                  height: (sidebarCollapsed.value && !isMobile.value) ? '50px' : 'auto',
                   border: 'none',
+                  borderRadius: (sidebarCollapsed.value && !isMobile.value) ? '8px' : '0',
                   cursor: 'pointer',
-                  fontSize: '1rem'
+                  fontSize: (sidebarCollapsed.value && !isMobile.value) ? '1.2rem' : '1rem'
                 }}
               >
-                <span style={{ fontSize: '1.2rem', marginRight: '1rem', minWidth: '24px', textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
-                <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                <item.icon style={{ 
+                  width: '1.5rem',
+                  height: '1.5rem',
+                  marginRight: (sidebarCollapsed.value && !isMobile.value) ? '0' : '1rem', 
+                  minWidth: '28px', 
+                  flexShrink: 0 
+                }} />
+                {!(sidebarCollapsed.value && !isMobile.value) && (
+                  <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -149,49 +246,104 @@ export default {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                padding: '0.75rem 1.5rem',
+                justifyContent: (sidebarCollapsed.value && !isMobile.value) ? 'center' : 'flex-start',
+                padding: (sidebarCollapsed.value && !isMobile.value) ? '0.75rem' : '0.75rem 1.5rem',
+                margin: (sidebarCollapsed.value && !isMobile.value) ? '0.25rem' : '0',
                 color: '#b4b4c0',
                 textDecoration: 'none',
-                transition: 'all 0.2s',
-                borderLeft: '3px solid transparent',
+                transition: 'all 0.3s ease',
+                borderLeft: (sidebarCollapsed.value && !isMobile.value) ? 'none' : '3px solid transparent',
                 background: 'transparent',
                 minWidth: 0,
                 overflow: 'hidden',
                 whiteSpace: 'nowrap',
-                width: '100%',
+                width: (sidebarCollapsed.value && !isMobile.value) ? '50px' : '100%',
+                height: (sidebarCollapsed.value && !isMobile.value) ? '50px' : 'auto',
                 border: 'none',
+                borderRadius: (sidebarCollapsed.value && !isMobile.value) ? '8px' : '0',
                 cursor: 'pointer',
-                fontSize: '1rem'
+                fontSize: (sidebarCollapsed.value && !isMobile.value) ? '1.2rem' : '1rem'
               }}
             >
-              <span style={{ fontSize: '1.2rem', marginRight: '1rem', minWidth: '24px', textAlign: 'center', flexShrink: 0 }}>🚪</span>
-              <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>Logout</span>
+              <span style={{ 
+                fontSize: '1.5rem', 
+                marginRight: (sidebarCollapsed.value && !isMobile.value) ? '0' : '1rem', 
+                minWidth: '28px', 
+                textAlign: 'center', 
+                flexShrink: 0 
+              }}>🚪</span>
+              {!(sidebarCollapsed.value && !isMobile.value) && (
+                <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>Logout</span>
+              )}
             </button>
           </div>
         </aside>
 
+
+
         {/* Main Content */}
-        <div style={{ flex: 1, marginLeft: '260px', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' }}>
+        <div style={{ 
+          flex: 1, 
+          marginLeft: isMobile.value ? '0' : (sidebarCollapsed.value ? '70px' : '260px'),
+          display: 'flex', 
+          flexDirection: 'column', 
+          background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+          transition: 'margin-left 0.3s ease',
+          minHeight: '100vh'
+        }}>
           {/* Header */}
           <header style={{
             background: 'white',
-            padding: '1rem 2rem',
+            padding: isMobile.value ? '1rem' : '1rem 2rem',
             borderBottom: '1px solid #e2e8f0',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 100
           }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b', fontWeight: 600 }}>User Portal</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button
+                onClick={toggleSidebar}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  color: '#1e293b',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Bars3Icon style={{ width: '1.5rem', height: '1.5rem' }} />
+              </button>
+              <h1 style={{ 
+                margin: 0, 
+                fontSize: isMobile.value ? '1.25rem' : '1.5rem', 
+                color: '#1e293b', 
+                fontWeight: 600 
+              }}>User Portal</h1>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontSize: '1rem', color: '#1e293b', fontWeight: 500 }}>Welcome, {user.value?.email || 'Spiritual Seeker'}!</p>
+              <p style={{ 
+                margin: 0, 
+                fontSize: isMobile.value ? '0.875rem' : '1rem', 
+                color: '#1e293b', 
+                fontWeight: 500,
+                display: isMobile.value ? 'none' : 'block'
+              }}>Welcome, {user.value?.email || 'Spiritual Seeker'}!</p>
             </div>
           </header>
           
-          <main style={{ padding: '2rem', flex: 1, minHeight: 'calc(100vh - 70px)' }}>
+          <main style={{ 
+            padding: isMobile.value ? '1rem' : '2rem', 
+            flex: 1, 
+            minHeight: 'calc(100vh - 70px)' 
+          }}>
             <RouterView />
           </main>
         </div>
@@ -199,4 +351,3 @@ export default {
     );
   }
 };
-
