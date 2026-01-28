@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Import routes
 import partnerRoutes from './routes/partners.js';
 import superAdminAuthRoutes from './routes/auth/superAdminAuth.js';
 import adminAuthRoutes from './routes/auth/adminAuth.js';
@@ -24,7 +26,6 @@ import chatRoutes from './routes/mobile/chat.js';
 import voiceRoutes from './routes/mobile/voice.js';
 import uploadRoutes from './routes/upload.js';
 import mediaRoutes from './routes/media.js';
-// import testimonialRoutes from './routes/testimonials.js'; // Using organized routes instead
 import testimonialRoutes from './routes/testimonials/index.js';
 import reviewRoutes from './routes/reviews.js';
 import founderMessageRoutes from './routes/founderMessages/index.js';
@@ -40,12 +41,19 @@ import prathanaRoutes from './routes/prathanas.js';
 import spiritualActivityRoutes from './routes/spiritualActivities.js';
 import spiritualConfigurationRoutes from './routes/spiritualConfigurations.js';
 import spiritualClipRoutes from './routes/spiritualClips.js';
-
 import spiritualStatsRoutes from './routes/spiritualStats.js';
 import publicRoutes from './routes/public.js';
-import { initializeSuperAdmin } from './config/initSuperAdmin.js';
 import realtimeAgentRoutes from './routes/mobile/realtimeAgent.js';
+
+// ============ NEW: Import Chat Routes ============
+import partnerUserChatRoutes from './routes/chatRoutes.js';
+
+// Import services
+import { initializeSuperAdmin } from './config/initSuperAdmin.js';
 import { setupVoiceAgentWebSocket } from './routes/mobile/voiceAgent.js';
+
+// ============ NEW: Import Chat WebSocket Service ============
+import { setupChatWebSocket } from './services/chatWebSocket.js';
 
 dotenv.config();
 
@@ -64,9 +72,7 @@ app.use(cors({
 
 // Security Headers for Google Sign-In
 app.use((req, res, next) => {
-  // Less restrictive COOP for Google Sign-In popup
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  // Less restrictive COEP
   res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
   next();
 });
@@ -83,21 +89,20 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/brahma
 mongoose.connect(MONGODB_URI)
 .then(async () => {
   console.log('MongoDB connected successfully');
-  // Initialize super admin after MongoDB connection
   await initializeSuperAdmin();
 })
 .catch((err) => console.error('MongoDB connection error:', err));
 
+// ============ REST API ROUTES ============
+
 // Partner Routes
 app.use('/api/partners', partnerRoutes);
 
-// Auth Routes - Separate endpoints for each role
+// Auth Routes
 app.use('/api/auth/super-admin', superAdminAuthRoutes);
 app.use('/api/auth/admin', adminAuthRoutes);
 app.use('/api/auth/client', clientAuthRoutes);
 app.use('/api/auth/user', userAuthRoutes);
-
-// Password Reset Routes
 app.use('/api/auth/user', passwordResetRoutes);
 
 // Application Routes
@@ -106,73 +111,38 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/client', clientRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 
-// Mobile API Routes - Profile Section
+// Mobile API Routes
 app.use('/api/mobile/client', clientProfileMobileRoutes);
 app.use('/api/mobile/user', userProfileMobileRoutes);
 app.use('/api/mobile/realtime-agent', realtimeAgentRoutes);
-
-// Mobile API Routes - Chat & Voice
 app.use('/api/mobile/chat', chatRoutes);
 app.use('/api/mobile/voice', voiceRoutes);
 
-// Upload Routes - S3 Image Upload
+// Upload & Media Routes
 app.use('/api/upload', uploadRoutes);
-
-// Media Routes - Presigned URLs
 app.use('/api/media', mediaRoutes);
 
-// Testimonial Routes
+// Content Routes
 app.use('/api/testimonials', testimonialRoutes);
-
-// Review Routes
 app.use('/api/reviews', reviewRoutes);
-
-// Sponsor Routes
 app.use('/api/sponsors', sponsorRoutes);
-
-// Expert Category Routes
 app.use('/api/expert-categories', expertCategoryRoutes);
-
-// Expert Routes
 app.use('/api/experts', expertRoutes);
-
-// Meditation Routes
 app.use('/api/meditations', meditationRoutes);
-
-// Live Avatar Routes
 app.use('/api/live-avatars', liveAvatarRoutes);
-
-// Brahm Avatar Routes
 app.use('/api/brahm-avatars', brahmAvatarRoutes);
-
-// Chanting Routes
 app.use('/api/chantings', chantingRoutes);
-
-// Prathana Routes
 app.use('/api/prathanas', prathanaRoutes);
-
-// Spiritual Activity Routes
 app.use('/api/spiritual-activities', spiritualActivityRoutes);
-
-// Spiritual Configuration Routes
 app.use('/api/spiritual-configurations', spiritualConfigurationRoutes);
-
-// Spiritual Clip Routes
 app.use('/api/spiritual-clips', spiritualClipRoutes);
-
-
-
-// Founder Message Routes
 app.use('/api/founder-messages', founderMessageRoutes);
-
-// Brand Asset Routes
 app.use('/api/brand-assets', brandAssetRoutes);
-
-// Spiritual Stats Routes
 app.use('/api/spiritual-stats', spiritualStatsRoutes);
-
-// Public Routes (No Authentication Required)
 app.use('/api/public', publicRoutes);
+
+// ============ NEW: Partner-User Chat Routes ============
+app.use('/api/chat', partnerUserChatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -188,14 +158,23 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err.message : undefined 
   });
 });
+
+// ============ WEBSOCKET SETUP ============
 // Setup WebSocket AFTER all routes are configured
+
+// 1. Voice Agent WebSocket (existing)
 setupVoiceAgentWebSocket(server);
 
-// Start server - ONLY use server.listen() (NOT app.listen())
+// ============ NEW: 2. Chat WebSocket for Partner-User Communication ============
+setupChatWebSocket(server);
+
+// ============ START SERVER ============
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
-  console.log(`✅ WebSocket available at ws://localhost:${PORT}/api/voice/agent`);
+  console.log(`✅ Voice WebSocket available at ws://localhost:${PORT}/api/voice/agent`);
+  console.log(`✅ Chat WebSocket available at ws://localhost:${PORT}/socket.io/`);
+  console.log(`✅ REST API available at http://localhost:${PORT}/api`);
 });
 
 export default app;
