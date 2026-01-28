@@ -36,15 +36,7 @@ export default {
       mood: 'Peaceful'
     });
 
-    const weeklyData = ref([
-      { day: 'Mon', checkIns: 1, mood: 'calm' },
-      { day: 'Tue', checkIns: 1, mood: 'peaceful' },
-      { day: 'Wed', checkIns: 0, mood: null },
-      { day: 'Thu', checkIns: 1, mood: 'grateful' },
-      { day: 'Fri', checkIns: 1, mood: 'joyful' },
-      { day: 'Sat', checkIns: 1, mood: 'serene' },
-      { day: 'Sun', checkIns: 0, mood: null }
-    ]);
+    const weeklyData = ref([]);
 
     const getMoodColor = (mood) => {
       const colors = {
@@ -63,12 +55,23 @@ export default {
         const response = await spiritualStatsService.getUserStats();
         if (response.success) {
           userStats.value = response.data;
+          
+          // Calculate weekly data from real activities
+          const weeklyActivities = calculateWeeklyData(response.data.recentActivities || []);
+          weeklyData.value = weeklyActivities;
+          
+          // Calculate longest streak from activities
+          const longestStreak = calculateLongestStreak(response.data.recentActivities || []);
+          
+          // Calculate this week's sessions
+          const thisWeekSessions = calculateThisWeekSessions(response.data.recentActivities || []);
+          
           // Update stats from real data
           stats.value = {
             totalCheckIns: response.data.totalStats?.sessions || 0,
             currentStreak: response.data.totalStats?.streak || 0,
-            longestStreak: response.data.totalStats?.longestStreak || 0,
-            thisWeek: response.data.weeklyStats?.sessions || 0,
+            longestStreak: longestStreak,
+            thisWeek: thisWeekSessions,
             thisMonth: response.data.monthlyStats?.sessions || 0,
             totalMeditation: response.data.totalStats?.minutes || 0,
             favoriteTime: response.data.insights?.favoriteTime || 'Morning',
@@ -81,6 +84,87 @@ export default {
       } finally {
         loading.value = false;
       }
+    };
+
+    // Calculate weekly data from activities
+    const calculateWeeklyData = (activities) => {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+      
+      const weeklyData = days.map((day, index) => {
+        const dayDate = new Date(startOfWeek);
+        dayDate.setDate(startOfWeek.getDate() + index);
+        
+        const dayActivities = activities.filter(activity => {
+          const activityDate = new Date(activity.createdAt);
+          return activityDate.toDateString() === dayDate.toDateString();
+        });
+        
+        const mostCommonMood = dayActivities.length > 0 ? 
+          dayActivities[0].emotion || 'calm' : null;
+        
+        return {
+          day,
+          checkIns: dayActivities.length,
+          mood: mostCommonMood
+        };
+      });
+      
+      return weeklyData;
+    };
+
+    // Calculate longest streak from activities
+    const calculateLongestStreak = (activities) => {
+      if (!activities || activities.length === 0) return 0;
+      
+      // Get unique dates from activities
+      const uniqueDates = [...new Set(activities.map(activity => {
+        const date = new Date(activity.createdAt);
+        return date.toDateString();
+      }))].sort((a, b) => new Date(b) - new Date(a));
+      
+      let longestStreak = 0;
+      let currentStreak = 0;
+      
+      for (let i = 0; i < uniqueDates.length; i++) {
+        if (i === 0) {
+          currentStreak = 1;
+        } else {
+          const currentDate = new Date(uniqueDates[i]);
+          const previousDate = new Date(uniqueDates[i - 1]);
+          const daysDiff = Math.abs((previousDate - currentDate) / (1000 * 60 * 60 * 24));
+          
+          if (daysDiff === 1) {
+            currentStreak++;
+          } else {
+            longestStreak = Math.max(longestStreak, currentStreak);
+            currentStreak = 1;
+          }
+        }
+      }
+      
+      return Math.max(longestStreak, currentStreak);
+    };
+
+    // Calculate this week's sessions
+    const calculateThisWeekSessions = (activities) => {
+      if (!activities || activities.length === 0) return 0;
+      
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      return activities.filter(activity => {
+        const activityDate = new Date(activity.createdAt);
+        return activityDate >= startOfWeek && activityDate <= endOfWeek;
+      }).length;
     };
 
     const formatUserName = (userDetails) => {
@@ -394,7 +478,7 @@ export default {
             
             .table-header {
               display: grid;
-              grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+              grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr 1fr 1fr;
               background: #f8fafc;
               border-bottom: 1px solid #e2e8f0;
               font-weight: 600;
@@ -409,7 +493,7 @@ export default {
             
             .table-row {
               display: grid;
-              grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+              grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr 1fr 1fr;
               border-bottom: 1px solid #f1f5f9;
               transition: background-color 0.2s ease;
             }
@@ -423,6 +507,22 @@ export default {
               display: flex;
               align-items: center;
               font-size: 0.8rem;
+            }
+            
+            .user-cell {
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .user-name {
+              font-weight: 600;
+              color: #1e293b;
+              font-size: 0.85rem;
+            }
+            
+            .user-email {
+              font-size: 0.7rem;
+              color: #6b7280;
             }
             
             .activity-cell {
@@ -457,8 +557,9 @@ export default {
             
             .status-cell {
               display: flex;
-              align-items: center;
-              gap: 0.5rem;
+              flex-direction: column;
+              align-items: flex-start;
+              gap: 0.25rem;
             }
             
             .status-dot {
@@ -472,8 +573,32 @@ export default {
               font-size: 0.75rem;
             }
             
-            .date-cell {
+            .completion-percentage {
+              font-size: 0.7rem;
               color: #6b7280;
+            }
+            
+            .date-cell {
+              display: flex;
+              flex-direction: column;
+              color: #6b7280;
+              font-size: 0.75rem;
+            }
+            
+            .time-cell {
+              font-size: 0.7rem;
+              color: #9ca3af;
+            }
+            
+            .chanting-name {
+              font-size: 0.7rem;
+              color: #f59e0b;
+              font-style: italic;
+            }
+            
+            .chant-count {
+              color: #f59e0b;
+              font-weight: 600;
               font-size: 0.75rem;
             }
             
@@ -704,6 +829,7 @@ export default {
           ) : userStats.value.recentActivities?.length > 0 ? (
             <div class="data-table">
               <div class="table-header">
+                <div class="header-cell">User</div>
                 <div class="header-cell">Activity</div>
                 <div class="header-cell">Type</div>
                 <div class="header-cell">Duration</div>
@@ -714,12 +840,21 @@ export default {
               {userStats.value.recentActivities.map((activity, index) => (
                 <div key={activity.id || index} class="table-row">
                   <div class="table-cell">
+                    <div class="user-cell">
+                      <div class="user-name">{formatUserName(activity.userDetails)}</div>
+                      <div class="user-email">{activity.userDetails?.email || 'Unknown'}</div>
+                    </div>
+                  </div>
+                  <div class="table-cell">
                     <div class="activity-cell">
                       <span class="activity-emoji">{getActivityIcon(activity.type)}</span>
                       <div>
                         <div class="activity-name">{activity.title}</div>
                         {activity.emotion && (
                           <div class="activity-emotion-small">Feeling: {activity.emotion}</div>
+                        )}
+                        {activity.type === 'chanting' && activity.chantingName && (
+                          <div class="chanting-name">{activity.chantingName}</div>
                         )}
                       </div>
                     </div>
@@ -728,7 +863,11 @@ export default {
                     <span class="type-badge">{activity.type}</span>
                   </div>
                   <div class="table-cell">
-                    {activity.actualDuration ? formatDuration(activity.actualDuration) : '-'}
+                    {activity.type === 'chanting' ? (
+                      <span class="chant-count">{activity.chantCount || 0} chants</span>
+                    ) : (
+                      <span>{activity.actualDuration ? formatDuration(activity.actualDuration) : '-'}</span>
+                    )}
                   </div>
                   <div class="table-cell">
                     <div class="status-cell">
@@ -737,14 +876,22 @@ export default {
                         style={{ backgroundColor: getStatusColor(activity.status) }}
                       ></div>
                       <span class="status-text">{activity.status}</span>
+                      <div class="completion-percentage">{activity.completionPercentage || 100}%</div>
                     </div>
                   </div>
                   <div class="table-cell">
                     <div class="date-cell">
                       {new Date(activity.createdAt).toLocaleDateString('en-US', {
                         month: 'short',
-                        day: 'numeric'
+                        day: 'numeric',
+                        year: 'numeric'
                       })}
+                      <div class="time-cell">
+                        {new Date(activity.createdAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
                     </div>
                   </div>
                   <div class="table-cell">
