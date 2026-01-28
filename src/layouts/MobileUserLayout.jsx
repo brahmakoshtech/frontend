@@ -22,9 +22,31 @@ export default {
   name: 'MobileUserLayout',
   setup() {
     const router = useRouter();
-    const { user, token, logout } = useAuth();
+    const { user, token, logout, initializeAuth, fetchCurrentUser } = useAuth();
     const sidebarCollapsed = ref(false);
     const isMobile = ref(false);
+
+    // Initialize auth on mount
+    onMounted(async () => {
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+      
+      // Initialize auth for user role
+      await initializeAuth('user');
+      
+      // If token exists but no user data, fetch it
+      if (localStorage.getItem('token_user') && !user.value) {
+        try {
+          await fetchCurrentUser('user');
+        } catch (error) {
+          console.error('Failed to fetch user data:', error);
+        }
+      }
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkScreenSize);
+    });
 
     const checkScreenSize = () => {
       const width = window.innerWidth;
@@ -40,15 +62,6 @@ export default {
         sidebarCollapsed.value = false;
       }
     };
-
-    onMounted(() => {
-      checkScreenSize();
-      window.addEventListener('resize', checkScreenSize);
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener('resize', checkScreenSize);
-    });
 
     const toggleSidebar = () => {
       sidebarCollapsed.value = !sidebarCollapsed.value;
@@ -335,10 +348,9 @@ export default {
             <div style={{ textAlign: 'right' }}>
               <p style={{ 
                 margin: 0, 
-                fontSize: isMobile.value ? '0.875rem' : '1rem', 
+                fontSize: isMobile.value ? '0.75rem' : '1rem', 
                 color: '#1e293b', 
-                fontWeight: 500,
-                display: isMobile.value ? 'none' : 'block'
+                fontWeight: 500
               }}>Welcome, {user.value?.email || 'Spiritual Seeker'}!</p>
             </div>
           </header>
