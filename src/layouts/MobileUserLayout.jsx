@@ -14,7 +14,8 @@ import {
   UserIcon, 
   MicrophoneIcon, 
   CpuChipIcon,
-  SparklesIcon
+  SparklesIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -57,7 +58,7 @@ export default {
       if (path.includes('/chat')) return 'chat';
       if (path.includes('/voice')) return 'voice';
       if (path.includes('/realtime-agent')) return 'realtime-agent';
-      if (path.includes('/activities')) return 'activities';
+      if (path.includes('/spiritual-stats')) return 'spiritual-stats';
       if (path.includes('/ask-bi')) return 'ask-bi';
       if (path.includes('/sadhana')) return 'sadhana';
       if (path.includes('/rewards')) return 'rewards';
@@ -83,6 +84,8 @@ export default {
         router.push('/mobile/user/realtime-agent');
       } else if (page === 'activities') {
         router.push('/mobile/user/activities');
+      } else if (page === 'spiritual-stats') {
+        router.push('/mobile/user/spiritual-stats');
       } else if (page === 'ask-bi') {
         router.push('/mobile/user/ask-bi');
       } else if (page === 'sadhana') {
@@ -191,6 +194,7 @@ export default {
             {[
               { id: 'home', label: 'Home', icon: HomeIcon },
               { id: 'activities', label: 'Spiritual Check-In', icon: HeartIcon },
+              { id: 'spiritual-stats', label: 'Spiritual Check-In Stats', icon: ChartBarIcon },
               { id: 'ask-bi', label: 'ASK BI (Live Avatar)', icon: CpuChipIcon },
               { id: 'sadhana', label: 'Connect  (Services)', icon: SparklesIcon },
               { id: 'rewards', label: 'Rewards', icon: TrophyIcon },

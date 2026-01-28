@@ -126,6 +126,11 @@ const routes = [
         component: () => import('../views/mobile/SpiritualCheck-in/SpiritualActivities.jsx')
       },
       {
+        path: 'spiritual-stats',
+        name: 'SpiritualStats',
+        component: () => import('../views/mobile/SpiritualStats.jsx')
+      },
+      {
         path: 'ask-bi',
         name: 'MobileAskBI',
         component: () => import('../views/mobile/MobileAskBI.jsx')
