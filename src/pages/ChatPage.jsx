@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ChatList from '../components/ChatList';
 import Chat from '../components/Chat';
-import { createChat, getChats, getChat } from '../services/api';
+import api from '../services/api';
 
 function ChatPage({ token }) {
   const [chats, setChats] = useState([]);
@@ -14,7 +14,7 @@ function ChatPage({ token }) {
 
   const loadChats = async () => {
     try {
-      const data = await getChats(token);
+      const data = await api.getChats();
       if (data.success) {
         setChats(data.data.chats);
       }
@@ -27,7 +27,7 @@ function ChatPage({ token }) {
 
   const handleNewChat = async () => {
     try {
-      const data = await createChat(token);
+      const data = await api.createChat();
       if (data.success) {
         setSelectedChatId(data.data.chatId);
         loadChats();

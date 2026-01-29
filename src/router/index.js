@@ -1,99 +1,104 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { useAuth } from '../store/auth.js';
+
+// Import layouts
+import AdminLayout from '../layouts/AdminLayout.jsx';
+import ClientLayout from '../layouts/ClientLayout.jsx';
+import DashboardLayout from '../layouts/DashboardLayout.jsx';
+import MobileUserLayout from '../layouts/MobileUserLayout.jsx';
+import SuperAdminLayout from '../layouts/SuperAdminLayout.jsx';
 
 const routes = [
-  // Partner Routes
   {
-    path: '/partner/login',
-    name: 'PartnerLogin',
-    component: () => import('../views/partner/PartnerLogin.jsx'),
-    meta: { requiresGuest: true }
+    path: '/',
+    redirect: '/mobile/user/dashboard'
+  },
+  
+  // Auth routes
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.jsx')
   },
   {
-    path: '/partner/register',
-    name: 'PartnerRegister',
-    component: () => import('../views/partner/PartnerRegister.jsx'),
-    meta: { requiresGuest: true }
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Register.jsx')
   },
-  {
-    path: '/partner/dashboard',
-    name: 'PartnerDashboard',
-    component: () => import('../views/partner/PartnerDashboard.jsx'),
-    meta: { requiresAuth: true, requiresRole: 'partner' }
-  },
-  // Auth Routes - Separate login pages
-  {
-    path: '/super-admin/login',
-    name: 'SuperAdminLogin',
-    component: () => import('../views/auth/SuperAdminLogin.jsx'),
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/admin/login',
-    name: 'AdminLogin',
-    component: () => import('../views/auth/AdminLogin.jsx'),
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/client/login',
-    name: 'ClientLogin',
-    component: () => import('../views/auth/ClientLogin.jsx'),
-    meta: { requiresGuest: true }
-  },
+  
+  // User auth routes
   {
     path: '/user/login',
     name: 'UserLogin',
-    component: () => import('../views/auth/UserLogin.jsx'),
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/user/forgot-password',
-    name: 'ForgotPassword',
-    component: () => import('../views/auth/ForgotPassword.jsx'),
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/user/verify-reset-otp',
-    name: 'VerifyResetOTP',
-    component: () => import('../views/auth/VerifyResetOTP.jsx'),
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/user/reset-password',
-    name: 'ResetPassword',
-    component: () => import('../views/auth/ResetPassword.jsx'),
-    meta: { requiresGuest: true }
-  },
-  // Auth Routes - Separate register pages
-  {
-    path: '/client/register',
-    name: 'ClientRegister',
-    component: () => import('../views/auth/ClientRegister.jsx'),
-    meta: { requiresGuest: true }
+    component: () => import('../views/auth/UserLogin.jsx')
   },
   {
     path: '/user/register',
     name: 'UserRegister',
-    component: () => import('../views/auth/UserRegister.jsx'),
-    meta: { requiresGuest: true }
-  },
-  // Mobile User Registration (Multi-step with OTP)
-  {
-    path: '/mobile/user/register',
-    name: 'MobileUserRegister',
-    component: () => import('../views/mobile/MobileUserRegister.jsx'),
-    meta: { requiresGuest: true }
+    component: () => import('../views/auth/UserRegister.jsx')
   },
   {
-    path: '/',
-    redirect: '/user/login'
+    path: '/user/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('../views/auth/ForgotPassword.jsx')
   },
-  // Mobile User Routes (Chat & Voice)
+  {
+    path: '/user/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/auth/ResetPassword.jsx')
+  },
+  {
+    path: '/user/verify-otp',
+    name: 'VerifyResetOTP',
+    component: () => import('../views/auth/VerifyResetOTP.jsx')
+  },
+  
+  // Client auth routes
+  {
+    path: '/client/login',
+    name: 'ClientLogin',
+    component: () => import('../views/auth/ClientLogin.jsx')
+  },
+  {
+    path: '/client/register',
+    name: 'ClientRegister',
+    component: () => import('../views/auth/ClientRegister.jsx')
+  },
+  
+  // Admin auth routes
+  {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('../views/auth/AdminLogin.jsx')
+  },
+  
+  // Super Admin auth routes
+  {
+    path: '/super-admin/login',
+    name: 'SuperAdminLogin',
+    component: () => import('../views/auth/SuperAdminLogin.jsx')
+  },
+  
+  // Partner routes
+  {
+    path: '/partner/login',
+    name: 'PartnerLogin',
+    component: () => import('../views/partner/PartnerLogin.jsx')
+  },
+  {
+    path: '/partner/register',
+    name: 'PartnerRegister',
+    component: () => import('../views/partner/PartnerRegister.jsx')
+  },
+  {
+    path: '/partner/dashboard',
+    name: 'PartnerDashboard',
+    component: () => import('../views/partner/PartnerDashboard.jsx')
+  },
+  
+  // Mobile user routes
   {
     path: '/mobile/user',
-    component: () => import('../layouts/MobileUserLayout.jsx'),
-    meta: { requiresAuth: true, requiresRole: 'user' },
-    redirect: '/mobile/user/dashboard',
+    component: MobileUserLayout,
     children: [
       {
         path: 'dashboard',
@@ -106,6 +111,26 @@ const routes = [
         component: () => import('../views/mobile/MobileUserProfile.jsx')
       },
       {
+        path: 'register',
+        name: 'MobileUserRegister',
+        component: () => import('../views/mobile/MobileUserRegister.jsx')
+      },
+      {
+        path: 'activities',
+        name: 'MobileActivities',
+        component: () => import('../views/mobile/SpiritualCheck-in/SpiritualActivities.jsx')
+      },
+      {
+        path: 'spiritual-activities',
+        name: 'SpiritualActivities',
+        component: () => import('../views/mobile/SpiritualCheck-in/SpiritualActivities.jsx')
+      },
+      {
+        path: 'spiritual-stats',
+        name: 'SpiritualStats',
+        component: () => import('../views/mobile/SpiritualStats.jsx')
+      },
+      {
         path: 'chat',
         name: 'MobileChatPage',
         component: () => import('../views/mobile/MobileChatPage.jsx')
@@ -116,29 +141,24 @@ const routes = [
         component: () => import('../views/mobile/MobileVoicePage.jsx')
       },
       {
-        path: 'realtime-agent',
-        name: 'RealTimeAgent',
-        component: () => import('../views/mobile/RealTimeAgent.jsx')
-      },
-      {
-        path: 'activities',
-        name: 'MobileActivities',
-        component: () => import('../views/mobile/SpiritualCheck-in/SpiritualActivities.jsx')
-      },
-      {
         path: 'ask-bi',
         name: 'MobileAskBI',
         component: () => import('../views/mobile/MobileAskBI.jsx')
       },
       {
-        path: 'sadhana',
-        name: 'MobileSadhana',
-        component: () => import('../views/mobile/MobileSadhana.jsx')
+        path: 'brahm-avatar-reels',
+        name: 'MobileBrahmAvatarReels',
+        component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')
       },
       {
-        path: 'rewards',
-        name: 'MobileRewards',
-        component: () => import('../views/mobile/MobileRewards.jsx')
+        path: 'brahm-avatar',
+        name: 'MobileBrahmAvatar',
+        component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')
+      },
+      {
+        path: 'realtime-agent',
+        name: 'RealTimeAgent',
+        component: () => import('../views/mobile/RealTimeAgent.jsx')
       },
       {
         path: 'brahma-bazar',
@@ -146,14 +166,24 @@ const routes = [
         component: () => import('../views/mobile/MobileBrahmaBazar.jsx')
       },
       {
+        path: 'rewards',
+        name: 'MobileRewards',
+        component: () => import('../views/mobile/MobileRewards.jsx')
+      },
+      {
+        path: 'sadhana',
+        name: 'MobileSadhana',
+        component: () => import('../views/mobile/MobileSadhana.jsx')
+      },
+      {
         path: 'utility',
         name: 'MobileUtility',
         component: () => import('../views/mobile/MobileUtility.jsx')
       },
       {
-        path: 'brahm-avatar',
-        name: 'MobileBrahmAvatarReels',
-        component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')
+        path: 'coming-soon',
+        name: 'ComingSoon',
+        component: () => import('../views/mobile/ComingSoon.jsx')
       },
       {
         path: 'meditate',
@@ -177,173 +207,33 @@ const routes = [
       }
     ]
   },
-  // Super Admin routes
-  {
-    path: '/super-admin',
-    component: () => import('../layouts/SuperAdminLayout.jsx'),
-    meta: { requiresAuth: true, requiresRole: 'super_admin' },
-    redirect: '/super-admin/overview',
-    children: [
-      {
-        path: 'overview',
-        name: 'SuperAdminOverview',
-        component: () => import('../views/super-admin/Overview.jsx')
-      },
-      {
-        path: 'profile',
-        name: 'SuperAdminProfile',
-        component: () => import('../views/super-admin/Profile.jsx')
-      },
-      {
-        path: 'admins',
-        name: 'SuperAdminAdmins',
-        component: () => import('../views/super-admin/Admins.jsx')
-      },
-      {
-        path: 'pending-approvals',
-        name: 'SuperAdminPendingApprovals',
-        component: () => import('../views/super-admin/PendingApprovals.jsx')
-      },
-      {
-        path: 'users',
-        name: 'SuperAdminUsers',
-        component: () => import('../views/super-admin/Users.jsx')
-      }
-    ]
-  },
-  // Admin routes
-  {
-    path: '/admin',
-    component: () => import('../layouts/AdminLayout.jsx'),
-    meta: { requiresAuth: true, requiresRole: ['admin', 'super_admin'] },
-    redirect: '/admin/overview',
-    children: [
-      {
-        path: 'overview',
-        name: 'AdminOverview',
-        component: () => import('../views/admin/Overview.jsx')
-      },
-      {
-        path: 'profile',
-        name: 'AdminProfile',
-        component: () => import('../views/admin/Profile.jsx')
-      },
-      {
-        path: 'clients',
-        name: 'AdminClients',
-        component: () => import('../views/admin/Clients.jsx')
-      },
-      {
-        path: 'ai-agents',
-        name: 'AdminAIAgents',
-        component: () => import('../views/admin/AIAgents.jsx')
-      },
-      {
-        path: 'payments',
-        name: 'AdminPayments',
-        component: () => import('../views/admin/Payments.jsx')
-      },
-      {
-        path: 'credits',
-        name: 'AdminCredits',
-        component: () => import('../views/admin/Credits.jsx')
-      },
-      {
-        path: 'users',
-        name: 'AdminUsers',
-        component: () => import('../views/admin/Users.jsx')
-      },
-      {
-        path: 'tools',
-        name: 'AdminTools',
-        component: () => import('../views/admin/Tools.jsx')
-      },
-      {
-        path: 'support',
-        name: 'AdminSupport',
-        component: () => import('../views/admin/Support.jsx')
-      },
-      {
-        path: 'health',
-        name: 'AdminHealth',
-        component: () => import('../views/admin/Health.jsx')
-      },
-      {
-        path: 'settings',
-        name: 'AdminSettings',
-        component: () => import('../views/admin/Settings.jsx')
-      }
-    ]
-  },
+  
+
+  
   // Client routes
   {
     path: '/client',
-    component: () => import('../layouts/ClientLayout.jsx'),
-    meta: { requiresAuth: true, requiresRole: ['client', 'admin', 'super_admin'] },
+    component: ClientLayout,
     children: [
-      {
-        path: '',
-        redirect: 'overview'
-      },
       {
         path: 'overview',
         name: 'ClientOverview',
         component: () => import('../views/client/Overview.jsx')
       },
       {
-        path: 'profile',
-        name: 'ClientProfile',
-        component: () => import('../views/client/Profile.jsx')
-      },
-      {
-        path: 'avatar',
-        name: 'ClientAvatar',
-        component: () => import('../views/client/Avatar.jsx')
-      },
-      {
-        path: 'ai-agents',
-        name: 'ClientAIAgents',
-        component: () => import('../views/client/AIAgents.jsx')
-      },
-      {
-        path: 'services',
-        name: 'ClientServices',
-        component: () => import('../views/client/Services.jsx')
-      },
-      {
-        path: 'spiritual-checkin',
-        name: 'ClientSpiritualCheckin',
-        component: () => import('../views/client/SpiritualCheckin.jsx')
-      },
-      {
-        path: 'spiritual-management/:category?',
-        name: 'ClientSpiritualManagement',
+        path: 'spiritual-management',
+        name: 'SpiritualManagement',
         component: () => import('../views/client/SpiritualManagement.jsx')
       },
       {
-        path: 'astro',
-        name: 'ClientAstro',
-        component: () => import('../views/client/services/ExpertConnect.jsx')
+        path: 'spiritual-management/:category',
+        name: 'SpiritualManagementCategory',
+        component: () => import('../views/client/SpiritualManagement.jsx')
       },
       {
-        path: 'expert-connect',
-        name: 'ClientExpertConnect',
-        component: () => import('../views/client/services/ExpertConnect.jsx')
-      },
-      {
-        path: 'experts',
-        name: 'ExpertManagement',
-        component: () => import('../views/client/services/ExpertManagement.jsx')
-      },
-      {
-        path: 'expert-details/:id',
-        name: 'ExpertDetails',
-        component: () => import('../views/client/services/ExpertDetails.jsx')
-      },
-      {
-        path: 'brahma-bazar',
-        name: 'BrahmaBazar',
-        component: () => import('../views/client/services/BrahmaBazar.jsx')
+        path: 'spiritual-checkin',
+        name: 'SpiritualCheckin',
+        component: () => import('../views/client/SpiritualCheckin.jsx')
       },
       {
         path: 'users',
@@ -351,144 +241,24 @@ const routes = [
         component: () => import('../views/client/Users.jsx')
       },
       {
-        path: 'users/:userId/kundali',
-        name: 'UserKundali',
+        path: 'users/:id/kundali',
+        name: 'ClientUserKundali',
         component: () => import('../views/client/UserKundali.jsx')
       },
       {
-        path: 'users/:userId/charts',
-        name: 'UserCharts',
-        component: () => import('../views/client/Charts.jsx')
+        path: 'profile',
+        name: 'ClientProfile',
+        component: () => import('../views/client/Profile.jsx')
+      },
+      {
+        path: 'settings',
+        name: 'ClientSettings',
+        component: () => import('../views/client/Settings.jsx')
       },
       {
         path: 'payments',
         name: 'ClientPayments',
         component: () => import('../views/client/Payments.jsx')
-      },
-      {
-        path: 'tools',
-        name: 'ClientTools',
-        component: () => import('../views/client/Tools.jsx')
-      },
-      {
-        path: 'tools/testimonial',
-        name: 'ClientTestimonial',
-        component: () => import('../views/client/tools/Testimonial.jsx')
-      },
-      {
-        path: 'tools/founder-message',
-        name: 'ClientFounderMessage',
-        component: () => import('../views/client/tools/FounderMessage.jsx')
-      },
-      {
-        path: 'tools/branding',
-        name: 'ClientBranding',
-        component: () => import('../views/client/tools/Branding.jsx')
-      },
-      {
-        path: 'activity',
-        name: 'ClientActivity',
-        component: () => import('../views/client/activity/Activity.jsx')
-      },
-      {
-        path: 'activity/meditation',
-        name: 'ClientMeditation',
-        component: () => import('../views/client/activity/activityTools/Meditation.jsx')
-      },
-      {
-        path: 'activity/chanting',
-        name: 'ClientChanting',
-        component: () => import('../views/client/activity/activityTools/Chanting.jsx')
-      },
-      {
-        path: 'activity/prathana',
-        name: 'ClientPrathana',
-        component: () => import('../views/client/activity/activityTools/Prathana.jsx')
-      },
-      {
-        path: 'activity/prayanam',
-        name: 'ClientPrayanam',
-        component: () => import('../views/client/activity/activityTools/Prayanam.jsx')
-      },
-      {
-        path: 'activity/wisdom',
-        name: 'ClientWisdom',
-        component: () => import('../views/client/activity/activityTools/Wisdom.jsx')
-      },
-      {
-        path: 'activity/soul-music',
-        name: 'ClientSoulMusic',
-        component: () => import('../views/client/activity/activityTools/SoulMusic.jsx')
-      },
-      {
-        path: 'activity/yoga',
-        name: 'ClientYoga',
-        component: () => import('../views/client/activity/activityTools/Yoga.jsx')
-      },
-      {
-        path: 'activity/mindfulness',
-        name: 'ClientMindfulness',
-        component: () => import('../views/client/activity/activityTools/Mindfulness.jsx')
-      },
-      {
-        path: 'activity/gratitude',
-        name: 'ClientGratitude',
-        component: () => import('../views/client/activity/activityTools/Gratitude.jsx')
-      },
-      {
-        path: 'activity/self-reflection',
-        name: 'ClientSelfReflection',
-        component: () => import('../views/client/activity/activityTools/SelfReflection.jsx')
-      },
-      {
-        path: 'activity/silence',
-        name: 'ClientSilence',
-        component: () => import('../views/client/activity/activityTools/Silence.jsx')
-      },
-      {
-        path: 'tools/push-notification',
-        name: 'ClientPushNotification',
-        component: () => import('../views/client/tools/PushNotification.jsx')
-      },
-      {
-        path: 'tools/offers',
-        name: 'ClientOffers',
-        component: () => import('../views/client/tools/Offers.jsx')
-      },
-      {
-        path: 'tools/advertisement',
-        name: 'ClientAdvertisement',
-        component: () => import('../views/client/tools/Advertisement.jsx')
-      },
-      {
-        path: 'tools/survey',
-        name: 'ClientSurvey',
-        component: () => import('../views/client/tools/Survey.jsx')
-      },
-      {
-        path: 'tools/rating',
-        name: 'ClientRating',
-        component: () => import('../views/client/tools/Rating.jsx')
-      },
-      {
-        path: 'tools/tickets',
-        name: 'ClientTickets',
-        component: () => import('../views/client/tools/Tickets.jsx')
-      },
-      {
-        path: 'tools/sponsors',
-        name: 'ClientSponsors',
-        component: () => import('../views/client/tools/Sponsors.jsx')
-      },
-      {
-        path: 'tools/live-avatar',
-        name: 'ClientLiveAvatar',
-        component: () => import('../views/client/tools/LiveAvatar.jsx')
-      },
-      {
-        path: 'tools/brahm-avatar',
-        name: 'ClientBrahmAvatar',
-        component: () => import('../views/client/tools/BrahmAvatar.jsx')
       },
       {
         path: 'support',
@@ -501,23 +271,307 @@ const routes = [
         component: () => import('../views/client/Health.jsx')
       },
       {
-        path: 'settings',
-        name: 'ClientSettings',
-        component: () => import('../views/client/Settings.jsx')
+        path: 'charts',
+        name: 'ClientCharts',
+        component: () => import('../views/client/Charts.jsx')
+      },
+      {
+        path: 'kundali',
+        name: 'ClientKundali',
+        component: () => import('../views/client/Kundali.jsx')
+      },
+      {
+        path: 'user-kundali',
+        name: 'UserKundali',
+        component: () => import('../views/client/UserKundali.jsx')
+      },
+      {
+        path: 'services',
+        name: 'ClientServices',
+        component: () => import('../views/client/Services.jsx')
+      },
+      {
+        path: 'ai-agents',
+        name: 'ClientAIAgents',
+        component: () => import('../views/client/AIAgents.jsx')
+      },
+      {
+        path: 'avatar',
+        name: 'ClientAvatar',
+        component: () => import('../views/client/Avatar.jsx')
+      },
+      {
+        path: 'expert-connect',
+        name: 'ClientExpertConnect',
+        component: () => import('../views/client/services/ExpertConnect.jsx')
+      },
+      {
+        path: 'experts',
+        name: 'ClientExperts',
+        component: () => import('../views/client/services/ExpertManagement.jsx')
+      },
+      {
+        path: 'expert-details/:id',
+        name: 'ClientExpertDetails',
+        component: () => import('../views/client/services/ExpertDetails.jsx')
+      },
+      {
+        path: 'brahma-bazar',
+        name: 'ClientBrahmaBazar',
+        component: () => import('../views/client/services/BrahmaBazar.jsx')
+      },
+      {
+        path: 'tools',
+        name: 'ClientTools',
+        component: () => import('../views/client/Tools.jsx')
+      },
+      // Client Tools
+      {
+        path: 'tools/brahm-avatar',
+        name: 'BrahmAvatar',
+        component: () => import('../views/client/tools/BrahmAvatar.jsx')
+      },
+      {
+        path: 'tools/live-avatar',
+        name: 'LiveAvatar',
+        component: () => import('../views/client/tools/LiveAvatar.jsx')
+      },
+      {
+        path: 'tools/branding',
+        name: 'Branding',
+        component: () => import('../views/client/tools/Branding.jsx')
+      },
+      {
+        path: 'tools/founder-message',
+        name: 'FounderMessage',
+        component: () => import('../views/client/tools/FounderMessage.jsx')
+      },
+      {
+        path: 'tools/testimonial',
+        name: 'Testimonial',
+        component: () => import('../views/client/tools/Testimonial.jsx')
+      },
+      {
+        path: 'tools/sponsors',
+        name: 'Sponsors',
+        component: () => import('../views/client/tools/Sponsors.jsx')
+      },
+      {
+        path: 'tools/rating',
+        name: 'Rating',
+        component: () => import('../views/client/tools/Rating.jsx')
+      },
+      {
+        path: 'tools/survey',
+        name: 'Survey',
+        component: () => import('../views/client/tools/Survey.jsx')
+      },
+      {
+        path: 'tools/tickets',
+        name: 'Tickets',
+        component: () => import('../views/client/tools/Tickets.jsx')
+      },
+      {
+        path: 'tools/offers',
+        name: 'Offers',
+        component: () => import('../views/client/tools/Offers.jsx')
+      },
+      {
+        path: 'tools/advertisement',
+        name: 'Advertisement',
+        component: () => import('../views/client/tools/Advertisement.jsx')
+      },
+      {
+        path: 'tools/push-notification',
+        name: 'PushNotification',
+        component: () => import('../views/client/tools/PushNotification.jsx')
+      },
+      // Client Services
+      {
+        path: 'services/brahma-bazar',
+        name: 'BrahmaBazar',
+        component: () => import('../views/client/services/BrahmaBazar.jsx')
+      },
+      {
+        path: 'services/expert-connect',
+        name: 'ExpertConnect',
+        component: () => import('../views/client/services/ExpertConnect.jsx')
+      },
+      {
+        path: 'services/expert-management',
+        name: 'ExpertManagement',
+        component: () => import('../views/client/services/ExpertManagement.jsx')
+      },
+      {
+        path: 'services/expert-details/:id',
+        name: 'ExpertDetails',
+        component: () => import('../views/client/services/ExpertDetails.jsx')
+      },
+      // Client Activity
+      {
+        path: 'activity',
+        name: 'Activity',
+        component: () => import('../views/client/activity/Activity.jsx')
+      },
+      {
+        path: 'activity/meditation',
+        name: 'Meditation',
+        component: () => import('../views/client/activity/activityTools/Meditation.jsx')
+      },
+      {
+        path: 'activity/chanting',
+        name: 'Chanting',
+        component: () => import('../views/client/activity/activityTools/Chanting.jsx')
+      },
+      {
+        path: 'activity/prathana',
+        name: 'Prathana',
+        component: () => import('../views/client/activity/activityTools/Prathana.jsx')
+      },
+      {
+        path: 'activity/silence',
+        name: 'Silence',
+        component: () => import('../views/client/activity/activityTools/Silence.jsx')
+      },
+      {
+        path: 'activity/yoga',
+        name: 'Yoga',
+        component: () => import('../views/client/activity/activityTools/Yoga.jsx')
+      },
+      {
+        path: 'activity/mindfulness',
+        name: 'Mindfulness',
+        component: () => import('../views/client/activity/activityTools/Mindfulness.jsx')
+      },
+      {
+        path: 'activity/gratitude',
+        name: 'Gratitude',
+        component: () => import('../views/client/activity/activityTools/Gratitude.jsx')
+      },
+      {
+        path: 'activity/self-reflection',
+        name: 'SelfReflection',
+        component: () => import('../views/client/activity/activityTools/SelfReflection.jsx')
+      },
+      {
+        path: 'activity/soul-music',
+        name: 'SoulMusic',
+        component: () => import('../views/client/activity/activityTools/SoulMusic.jsx')
+      },
+      {
+        path: 'activity/wisdom',
+        name: 'Wisdom',
+        component: () => import('../views/client/activity/activityTools/Wisdom.jsx')
+      },
+      {
+        path: 'activity/prayanam',
+        name: 'Prayanam',
+        component: () => import('../views/client/activity/activityTools/Prayanam.jsx')
       }
     ]
   },
-  // User web frontend routes
+  
+  // Admin routes
   {
-    path: '/user',
-    component: () => import('../layouts/DashboardLayout.jsx'),
-    meta: { requiresAuth: true, requiresRole: 'user' },
-    redirect: '/user/overview',
+    path: '/admin',
+    component: AdminLayout,
     children: [
       {
-        path: '',
-        redirect: 'overview'
+        path: 'overview',
+        name: 'AdminOverview',
+        component: () => import('../views/admin/Overview.jsx')
       },
+      {
+        path: 'users',
+        name: 'AdminUsers',
+        component: () => import('../views/admin/Users.jsx')
+      },
+      {
+        path: 'clients',
+        name: 'AdminClients',
+        component: () => import('../views/admin/Clients.jsx')
+      },
+      {
+        path: 'profile',
+        name: 'AdminProfile',
+        component: () => import('../views/admin/Profile.jsx')
+      },
+      {
+        path: 'settings',
+        name: 'AdminSettings',
+        component: () => import('../views/admin/Settings.jsx')
+      },
+      {
+        path: 'payments',
+        name: 'AdminPayments',
+        component: () => import('../views/admin/Payments.jsx')
+      },
+      {
+        path: 'support',
+        name: 'AdminSupport',
+        component: () => import('../views/admin/Support.jsx')
+      },
+      {
+        path: 'health',
+        name: 'AdminHealth',
+        component: () => import('../views/admin/Health.jsx')
+      },
+      {
+        path: 'tools',
+        name: 'AdminTools',
+        component: () => import('../views/admin/Tools.jsx')
+      },
+      {
+        path: 'ai-agents',
+        name: 'AdminAIAgents',
+        component: () => import('../views/admin/AIAgents.jsx')
+      },
+      {
+        path: 'credits',
+        name: 'AdminCredits',
+        component: () => import('../views/admin/Credits.jsx')
+      }
+    ]
+  },
+  
+  // Super Admin routes
+  {
+    path: '/super-admin',
+    component: SuperAdminLayout,
+    children: [
+      {
+        path: 'overview',
+        name: 'SuperAdminOverview',
+        component: () => import('../views/super-admin/Overview.jsx')
+      },
+      {
+        path: 'users',
+        name: 'SuperAdminUsers',
+        component: () => import('../views/super-admin/Users.jsx')
+      },
+      {
+        path: 'admins',
+        name: 'SuperAdminAdmins',
+        component: () => import('../views/super-admin/Admins.jsx')
+      },
+      {
+        path: 'pending-approvals',
+        name: 'PendingApprovals',
+        component: () => import('../views/super-admin/PendingApprovals.jsx')
+      },
+      {
+        path: 'profile',
+        name: 'SuperAdminProfile',
+        component: () => import('../views/super-admin/Profile.jsx')
+      }
+    ]
+  },
+  
+  // User routes
+  {
+    path: '/user',
+    component: DashboardLayout,
+    children: [
       {
         path: 'overview',
         name: 'UserOverview',
@@ -530,6 +584,25 @@ const routes = [
       }
     ]
   },
+  
+  // Standalone pages
+  {
+    path: '/chat',
+    name: 'ChatPage',
+    component: () => import('../pages/ChatPage.jsx')
+  },
+  {
+    path: '/voice',
+    name: 'VoicePage',
+    component: () => import('../pages/VoicePage.jsx')
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: () => import('../pages/Home.jsx')
+  },
+  
+  // 404 route
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
@@ -542,132 +615,10 @@ const router = createRouter({
   routes
 });
 
-// Helper function to get role from path
-const getRoleFromPath = (path) => {
-  if (path.startsWith('/super-admin')) return 'super_admin';
-  if (path.startsWith('/admin')) return 'admin';
-  if (path.startsWith('/client')) return 'client';
-  if (path.startsWith('/partner')) return 'partner';
-  if (path.startsWith('/mobile/user')) return 'user'; // Check mobile/user before /user
-  if (path.startsWith('/user')) return 'user';
-  return null;
-};
-
-// Helper function to get role from JWT token
-const getRoleFromToken = (token) => {
-  try {
-    const tokenToCheck = token || localStorage.getItem('token_super_admin') || 
-                         localStorage.getItem('token_admin') || 
-                         localStorage.getItem('token_client') || 
-                         localStorage.getItem('token_user') ||
-                         localStorage.getItem('partner_token');
-    if (tokenToCheck) {
-      const tokenParts = tokenToCheck.split('.');
-      if (tokenParts.length === 3) {
-        const payload = JSON.parse(atob(tokenParts[1]));
-        return payload.role;
-      }
-    }
-  } catch (e) {
-    // Ignore errors
-  }
-  return null;
-};
-
-// Helper to check if a specific role is authenticated
-const isRoleAuthenticated = (role) => {
-  if (!role) return false;
-  if (role === 'partner') {
-    return !!localStorage.getItem('partner_token');
-  }
-  const token = localStorage.getItem(`token_${role}`);
-  return !!token;
-};
-
-router.beforeEach(async (to, from, next) => {
-  const { initializeAuth, getCurrentRole, getTokenForRole } = useAuth();
-  
-  // Determine the role for the target route
-  const targetRole = getRoleFromPath(to.path);
-  
-  // Handle token from query parameter (for admin login as client)
-  if (to.query.token) {
-    // Determine role from path or token itself
-    const role = targetRole || getRoleFromToken(to.query.token);
-    if (role) {
-      localStorage.setItem(`token_${role}`, to.query.token);
-    }
-    // Remove token from URL and continue
-    const { token, ...queryWithoutToken } = to.query;
-    next({ path: to.path, query: queryWithoutToken, replace: true });
-    return;
-  }
-  
-  // Initialize auth state for the target role
-  await initializeAuth(targetRole);
-  
-  // Check authentication for the specific role
-  const isAuthForRole = targetRole ? isRoleAuthenticated(targetRole) : false;
-  
-  if (to.meta.requiresAuth && !isAuthForRole) {
-    // Redirect to appropriate login page based on route
-    if (to.path.startsWith('/super-admin')) {
-      next('/super-admin/login');
-    } else if (to.path.startsWith('/admin')) {
-      next('/admin/login');
-    } else if (to.path.startsWith('/client')) {
-      next('/client/login');
-    } else if (to.path.startsWith('/partner')) {
-      next('/partner/login');
-    } else {
-      next('/user/login');
-    }
-  } else if (to.meta.requiresGuest && isAuthForRole) {
-    // Redirect to appropriate dashboard based on role
-    if (targetRole === 'super_admin') {
-      next('/super-admin/overview');
-    } else if (targetRole === 'admin') {
-      next('/admin/overview');
-    } else if (targetRole === 'client') {
-      next('/client/overview');
-    } else if (targetRole === 'partner') {
-      next('/partner/dashboard');
-    } else if (targetRole === 'user') {
-      // Check if user is accessing web frontend or mobile
-      // If coming from web routes, redirect to web dashboard
-      if (from.path.startsWith('/user') && !from.path.startsWith('/mobile')) {
-        next('/user/overview');
-      } else {
-        next('/mobile/user/dashboard'); // Default to mobile dashboard
-      }
-    } else {
-      next('/dashboard');
-    }
-  } else if (to.meta.requiresRole) {
-    const requiredRoles = Array.isArray(to.meta.requiresRole) 
-      ? to.meta.requiresRole 
-      : [to.meta.requiresRole];
-    
-    // Check if the target role is in the required roles and authenticated
-    if (targetRole && requiredRoles.includes(targetRole) && isAuthForRole) {
-      next();
-    } else {
-      // Redirect based on target role
-      if (targetRole === 'super_admin') {
-        next('/super-admin/login');
-      } else if (targetRole === 'admin') {
-        next('/admin/login');
-      } else if (targetRole === 'client') {
-        next('/client/login');
-      } else if (targetRole === 'partner') {
-        next('/partner/login');
-      } else {
-        next('/user/login');
-      }
-    }
-  } else {
-    next();
-  }
+// Navigation guards
+router.beforeEach((to, from, next) => {
+  // Add any global navigation logic here
+  next();
 });
 
 export default router;

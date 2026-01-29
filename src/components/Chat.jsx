@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { sendMessage, getChat } from '../services/api';
+import api from '../services/api';
 
 function Chat({ chatId, token }) {
   const [messages, setMessages] = useState([]);
@@ -17,7 +17,7 @@ function Chat({ chatId, token }) {
 
   const loadChat = async () => {
     try {
-      const data = await getChat(chatId, token);
+      const data = await api.getChat(chatId);
       if (data.success) {
         setMessages(data.data.messages || []);
       }
@@ -39,7 +39,7 @@ function Chat({ chatId, token }) {
     setLoading(true);
 
     try {
-      const data = await sendMessage(chatId, input, token);
+      const data = await api.sendMessage(chatId, input);
       if (data.success) {
         setMessages(prev => [
           ...prev,

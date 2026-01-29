@@ -15,7 +15,7 @@ export default {
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const userId = route.params.userId;
+    const userId = route.params.id;
     
     const userDetails = ref(null);
     const panchangData = ref(null);
