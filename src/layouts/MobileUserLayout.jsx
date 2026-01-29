@@ -14,39 +14,16 @@ import {
   UserIcon, 
   MicrophoneIcon, 
   CpuChipIcon,
-  SparklesIcon,
-  ChartBarIcon
+  SparklesIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
   name: 'MobileUserLayout',
   setup() {
     const router = useRouter();
-    const { user, token, logout, initializeAuth, fetchCurrentUser } = useAuth();
+    const { user, token, logout } = useAuth();
     const sidebarCollapsed = ref(false);
     const isMobile = ref(false);
-
-    // Initialize auth on mount
-    onMounted(async () => {
-      checkScreenSize();
-      window.addEventListener('resize', checkScreenSize);
-      
-      // Initialize auth for user role
-      await initializeAuth('user');
-      
-      // If token exists but no user data, fetch it
-      if (localStorage.getItem('token_user') && !user.value) {
-        try {
-          await fetchCurrentUser('user');
-        } catch (error) {
-          console.error('Failed to fetch user data:', error);
-        }
-      }
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener('resize', checkScreenSize);
-    });
 
     const checkScreenSize = () => {
       const width = window.innerWidth;
@@ -63,6 +40,15 @@ export default {
       }
     };
 
+    onMounted(() => {
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkScreenSize);
+    });
+
     const toggleSidebar = () => {
       sidebarCollapsed.value = !sidebarCollapsed.value;
     };
@@ -71,7 +57,7 @@ export default {
       if (path.includes('/chat')) return 'chat';
       if (path.includes('/voice')) return 'voice';
       if (path.includes('/realtime-agent')) return 'realtime-agent';
-      if (path.includes('/spiritual-stats')) return 'spiritual-stats';
+      if (path.includes('/activities')) return 'activities';
       if (path.includes('/ask-bi')) return 'ask-bi';
       if (path.includes('/sadhana')) return 'sadhana';
       if (path.includes('/rewards')) return 'rewards';
@@ -97,8 +83,6 @@ export default {
         router.push('/mobile/user/realtime-agent');
       } else if (page === 'activities') {
         router.push('/mobile/user/activities');
-      } else if (page === 'spiritual-stats') {
-        router.push('/mobile/user/spiritual-stats');
       } else if (page === 'ask-bi') {
         router.push('/mobile/user/ask-bi');
       } else if (page === 'sadhana') {
@@ -207,7 +191,6 @@ export default {
             {[
               { id: 'home', label: 'Home', icon: HomeIcon },
               { id: 'activities', label: 'Spiritual Check-In', icon: HeartIcon },
-              { id: 'spiritual-stats', label: 'Spiritual Check-In Stats', icon: ChartBarIcon },
               { id: 'ask-bi', label: 'ASK BI (Live Avatar)', icon: CpuChipIcon },
               { id: 'sadhana', label: 'Connect  (Services)', icon: SparklesIcon },
               { id: 'rewards', label: 'Rewards', icon: TrophyIcon },
@@ -348,9 +331,10 @@ export default {
             <div style={{ textAlign: 'right' }}>
               <p style={{ 
                 margin: 0, 
-                fontSize: isMobile.value ? '0.75rem' : '1rem', 
+                fontSize: isMobile.value ? '0.875rem' : '1rem', 
                 color: '#1e293b', 
-                fontWeight: 500
+                fontWeight: 500,
+                display: isMobile.value ? 'none' : 'block'
               }}>Welcome, {user.value?.email || 'Spiritual Seeker'}!</p>
             </div>
           </header>

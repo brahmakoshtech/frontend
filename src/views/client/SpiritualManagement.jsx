@@ -16,8 +16,7 @@ import {
   ClockIcon,
   SparklesIcon,
   ChartBarIcon,
-  FireIcon,
-  ArrowPathIcon
+  FireIcon
 } from '@heroicons/vue/24/outline';
 import { useToast } from 'vue-toastification';
 import spiritualConfigurationService from '../../services/spiritualConfigurationService.js';
@@ -256,11 +255,12 @@ export default {
       )
     );
     
-    // Filter activities by current category for stats tab
-    const allRecentActivities = computed(() => {
-      const activities = userStats.value.recentActivities || [];
-      return activities.filter(activity => activity.type === currentCategory.value);
-    });
+    const filteredRecentActivities = computed(() => 
+      userStats.value.recentActivities?.filter(activity => {
+        console.log('Filtering activity:', activity.type, 'Current category:', currentCategory.value);
+        return activity.type === currentCategory.value;
+      }) || []
+    );
     
     const filteredClips = computed(() => 
       clips.value.filter(clip => {
@@ -545,20 +545,10 @@ export default {
       return userDetails?.name || 'Unknown User';
     };
 
-    const refreshData = async () => {
-      await Promise.all([
-        fetchConfigurations(),
-        fetchClips(),
-        fetchUserStats()
-      ]);
-      toast.success('Data refreshed successfully!');
-    };
-
     const fetchUserStats = async () => {
       try {
         console.log('Fetching user stats for category:', currentCategory.value);
-        // Use getAllUsersStats for client side to show all users' data
-        const response = await spiritualStatsService.getAllUsersStats();
+        const response = await spiritualStatsService.getUserStats();
         if (response.success) {
           console.log('User stats received:', response.data);
           console.log('Recent activities:', response.data.recentActivities);
@@ -1177,15 +1167,6 @@ export default {
                     Manage {currentCategoryInfo.value.name.toLowerCase()} configurations and clips
                   </p>
                 </div>
-                <button 
-                  class="btn btn-success btn-sm rounded-pill px-3" 
-                  onClick={refreshData}
-                  disabled={loading.value}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  <ArrowPathIcon style={{ width: '1rem', height: '1rem' }} />
-                  <span>Refresh</span>
-                </button>
 
               </div>
             </div>
@@ -2013,7 +1994,7 @@ export default {
                         </h5>
                       </div>
                       <div class="card-body p-0">
-                        {allRecentActivities.value.length > 0 ? (
+                        {filteredRecentActivities.value.length > 0 ? (
                           <div class="table-responsive">
                             <table class="table table-hover mb-0">
                               <thead class="table-light">
@@ -2039,7 +2020,7 @@ export default {
                                 </tr>
                               </thead>
                               <tbody>
-                                {allRecentActivities.value.map((activity, index) => {
+                                {filteredRecentActivities.value.map((activity, index) => {
                                   const activityEmojis = {
                                     meditation: '🧘',
                                     prayer: '🙏',

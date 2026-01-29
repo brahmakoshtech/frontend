@@ -2,27 +2,12 @@ import api from './api';
 
 const spiritualStatsService = {
   // Get user spiritual statistics
-  getUserStats: async (params = {}) => {
+  getUserStats: async () => {
     try {
-      const queryParams = new URLSearchParams(params).toString();
-      const url = queryParams ? `/spiritual-stats/?${queryParams}` : '/spiritual-stats/';
-      const response = await api.get(url);
+      const response = await api.get('/spiritual-stats/');
       return response.data;
     } catch (error) {
       console.error('Get user stats error:', error);
-      throw error;
-    }
-  },
-
-  // Get all users spiritual statistics (for client side)
-  getAllUsersStats: async (params = {}) => {
-    try {
-      const queryParams = new URLSearchParams(params).toString();
-      const url = queryParams ? `/spiritual-stats/all-users?${queryParams}` : '/spiritual-stats/all-users';
-      const response = await api.get(url);
-      return response.data;
-    } catch (error) {
-      console.error('Get all users stats error:', error);
       throw error;
     }
   },

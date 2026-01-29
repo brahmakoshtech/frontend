@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import api from '../services/api';
+import { startVoiceSession, processVoice } from '../services/api';
 
 function VoicePage({ token }) {
   const [chatId, setChatId] = useState(null);
@@ -16,7 +16,7 @@ function VoicePage({ token }) {
 
   const initializeSession = async () => {
     try {
-      const data = await api.startVoiceSession();
+      const data = await startVoiceSession(token);
       if (data.success) {
         setChatId(data.data.chatId);
       }
@@ -84,7 +84,7 @@ function VoicePage({ token }) {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       const base64Audio = await blobToBase64(audioBlob);
 
-      const data = await api.processVoice(chatId, base64Audio);
+      const data = await processVoice(chatId, base64Audio, token);
       
       if (data.success) {
         setTranscript(data.data.transcribedText);

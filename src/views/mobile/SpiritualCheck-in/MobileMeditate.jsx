@@ -80,7 +80,8 @@ export default {
       try {
         const token = localStorage.getItem('token_user');
         if (!token) {
-          console.log('User not logged in, session not saved');
+          console.warn('User not logged in, session not saved');
+          alert('⚠️ Please log in to save your meditation sessions and earn karma points!');
           return;
         }
         
@@ -105,6 +106,7 @@ export default {
         }
       } catch (error) {
         console.error('Error saving session:', error);
+        alert('❌ Failed to save session. Please check your internet connection and try again.');
       }
     };
 
@@ -593,7 +595,33 @@ export default {
             and let go of all worries. Focus on your breath and find your inner calm.
           </p>
           
-
+          {!isUserLoggedIn.value ? (
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{ 
+                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', 
+                color: 'white', 
+                padding: '1rem', 
+                borderRadius: '12px', 
+                marginBottom: '1rem',
+                fontSize: '0.9rem'
+              }}>
+                ⚠️ Please log in to save your sessions and earn karma points!
+              </div>
+              <button 
+                class="btn btn-outline-primary"
+                style={{ marginRight: '0.5rem' }}
+                onClick={() => router.push('/user/login')}
+              >
+                Login
+              </button>
+              <button 
+                class="btn btn-outline-secondary"
+                onClick={() => router.push('/mobile/user/register')}
+              >
+                Register
+              </button>
+            </div>
+          ) : null}
           
           <button class="start-btn" onClick={startSession}>
             🧘‍♀️ Start Meditation Session
@@ -808,7 +836,11 @@ export default {
                     Karma Points Earned!
                   </div>
                 </>
-              ) : null}
+              ) : (
+                <div style={{ fontSize: '1rem', marginBottom: '2rem', opacity: 0.9, background: 'rgba(255,255,255,0.2)', padding: '1rem', borderRadius: '12px' }}>
+                  ⚠️ Login to save sessions and earn karma points!
+                </div>
+              )}
               
               <button 
                 style={{
