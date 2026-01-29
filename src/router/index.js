@@ -372,11 +372,6 @@ const routes = [
         component: () => import('../views/client/Users.jsx')
       },
       {
-        path: 'users/:id/kundali',
-        name: 'ClientUserKundali',
-        component: () => import('../views/client/UserKundali.jsx')
-      },
-      {
         path: 'users/:userId/kundali',
         name: 'UserKundali',
         component: () => import('../views/client/UserKundali.jsx')
