@@ -11,31 +11,38 @@ export default {
   setup(props) {
     const formatDate = (day, month, year) => {
       if (!day || !month || !year) return 'N/A';
-      return `${day}/${month}/${year}`;
+      const monthStr = String(month).padStart(2, '0');
+      const dayStr = String(day).padStart(2, '0');
+      return `${dayStr}/${monthStr}/${year}`;
     };
 
     const formatTime = (hour, minute) => {
-      if (hour === undefined || minute === undefined) return 'N/A';
-      return `${hour}:${minute.toString().padStart(2, '0')}`;
+      if (hour === undefined || hour === null || minute === undefined || minute === null) return 'N/A';
+      const hourStr = String(hour).padStart(2, '0');
+      const minuteStr = String(minute).padStart(2, '0');
+      return `${hourStr}:${minuteStr}`;
     };
 
-    const formatCoordinate = (coord) => {
-      if (coord === undefined || coord === null) return 'N/A';
-      return `${coord}°`;
+    const formatCoordinate = (coord, suffix = '') => {
+      if (coord === undefined || coord === null || isNaN(coord)) return 'N/A';
+      return `${parseFloat(coord).toFixed(4)}°${suffix}`;
     };
 
     return () => {
       // Safe data access with fallbacks
       const birthDetails = props.data?.birthDetails || {};
       const hasData = props.data && Object.keys(birthDetails).length > 0;
+      
+      // Check if we have minimum required data
+      const hasMinimumData = birthDetails.day && birthDetails.month && birthDetails.year;
 
       return (
         <div class="birth-details">
-          {!hasData ? (
+          {!hasData || !hasMinimumData ? (
             <div class="alert alert-warning">
               <div class="d-flex align-items-center">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                <span>Birth details not available. Please ensure complete birth information is provided.</span>
+                <span>Birth details not available. Please ensure complete birth information is provided (Date, Time, and Location are required).</span>
               </div>
             </div>
           ) : (
@@ -62,7 +69,7 @@ export default {
                           </tr>
                           <tr>
                             <td class="fw-bold">Timezone</td>
-                            <td>{birthDetails.timezone || '+05:30'}</td>
+                            <td>{birthDetails.timezone || birthDetails.tzone || '+05:30 (IST)'}</td>
                           </tr>
                           <tr>
                             <td class="fw-bold">Sunrise</td>
@@ -82,11 +89,11 @@ export default {
                         <tbody>
                           <tr>
                             <td class="fw-bold">Latitude</td>
-                            <td>{formatCoordinate(birthDetails.latitude)}</td>
+                            <td>{formatCoordinate(birthDetails.latitude, 'N')}</td>
                           </tr>
                           <tr>
                             <td class="fw-bold">Longitude</td>
-                            <td>{formatCoordinate(birthDetails.longitude)}</td>
+                            <td>{formatCoordinate(birthDetails.longitude, 'E')}</td>
                           </tr>
                           <tr>
                             <td class="fw-bold">Ayanamsha</td>
@@ -94,7 +101,15 @@ export default {
                           </tr>
                           <tr>
                             <td class="fw-bold">Place</td>
-                            <td>{birthDetails.place || 'N/A'}</td>
+                            <td>{birthDetails.place || birthDetails.placeOfBirth || 'N/A'}</td>
+                          </tr>
+                          <tr>
+                            <td class="fw-bold">Source</td>
+                            <td>
+                              <span class="badge bg-success">
+                                {birthDetails.calculationSource || 'API'}
+                              </span>
+                            </td>
                           </tr>
                         </tbody>
                       </table>
