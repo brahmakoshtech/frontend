@@ -126,6 +126,7 @@ const spiritualClipService = {
       formData.append('suitableTime', clipData.suitableTime || '');
       formData.append('guided', clipData.guided || '');
       formData.append('transcript', clipData.transcript || '');
+      formData.append('suitableConfiguration', clipData.suitableConfiguration || '');
       
       // Add video file if exists
       if (clipData.video) {
@@ -158,6 +159,25 @@ const spiritualClipService = {
     }
   },
 
+  // Update clip with direct S3 URLs
+  updateClipDirect: async (clipId, data) => {
+    try {
+      const response = await api.put(`/spiritual-clips/${clipId}/direct`, data);
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message || 'Clip updated successfully'
+      };
+    } catch (error) {
+      console.error('Update clip error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update clip',
+        error: error.response?.data?.error || error.message
+      };
+    }
+  },
+
   // Update clip
   updateClip: async (clipId, clipData) => {
     try {
@@ -169,6 +189,7 @@ const spiritualClipService = {
       if (clipData.suitableTime !== undefined) formData.append('suitableTime', clipData.suitableTime);
       if (clipData.guided !== undefined) formData.append('guided', clipData.guided);
       if (clipData.transcript !== undefined) formData.append('transcript', clipData.transcript);
+      if (clipData.suitableConfiguration !== undefined) formData.append('suitableConfiguration', clipData.suitableConfiguration);
       
       // Add video file if exists
       if (clipData.video) {
@@ -251,6 +272,26 @@ const spiritualClipService = {
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to fetch clip',
+        error: error.response?.data?.error || error.message
+      };
+    }
+  },
+
+  // Get all clips for a specific configuration
+  getSingleConfigurationAllClips: async (configId) => {
+    try {
+      const response = await api.get(`/spiritual-clips/configuration/${configId}`);
+      return {
+        success: true,
+        data: response.data.data || [],
+        count: response.data.count || 0,
+        configurationId: response.data.configurationId
+      };
+    } catch (error) {
+      console.error('Get clips by configuration error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch clips for configuration',
         error: error.response?.data?.error || error.message
       };
     }

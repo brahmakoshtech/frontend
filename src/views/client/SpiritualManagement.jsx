@@ -76,12 +76,15 @@ export default {
       suitableTime: '',
       guided: '',
       transcript: '',
-      type: currentCategory.value
+      type: currentCategory.value,
+      suitableConfiguration: ''
     });
     const clipVideoUploaded = ref(false);
     const clipVideoFileName = ref('');
     const clipAudioUploaded = ref(false);
     const clipAudioFileName = ref('');
+    const clipUploadProgress = ref({ video: 0, audio: 0 });
+    const clipUploading = ref({ video: false, audio: false });
 
     const activeTab = ref('configuration');
     
@@ -283,12 +286,15 @@ export default {
       transcript: '',
       video: null,
       audio: null,
-      type: currentCategory.value
+      type: currentCategory.value,
+      suitableConfiguration: ''
     });
     const editClipVideoUploaded = ref(false);
     const editClipVideoFileName = ref('');
     const editClipAudioUploaded = ref(false);
     const editClipAudioFileName = ref('');
+    const editClipUploadProgress = ref({ video: 0, audio: 0 });
+    const editClipUploading = ref({ video: false, audio: false });
 
     // Video popup state
     const showVideoModal = ref(false);
@@ -379,6 +385,7 @@ export default {
         suitableTime: clip.suitableTime || '',
         guided: clip.guided || '',
         transcript: clip.transcript || '',
+        suitableConfiguration: clip.suitableConfiguration?._id || '',
         video: null,
         audio: null
       };
@@ -386,6 +393,8 @@ export default {
       editClipVideoFileName.value = '';
       editClipAudioUploaded.value = false;
       editClipAudioFileName.value = '';
+      editClipUploadProgress.value = { video: 0, audio: 0 };
+      editClipUploading.value = { video: false, audio: false };
       showEditClipModal.value = true;
       openDropdownId.value = null;
     };
@@ -416,7 +425,87 @@ export default {
 
       try {
         loading.value = true;
-        const response = await spiritualClipService.updateClip(editingClip.value._id, editClipForm.value);
+        
+        let videoUrl = null;
+        let audioUrl = null;
+        
+        // Upload video directly to S3 if provided
+        if (editClipForm.value.video) {
+          try {
+            editClipUploading.value.video = true;
+            editClipUploadProgress.value.video = 0;
+            
+            const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
+              editClipForm.value.video.name,
+              editClipForm.value.video.type,
+              'video'
+            );
+            
+            await spiritualClipService.uploadToS3(
+              uploadUrl,
+              editClipForm.value.video,
+              (progress) => {
+                editClipUploadProgress.value.video = Math.round(progress);
+              }
+            );
+            
+            videoUrl = fileUrl;
+            editClipUploading.value.video = false;
+          } catch (error) {
+            console.error('Video upload failed:', error);
+            toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
+            editClipUploading.value.video = false;
+            loading.value = false;
+            return;
+          }
+        }
+        
+        // Upload audio directly to S3 if provided
+        if (editClipForm.value.audio) {
+          try {
+            editClipUploading.value.audio = true;
+            editClipUploadProgress.value.audio = 0;
+            
+            const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
+              editClipForm.value.audio.name,
+              editClipForm.value.audio.type,
+              'audio'
+            );
+            
+            await spiritualClipService.uploadToS3(
+              uploadUrl,
+              editClipForm.value.audio,
+              (progress) => {
+                editClipUploadProgress.value.audio = Math.round(progress);
+              }
+            );
+            
+            audioUrl = fileUrl;
+            editClipUploading.value.audio = false;
+          } catch (error) {
+            console.error('Audio upload failed:', error);
+            toast.error('Audio upload failed: ' + (error.message || 'Unknown error'));
+            editClipUploading.value.audio = false;
+            loading.value = false;
+            return;
+          }
+        }
+        
+        // Update clip data
+        const updateData = {
+          title: editClipForm.value.title,
+          description: editClipForm.value.description,
+          suitableTime: editClipForm.value.suitableTime,
+          guided: editClipForm.value.guided,
+          transcript: editClipForm.value.transcript,
+          suitableConfiguration: editClipForm.value.suitableConfiguration
+        };
+        
+        // Add URLs if files were uploaded
+        if (videoUrl) updateData.videoUrl = videoUrl;
+        if (audioUrl) updateData.audioUrl = audioUrl;
+        
+        const response = await spiritualClipService.updateClipDirect(editingClip.value._id, updateData);
         
         if (response.success) {
           await fetchClips();
@@ -431,6 +520,7 @@ export default {
         toast.error('Failed to update clip');
       } finally {
         loading.value = false;
+        editClipUploading.value = { video: false, audio: false };
       }
     };
 
@@ -983,6 +1073,8 @@ export default {
       clipVideoFileName.value = '';
       clipAudioUploaded.value = false;
       clipAudioFileName.value = '';
+      clipUploadProgress.value = { video: 0, audio: 0 };
+      clipUploading.value = { video: false, audio: false };
     };
 
     const addClip = async () => {
@@ -1000,6 +1092,9 @@ export default {
         // Upload video directly to S3 if provided
         if (addClipForm.value.video) {
           try {
+            clipUploading.value.video = true;
+            clipUploadProgress.value.video = 0;
+            
             const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
               addClipForm.value.video.name,
               addClipForm.value.video.type,
@@ -1010,14 +1105,16 @@ export default {
               uploadUrl,
               addClipForm.value.video,
               (progress) => {
-                // You can add progress tracking here if needed
+                clipUploadProgress.value.video = Math.round(progress);
               }
             );
             
             videoUrl = fileUrl;
+            clipUploading.value.video = false;
           } catch (error) {
             console.error('Video upload failed:', error);
             toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
+            clipUploading.value.video = false;
             loading.value = false;
             return;
           }
@@ -1026,6 +1123,9 @@ export default {
         // Upload audio directly to S3 if provided
         if (addClipForm.value.audio) {
           try {
+            clipUploading.value.audio = true;
+            clipUploadProgress.value.audio = 0;
+            
             const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
               addClipForm.value.audio.name,
               addClipForm.value.audio.type,
@@ -1036,14 +1136,16 @@ export default {
               uploadUrl,
               addClipForm.value.audio,
               (progress) => {
-                // You can add progress tracking here if needed
+                clipUploadProgress.value.audio = Math.round(progress);
               }
             );
             
             audioUrl = fileUrl;
+            clipUploading.value.audio = false;
           } catch (error) {
             console.error('Audio upload failed:', error);
             toast.error('Audio upload failed: ' + (error.message || 'Unknown error'));
+            clipUploading.value.audio = false;
             loading.value = false;
             return;
           }
@@ -1057,6 +1159,7 @@ export default {
           guided: addClipForm.value.guided,
           transcript: addClipForm.value.transcript,
           type: currentCategory.value,  // Add category type
+          suitableConfiguration: addClipForm.value.suitableConfiguration,
           videoUrl,
           audioUrl
         });
@@ -1823,6 +1926,16 @@ export default {
                                       Audio
                                     </span>
                                   )}
+                                  {clip.suitableConfiguration && (
+                                    <span 
+                                      class="badge bg-secondary d-flex align-items-center gap-1"
+                                      style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem' }}
+                                      title={clip.suitableConfiguration.description || 'Configuration'}
+                                    >
+                                      <span>⚙️</span>
+                                      {clip.suitableConfiguration.title}
+                                    </span>
+                                  )}
                                   {clip.suitableTime && (
                                     <span 
                                       class="badge bg-info d-flex align-items-center gap-1"
@@ -2224,6 +2337,16 @@ export default {
                     <p class="mb-0">{selectedClip.value.description}</p>
                   </div>
                   
+                  {selectedClip.value.suitableConfiguration && (
+                    <div class="mb-3">
+                      <h6 class="fw-semibold mb-2 small text-muted">Suitable Configuration</h6>
+                      <span class="badge bg-primary">{selectedClip.value.suitableConfiguration.title}</span>
+                      {selectedClip.value.suitableConfiguration.description && (
+                        <p class="mt-2 mb-0 small text-muted">{selectedClip.value.suitableConfiguration.description}</p>
+                      )}
+                    </div>
+                  )}
+                  
                   {selectedClip.value.suitableTime && (
                     <div class="mb-3">
                       <h6 class="fw-semibold mb-2 small text-muted">Suitable Time</h6>
@@ -2344,6 +2467,20 @@ export default {
                             </small>
                           </div>
                         )}
+                        {editClipUploading.value.video && (
+                          <div class="mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <small class="text-primary">Uploading video...</small>
+                              <small class="text-primary">{editClipUploadProgress.value.video}%</small>
+                            </div>
+                            <div class="progress" style={{ height: '6px' }}>
+                              <div 
+                                class="progress-bar bg-primary" 
+                                style={{ width: `${editClipUploadProgress.value.video}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div class="col-md-6">
@@ -2363,10 +2500,35 @@ export default {
                             </small>
                           </div>
                         )}
+                        {editClipUploading.value.audio && (
+                          <div class="mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <small class="text-primary">Uploading audio...</small>
+                              <small class="text-primary">{editClipUploadProgress.value.audio}%</small>
+                            </div>
+                            <div class="progress" style={{ height: '6px' }}>
+                              <div 
+                                class="progress-bar bg-primary" 
+                                style={{ width: `${editClipUploadProgress.value.audio}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div class="row">
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label class="form-label fw-semibold">Suitable Configuration</label>
+                        <select class="form-select" v-model={editClipForm.value.suitableConfiguration}>
+                          <option value="">Select configuration</option>
+                          {filteredConfigurations.value.map(config => (
+                            <option key={config._id} value={config._id}>{config.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                     <div class="col-md-6">
                       <div class="mb-3">
                         <label class="form-label fw-semibold">Guide</label>
@@ -2393,9 +2555,11 @@ export default {
                   <button 
                     class="btn btn-primary" 
                     onClick={updateClip}
-                    disabled={loading.value || !editClipForm.value.title || !editClipForm.value.description}
+                    disabled={loading.value || editClipUploading.value.video || editClipUploading.value.audio || !editClipForm.value.title || !editClipForm.value.description}
                   >
-                    {loading.value ? 'Updating...' : 'Update Clip'}
+                    {editClipUploading.value.video ? 'Uploading Video...' : 
+                     editClipUploading.value.audio ? 'Uploading Audio...' : 
+                     loading.value ? 'Updating...' : 'Update Clip'}
                   </button>
                 </div>
               </div>
@@ -2463,6 +2627,20 @@ export default {
                             </small>
                           </div>
                         )}
+                        {clipUploading.value.video && (
+                          <div class="mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <small class="text-primary">Uploading video...</small>
+                              <small class="text-primary">{clipUploadProgress.value.video}%</small>
+                            </div>
+                            <div class="progress" style={{ height: '6px' }}>
+                              <div 
+                                class="progress-bar bg-primary" 
+                                style={{ width: `${clipUploadProgress.value.video}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div class="col-md-6">
@@ -2482,10 +2660,35 @@ export default {
                             </small>
                           </div>
                         )}
+                        {clipUploading.value.audio && (
+                          <div class="mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <small class="text-primary">Uploading audio...</small>
+                              <small class="text-primary">{clipUploadProgress.value.audio}%</small>
+                            </div>
+                            <div class="progress" style={{ height: '6px' }}>
+                              <div 
+                                class="progress-bar bg-primary" 
+                                style={{ width: `${clipUploadProgress.value.audio}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div class="row">
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label class="form-label fw-semibold">Suitable Configuration</label>
+                        <select class="form-select" v-model={addClipForm.value.suitableConfiguration}>
+                          <option value="">Select configuration</option>
+                          {filteredConfigurations.value.map(config => (
+                            <option key={config._id} value={config._id}>{config.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                     <div class="col-md-6">
                       <div class="mb-3">
                         <label class="form-label fw-semibold">Guide</label>
@@ -2512,9 +2715,11 @@ export default {
                   <button 
                     class="btn btn-primary" 
                     onClick={addClip}
-                    disabled={loading.value || !addClipForm.value.title || !addClipForm.value.description}
+                    disabled={loading.value || clipUploading.value.video || clipUploading.value.audio || !addClipForm.value.title || !addClipForm.value.description}
                   >
-                    {loading.value ? 'Adding...' : 'Add Clip'}
+                    {clipUploading.value.video ? 'Uploading Video...' : 
+                     clipUploading.value.audio ? 'Uploading Audio...' : 
+                     loading.value ? 'Adding...' : 'Add Clip'}
                   </button>
                 </div>
               </div>

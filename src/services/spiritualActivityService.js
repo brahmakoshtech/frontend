@@ -114,6 +114,102 @@ const spiritualActivityService = {
     }
   },
 
+  // Get spiritual check-in data (activities + user stats)
+  getSpiritualCheckinData: async () => {
+    try {
+      const token = localStorage.getItem('token_user') || localStorage.getItem('token_client');
+      const response = await axios.get(`${API_BASE_URL}/mobile/content/spiritual-checkin`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get spiritual checkin data error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch data',
+        error: error.message
+      };
+    }
+  },
+
+  // Get single spiritual check-in configuration
+  getSpiritualCheckinConfiguration: async (id) => {
+    try {
+      const token = localStorage.getItem('token_user') || localStorage.getItem('token_client');
+      const response = await axios.get(`${API_BASE_URL}/spiritual-configurations/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get spiritual checkin configuration error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch configuration',
+        error: error.message
+      };
+    }
+  },
+
+  // Get all spiritual check-in configurations
+  getAllSpiritualCheckinConfigurations: async (type = null) => {
+    try {
+      const token = localStorage.getItem('token_user') || localStorage.getItem('token_client');
+      let url = `${API_BASE_URL}/spiritual-configurations`;
+      
+      if (type) {
+        url += `?type=${type}`;
+      }
+      
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get all spiritual checkin configurations error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch configurations',
+        error: error.message
+      };
+    }
+  },
+
+  // Get Single Check-in all configration
+  getSingleCheckinAllConfigration: async (categoryId) => {
+    try {
+      const token = localStorage.getItem('token_user') || localStorage.getItem('token_client');
+      let url = `${API_BASE_URL}/spiritual-configurations`;
+      
+      if (categoryId) {
+        url += `?categoryId=${categoryId}`;
+      }
+      
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get Single Check-in all configration error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch configurations',
+        error: error.message
+      };
+    }
+  },
+
   // Toggle spiritual activity status
   toggleSpiritualActivity: async (id) => {
     try {

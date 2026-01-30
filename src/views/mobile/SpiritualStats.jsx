@@ -1,3 +1,4 @@
+
 import { ref, computed, onMounted } from 'vue';
 import { 
   ChartBarIcon, 
@@ -11,7 +12,7 @@ import {
   EyeIcon,
   ArrowPathIcon
 } from '@heroicons/vue/24/outline';
-import spiritualStatsService from '../../services/spiritualStatsService.js';
+import spiritualActivityService from '../../services/spiritualActivityService.js';
 import { useToast } from 'vue-toastification';
 
 export default {
@@ -52,9 +53,18 @@ export default {
     const fetchUserStats = async () => {
       try {
         loading.value = true;
-        const response = await spiritualStatsService.getUserStats();
+        const response = await spiritualActivityService.getSpiritualCheckinData();
         if (response.success) {
-          userStats.value = response.data;
+          userStats.value = {
+            totalStats: {
+              sessions: response.data.stats?.sessions || 0,
+              minutes: response.data.stats?.minutes || 0,
+              karmaPoints: response.data.stats?.points || 0,
+              streak: response.data.stats?.days || 0
+            },
+            categoryStats: response.data.categoryStats || {},
+            recentActivities: response.data.recentActivities || []
+          };
           
           // Calculate weekly data from real activities
           const weeklyActivities = calculateWeeklyData(response.data.recentActivities || []);
@@ -68,14 +78,14 @@ export default {
           
           // Update stats from real data
           stats.value = {
-            totalCheckIns: response.data.totalStats?.sessions || 0,
-            currentStreak: response.data.totalStats?.streak || 0,
+            totalCheckIns: response.data.stats?.sessions || 0,
+            currentStreak: response.data.stats?.days || 0,
             longestStreak: longestStreak,
             thisWeek: thisWeekSessions,
-            thisMonth: response.data.monthlyStats?.sessions || 0,
-            totalMeditation: response.data.totalStats?.minutes || 0,
-            favoriteTime: response.data.insights?.favoriteTime || 'Morning',
-            mood: response.data.insights?.commonMood || 'Peaceful'
+            thisMonth: response.data.stats?.sessions || 0,
+            totalMeditation: response.data.stats?.minutes || 0,
+            favoriteTime: 'Morning',
+            mood: 'Peaceful'
           };
         }
       } catch (error) {

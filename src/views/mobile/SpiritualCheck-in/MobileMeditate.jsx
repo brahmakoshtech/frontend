@@ -1,13 +1,16 @@
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import spiritualClipService from '../../../services/spiritualClipService.js';
 import spiritualStatsService from '../../../services/spiritualStatsService.js';
+import spiritualActivityService from '../../../services/spiritualActivityService.js';
 
 export default {
   name: 'MobileMeditate',
   setup() {
     const router = useRouter();
+    const route = useRoute();
     const clips = ref([]);
+    const configurations = ref([]);
     const loading = ref(true);
     const showSessionModal = ref(false);
     const selectedEmotion = ref('calm');
@@ -28,6 +31,42 @@ export default {
     
     const goBack = () => {
       router.push('/mobile/user/activities');
+    };
+
+    // Fetch meditation configurations
+    const fetchMeditationConfigurations = async () => {
+      try {
+        const activityType = route.query.type || 'meditation';
+        const categoryId = route.query.categoryId;
+        
+        console.log('Fetching configurations for:', { activityType, categoryId });
+        
+        let response;
+        if (categoryId) {
+          // Try category ID first
+          response = await spiritualActivityService.getSingleCheckinAllConfigration(categoryId);
+          
+          // If no results, fallback to type-based filtering
+          if (!response.success || !response.data || response.data.length === 0) {
+            console.log('No configurations found for categoryId, falling back to type filter');
+            response = await spiritualActivityService.getAllSpiritualCheckinConfigurations(activityType);
+          }
+        } else {
+          // Fallback to type-based filtering
+          response = await spiritualActivityService.getAllSpiritualCheckinConfigurations(activityType);
+        }
+        
+        if (response.success && response.data) {
+          configurations.value = response.data;
+          console.log('Loaded configurations:', response.data.length);
+        } else {
+          console.log('No configurations found');
+          configurations.value = [];
+        }
+      } catch (error) {
+        console.error('Error fetching configurations:', error);
+        configurations.value = [];
+      }
     };
 
     const fetchMeditationClips = async () => {
@@ -150,6 +189,7 @@ export default {
     onMounted(() => {
       checkUserAuth();
       fetchMeditationClips();
+      fetchMeditationConfigurations();
     });
 
     return () => (
@@ -631,41 +671,85 @@ export default {
         {loading.value ? (
           <div class="loading">Loading meditation clips...</div>
         ) : (
-          <div class="clips-list">
-            {clips.value.map(clip => (
-              <div 
-                key={clip._id}
-                class="clip-item"
-              >
-                <div class="clip-title">{clip.title}</div>
-                <div class="clip-desc">{clip.description}</div>
-                
-                <div class="clip-media">
-                  {clip.videoUrl && (
-                    <video 
-                      class="clip-video"
-                      controls
-                      preload="metadata"
+          <>
+            {/* Configurations Section */}
+            {configurations.value.length > 0 && (
+              <div class="configurations-section">
+                <h3 style={{ marginBottom: '1rem', color: '#1e293b' }}>Available Configurations</h3>
+                <div class="configurations-list">
+                  {configurations.value.map(config => (
+                    <div 
+                      key={config._id}
+                      class="config-item"
+                      style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        marginBottom: '1rem',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                        border: '1px solid #e2e8f0'
+                      }}
                     >
-                      <source src={clip.videoUrl} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                  )}
-                  
-                  {clip.audioUrl && (
-                    <audio 
-                      class="clip-audio"
-                      controls
-                      preload="metadata"
-                    >
-                      <source src={clip.audioUrl} type="audio/mpeg" />
-                      Your browser does not support the audio tag.
-                    </audio>
-                  )}
+                      <div class="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <h4 style={{ color: '#1e293b', margin: 0, fontSize: '1rem' }}>{config.title}</h4>
+                        <span style={{ 
+                          background: '#8b5cf6', 
+                          color: 'white', 
+                          padding: '0.25rem 0.5rem', 
+                          borderRadius: '6px', 
+                          fontSize: '0.75rem' 
+                        }}>
+                          {config.karmaPoints} pts
+                        </span>
+                      </div>
+                      <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0.5rem 0' }}>{config.description}</p>
+                      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                        <span>⏱️ {config.duration}</span>
+                        <span>😌 {config.emotion}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+            
+            {/* Clips Section */}
+            <div class="clips-list">
+              {clips.value.map(clip => (
+                <div 
+                  key={clip._id}
+                  class="clip-item"
+                >
+                  <div class="clip-title">{clip.title}</div>
+                  <div class="clip-desc">{clip.description}</div>
+                  
+                  <div class="clip-media">
+                    {clip.videoUrl && (
+                      <video 
+                        class="clip-video"
+                        controls
+                        preload="metadata"
+                      >
+                        <source src={clip.videoUrl} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                    
+                    {clip.audioUrl && (
+                      <audio 
+                        class="clip-audio"
+                        controls
+                        preload="metadata"
+                      >
+                        <source src={clip.audioUrl} type="audio/mpeg" />
+                        Your browser does not support the audio tag.
+                      </audio>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
         
         {/* Session Setup Modal */}
