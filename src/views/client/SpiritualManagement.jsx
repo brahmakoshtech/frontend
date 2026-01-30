@@ -2127,6 +2127,8 @@ export default {
                                   <th scope="col" class="fw-semibold">Completion</th>
                                   <th scope="col" class="fw-semibold">Emotion</th>
                                   <th scope="col" class="fw-semibold">Karma Points</th>
+                                  <th scope="col" class="fw-semibold">Video</th>
+                                  <th scope="col" class="fw-semibold">Audio</th>
                                   <th scope="col" class="fw-semibold">Date</th>
                                   <th scope="col" class="fw-semibold">Status</th>
                                   <th scope="col" class="fw-semibold">Actions</th>
@@ -2220,9 +2222,45 @@ export default {
                                         )}
                                       </td>
                                       <td>
-                                        <span class="badge bg-success-subtle text-success px-2 py-1 fw-medium">
-                                          +{activity.karmaPoints}
-                                        </span>
+                                        {activity.karmaPoints ? (
+                                          <span class="badge bg-success-subtle text-success px-2 py-1 fw-medium">
+                                            +{activity.karmaPoints}
+                                          </span>
+                                        ) : (
+                                          <span class="text-muted">-</span>
+                                        )}
+                                      </td>
+                                      <td>
+                                        {activity.videoUrl ? (
+                                          <a 
+                                            href={activity.videoUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                                            style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                                          >
+                                            <PlayIcon style={{ width: '12px', height: '12px' }} />
+                                            Video
+                                          </a>
+                                        ) : (
+                                          <span class="text-muted">-</span>
+                                        )}
+                                      </td>
+                                      <td>
+                                        {activity.audioUrl ? (
+                                          <a 
+                                            href={activity.audioUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                                            style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                                          >
+                                            <MusicalNoteIcon style={{ width: '12px', height: '12px' }} />
+                                            Audio
+                                          </a>
+                                        ) : (
+                                          <span class="text-muted">-</span>
+                                        )}
                                       </td>
                                       <td>
                                         <small class="text-muted">

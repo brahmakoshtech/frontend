@@ -12,6 +12,17 @@ const spiritualStatsService = {
     }
   },
 
+  // Get user stats with category filter
+  getUserStatsByCategory: async (category = 'all') => {
+    try {
+      const response = await api.get(`/spiritual-stats/?category=${category}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get user stats by category error:', error);
+      throw error;
+    }
+  },
+
   // Save spiritual session
   saveSession: async (sessionData) => {
     try {
@@ -19,6 +30,17 @@ const spiritualStatsService = {
       return response.data;
     } catch (error) {
       console.error('Save session error:', error);
+      throw error;
+    }
+  },
+
+  // Get all users stats (for client side)
+  getAllUsersStats: async (category = 'all') => {
+    try {
+      const response = await api.get(`/spiritual-stats/all-users?category=${category}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get all users stats error:', error);
       throw error;
     }
   },

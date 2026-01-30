@@ -10,9 +10,11 @@ import {
   ClockIcon,
   UserIcon,
   EyeIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  PlayIcon,
+  MusicalNoteIcon
 } from '@heroicons/vue/24/outline';
-import spiritualActivityService from '../../services/spiritualActivityService.js';
+import spiritualStatsService from '../../services/spiritualStatsService.js';
 import { useToast } from 'vue-toastification';
 
 export default {
@@ -53,14 +55,17 @@ export default {
     const fetchUserStats = async () => {
       try {
         loading.value = true;
-        const response = await spiritualActivityService.getSpiritualCheckinData();
+        const response = await spiritualStatsService.getUserStats();
         if (response.success) {
+          console.log('Raw API response:', response.data);
+          console.log('Recent activities:', response.data.recentActivities);
+          
           userStats.value = {
             totalStats: {
-              sessions: response.data.stats?.sessions || 0,
-              minutes: response.data.stats?.minutes || 0,
-              karmaPoints: response.data.stats?.points || 0,
-              streak: response.data.stats?.days || 0
+              sessions: response.data.totalStats?.sessions || 0,
+              minutes: response.data.totalStats?.minutes || 0,
+              karmaPoints: response.data.totalStats?.karmaPoints || 0,
+              streak: response.data.totalStats?.streak || 0
             },
             categoryStats: response.data.categoryStats || {},
             recentActivities: response.data.recentActivities || []
@@ -78,12 +83,12 @@ export default {
           
           // Update stats from real data
           stats.value = {
-            totalCheckIns: response.data.stats?.sessions || 0,
-            currentStreak: response.data.stats?.days || 0,
+            totalCheckIns: response.data.totalStats?.sessions || 0,
+            currentStreak: response.data.totalStats?.streak || 0,
             longestStreak: longestStreak,
             thisWeek: thisWeekSessions,
-            thisMonth: response.data.stats?.sessions || 0,
-            totalMeditation: response.data.stats?.minutes || 0,
+            thisMonth: response.data.totalStats?.sessions || 0,
+            totalMeditation: response.data.totalStats?.minutes || 0,
             favoriteTime: 'Morning',
             mood: 'Peaceful'
           };
@@ -844,6 +849,8 @@ export default {
                 <div class="header-cell">Type</div>
                 <div class="header-cell">Duration</div>
                 <div class="header-cell">Status</div>
+                <div class="header-cell">Video</div>
+                <div class="header-cell">Audio</div>
                 <div class="header-cell">Date</div>
                 <div class="header-cell">Points</div>
               </div>
@@ -851,8 +858,8 @@ export default {
                 <div key={activity.id || index} class="table-row">
                   <div class="table-cell">
                     <div class="user-cell">
-                      <div class="user-name">{formatUserName(activity.userDetails)}</div>
-                      <div class="user-email">{activity.userDetails?.email || 'Unknown'}</div>
+                      <div class="user-name">{activity.userDetails?.name || formatUserName(activity.userDetails) || 'User'}</div>
+                      <div class="user-email">{activity.userDetails?.email || 'No email'}</div>
                     </div>
                   </div>
                   <div class="table-cell">
@@ -876,7 +883,7 @@ export default {
                     {activity.type === 'chanting' ? (
                       <span class="chant-count">{activity.chantCount || 0} chants</span>
                     ) : (
-                      <span>{activity.actualDuration ? formatDuration(activity.actualDuration) : '-'}</span>
+                      <span>{activity.actualDuration || activity.targetDuration || 0}m</span>
                     )}
                   </div>
                   <div class="table-cell">
@@ -903,6 +910,38 @@ export default {
                         })}
                       </div>
                     </div>
+                  </div>
+                  <div class="table-cell">
+                    {activity.videoUrl ? (
+                      <a 
+                        href={activity.videoUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                        style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        <PlayIcon style={{ width: '12px', height: '12px' }} />
+                        Video
+                      </a>
+                    ) : (
+                      <span class="text-muted">-</span>
+                    )}
+                  </div>
+                  <div class="table-cell">
+                    {activity.audioUrl ? (
+                      <a 
+                        href={activity.audioUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                        style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        <MusicalNoteIcon style={{ width: '12px', height: '12px' }} />
+                        Audio
+                      </a>
+                    ) : (
+                      <span class="text-muted">-</span>
+                    )}
                   </div>
                   <div class="table-cell">
                     {activity.karmaPoints ? (

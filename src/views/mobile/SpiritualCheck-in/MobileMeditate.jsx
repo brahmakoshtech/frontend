@@ -15,6 +15,8 @@ export default {
     const showSessionModal = ref(false);
     const selectedEmotion = ref('calm');
     const selectedDuration = ref(5);
+    const selectedVideoUrl = ref('');
+    const selectedAudioUrl = ref('');
     const isSessionActive = ref(false);
     const sessionTimer = ref(0);
     const timerInterval = ref(null);
@@ -115,7 +117,7 @@ export default {
       showSessionModal.value = true;
     };
 
-    const saveSession = async (targetDuration, actualDuration, emotion, karmaPoints) => {
+    const saveSession = async (targetDuration, actualDuration, emotion, karmaPoints, videoUrl = '', audioUrl = '') => {
       try {
         const token = localStorage.getItem('token_user');
         if (!token) {
@@ -130,7 +132,9 @@ export default {
           targetDuration: targetDuration,
           actualDuration: actualDuration,
           karmaPoints: karmaPoints,
-          emotion: emotion
+          emotion: emotion,
+          videoUrl: videoUrl,
+          audioUrl: audioUrl
         };
         
         const response = await spiritualStatsService.saveSession(sessionData);
@@ -162,7 +166,7 @@ export default {
           sessionTimer.value = 0;
           earnedPoints.value = selectedDuration.value * 3;
           // Save completed session to database
-          saveSession(selectedDuration.value, selectedDuration.value, selectedEmotion.value, earnedPoints.value);
+          saveSession(selectedDuration.value, selectedDuration.value, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
           showRewardModal.value = true;
         }
       }, 1000);
@@ -724,24 +728,24 @@ export default {
                   <div class="clip-desc">{clip.description}</div>
                   
                   <div class="clip-media">
-                    {clip.videoUrl && (
+                    {(clip.videoUrl || clip.videoPresignedUrl) && (
                       <video 
                         class="clip-video"
                         controls
                         preload="metadata"
                       >
-                        <source src={clip.videoUrl} type="video/mp4" />
+                        <source src={clip.videoPresignedUrl || clip.videoUrl} type="video/mp4" />
                         Your browser does not support the video tag.
                       </video>
                     )}
                     
-                    {clip.audioUrl && (
+                    {(clip.audioUrl || clip.audioPresignedUrl) && (
                       <audio 
                         class="clip-audio"
                         controls
                         preload="metadata"
                       >
-                        <source src={clip.audioUrl} type="audio/mpeg" />
+                        <source src={clip.audioPresignedUrl || clip.audioUrl} type="audio/mpeg" />
                         Your browser does not support the audio tag.
                       </audio>
                     )}
@@ -792,6 +796,75 @@ export default {
                       {duration}m
                     </button>
                   ))}
+                </div>
+              </div>
+              
+              {/* Media Selection */}
+              <div class="media-selector">
+                <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>Select Media (Optional)</h4>
+                
+                {/* Available Clips */}
+                {clips.value.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem', display: 'block' }}>Choose from available clips:</label>
+                    <select 
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.5rem', 
+                        border: '1px solid #d1d5db', 
+                        borderRadius: '6px',
+                        fontSize: '0.9rem',
+                        marginBottom: '0.5rem'
+                      }}
+                      onChange={(e) => {
+                        const selectedClip = clips.value.find(clip => clip._id === e.target.value);
+                        if (selectedClip) {
+                          selectedVideoUrl.value = selectedClip.videoUrl || selectedClip.videoPresignedUrl || '';
+                          selectedAudioUrl.value = selectedClip.audioUrl || selectedClip.audioPresignedUrl || '';
+                        }
+                      }}
+                    >
+                      <option value="">Select a clip...</option>
+                      {clips.value.map(clip => (
+                        <option key={clip._id} value={clip._id}>
+                          {clip.title} {clip.videoUrl || clip.videoPresignedUrl ? '📹' : ''} {clip.audioUrl || clip.audioPresignedUrl ? '🎵' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
+                {/* Manual URL Inputs */}
+                <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>Or enter custom URLs:</div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input 
+                    type="url" 
+                    placeholder="Video URL (optional)"
+                    style={{ 
+                      flex: 1, 
+                      padding: '0.5rem', 
+                      border: '1px solid #d1d5db', 
+                      borderRadius: '6px',
+                      fontSize: '0.9rem'
+                    }}
+                    value={selectedVideoUrl.value}
+                    onInput={(e) => selectedVideoUrl.value = e.target.value}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    type="url" 
+                    placeholder="Audio URL (optional)"
+                    style={{ 
+                      flex: 1, 
+                      padding: '0.5rem', 
+                      border: '1px solid #d1d5db', 
+                      borderRadius: '6px',
+                      fontSize: '0.9rem'
+                    }}
+                    value={selectedAudioUrl.value}
+                    onInput={(e) => selectedAudioUrl.value = e.target.value}
+                  />
                 </div>
               </div>
               
@@ -863,10 +936,10 @@ export default {
                 earnedPoints.value = Math.max(0, completedMinutes * 3);
                 // Save partial/incomplete session
                 if (completedMinutes > 0) {
-                  saveSession(selectedDuration.value, completedMinutes, selectedEmotion.value, earnedPoints.value);
+                  saveSession(selectedDuration.value, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
                 } else {
                   // Save interrupted session with 0 actual duration
-                  saveSession(selectedDuration.value, 0, selectedEmotion.value, 0);
+                  saveSession(selectedDuration.value, 0, selectedEmotion.value, 0, selectedVideoUrl.value, selectedAudioUrl.value);
                 }
                 showRewardModal.value = true;
               }}
