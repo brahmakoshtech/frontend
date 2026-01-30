@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { sendMessage, getChat } from '../services/api';
+import api from '../services/api';
 
 function Chat({ chatId, token }) {
   const [messages, setMessages] = useState([]);
@@ -8,47 +8,40 @@ function Chat({ chatId, token }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    loadChat();
+    if (chatId) loadChat();
   }, [chatId]);
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const loadChat = async () => {
     try {
-      const data = await getChat(chatId, token);
-      if (data.success) {
-        setMessages(data.data.messages || []);
+      const res = await api.getChat(chatId, token);
+      if (res.data.success) {
+        setMessages(res.data.data.messages || []);
       }
-    } catch (error) {
-      console.error('Failed to load chat:', error);
+    } catch (err) {
+      console.error('Failed to load chat:', err);
     }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMsg = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
 
     try {
-      const data = await sendMessage(chatId, input, token);
-      if (data.success) {
-        setMessages(prev => [
-          ...prev,
-          data.data.assistantMessage
-        ]);
+      const res = await api.sendChatMessage(chatId, input, token);
+      if (res.data.success) {
+        setMessages(prev => [...prev, res.data.data.assistantMessage]);
       }
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      setMessages(prev => prev.slice(0, -1)); // Remove user message on error
+    } catch (err) {
+      console.error('Send failed:', err);
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setLoading(false);
     }
@@ -56,74 +49,43 @@ function Chat({ chatId, token }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '20px',
-        backgroundColor: '#f5f5f5'
-      }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 20, background: '#f5f5f5' }}>
         {messages.map((msg, i) => (
           <div
             key={i}
             style={{
-              marginBottom: '15px',
               display: 'flex',
-              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start'
+              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              marginBottom: 12
             }}
           >
-            <div style={{
-              maxWidth: '70%',
-              padding: '12px 16px',
-              borderRadius: '12px',
-              backgroundColor: msg.role === 'user' ? '#3498db' : '#ecf0f1',
-              color: msg.role === 'user' ? 'white' : '#2c3e50'
-            }}>
+            <div
+              style={{
+                maxWidth: '70%',
+                padding: '12px 16px',
+                borderRadius: 12,
+                background: msg.role === 'user' ? '#3498db' : '#ecf0f1',
+                color: msg.role === 'user' ? '#fff' : '#2c3e50'
+              }}
+            >
               {msg.content}
             </div>
           </div>
         ))}
-        {loading && (
-          <div style={{ textAlign: 'center', color: '#7f8c8d' }}>
-            AI is thinking...
-          </div>
-        )}
+        {loading && <div style={{ textAlign: 'center' }}>AI is thinking…</div>}
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{
-        padding: '20px',
-        borderTop: '1px solid #ddd',
-        display: 'flex',
-        gap: '10px'
-      }}>
+      <div style={{ padding: 20, borderTop: '1px solid #ddd', display: 'flex', gap: 10 }}>
         <input
-          type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder="Type your message..."
-          style={{
-            flex: 1,
-            padding: '12px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '16px'
-          }}
           disabled={loading}
+          style={{ flex: 1, padding: 12, borderRadius: 8 }}
         />
-        <button
-          onClick={handleSend}
-          disabled={loading || !input.trim()}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#3498db',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1
-          }}
-        >
+        <button onClick={handleSend} disabled={loading}>
           Send
         </button>
       </div>
@@ -132,4 +94,3 @@ function Chat({ chatId, token }) {
 }
 
 export default Chat;
-
