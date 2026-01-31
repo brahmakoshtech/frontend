@@ -106,6 +106,16 @@ export default {
 
     const fetchReviews = async () => {
       try {
+        console.log('=== FETCH REVIEWS DEBUG ===');
+        console.log('Expert ID from route:', expertId);
+        console.log('Route params:', route.params);
+        
+        if (!expertId) {
+          console.error('Expert ID is missing!');
+          reviews.value = [];
+          return;
+        }
+        
         // Check if we have authentication token
         const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
         if (!token) {
@@ -194,6 +204,15 @@ export default {
         const response = await expertService.getExpertById(expertId);
         if (response.success) {
           expert.value = response.data;
+          
+          // Update expert review count after loading reviews
+          await fetchReviews();
+          if (expert.value && reviews.value.length > 0) {
+            expert.value.reviews = reviews.value.length;
+            // Calculate average rating from reviews
+            const totalRating = reviews.value.reduce((sum, review) => sum + (review.rating || 0), 0);
+            expert.value.rating = (totalRating / reviews.value.length).toFixed(1);
+          }
         } else {
           toast.error('Failed to load expert details');
           router.push('/client/experts');
@@ -457,7 +476,7 @@ export default {
 
     onMounted(() => {
       loadExpertDetails();
-      fetchReviews();
+      // fetchReviews(); // Remove this as it's now called from loadExpertDetails
     });
 
     return () => (

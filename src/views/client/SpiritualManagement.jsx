@@ -1247,13 +1247,13 @@ export default {
         currentCategory.value = route.params.category;
       }
       
-      // Check if user is logged in
-      const userToken = localStorage.getItem('token_user');
-      console.log('User token check:', userToken ? 'Token exists' : 'No token found');
+      // Check if client is logged in
+      const clientToken = localStorage.getItem('token_client');
+      console.log('Client token check:', clientToken ? 'Token exists' : 'No token found');
       
-      if (!userToken) {
-        console.error('User not logged in - redirecting to login');
-        router.push('/user/login');
+      if (!clientToken) {
+        console.error('Client not logged in - redirecting to login');
+        router.push('/client/login');
         return;
       }
       

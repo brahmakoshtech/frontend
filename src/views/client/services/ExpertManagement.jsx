@@ -109,6 +109,14 @@ export default {
           response.data.forEach(expert => {
             console.log(`Expert ${expert.name}: rating=${expert.rating}, reviews=${expert.reviews}, reviewCount=${expert.reviewCount}`);
           });
+          
+          // Calculate average rating for debugging
+          const validRatings = response.data.filter(e => e.rating && e.rating > 0);
+          const avgRating = validRatings.length > 0 
+            ? (validRatings.reduce((sum, e) => sum + e.rating, 0) / validRatings.length).toFixed(1)
+            : '0.0';
+          console.log('Calculated average rating:', avgRating, 'from', validRatings.length, 'experts with ratings');
+          
           experts.value = response.data || [];
           // No need for client-side filtering anymore
           filteredExperts.value = experts.value;
@@ -595,7 +603,7 @@ export default {
                       <StarIcon style={{ width: '1.5rem', height: '1.5rem' }} class="d-md-none" />
                       <StarIcon style={{ width: '2rem', height: '2rem' }} class="d-none d-md-block" />
                     </div>
-                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">4.7</h4>
+                    <h4 class="fw-bold mb-1 fs-5 fs-md-4">{filteredExperts.value.length > 0 ? (filteredExperts.value.reduce((sum, expert) => sum + (expert.rating || 0), 0) / filteredExperts.value.length).toFixed(1) : '0.0'}</h4>
                     <small class="text-muted" style={{ fontSize: '0.75rem' }}>Avg Rating</small>
                   </div>
                 </div>

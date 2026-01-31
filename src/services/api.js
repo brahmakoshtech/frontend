@@ -52,6 +52,8 @@ class ApiService {
     // Get token from options or determine from endpoint/context
     let token = options.token;
     console.log('token', token);
+    console.log('endpoint', endpoint);
+    console.log('client token check:', localStorage.getItem('token_client'));
     let tokenSource = 'provided';
   
     if (!token) {
@@ -94,6 +96,12 @@ class ApiService {
         endpoint.includes('/reviews') || endpoint.includes('/experts')) {
         // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS, MEDITATIONS, CHANTINGS, BRAHM-AVATARS, REVIEWS & EXPERTS: Always use client token
         token = getTokenForRole('client');
+        console.log('getTokenForRole result:', token);
+        if (!token) {
+          // Fallback: directly get client token
+          token = localStorage.getItem('token_client');
+          console.log('Direct localStorage fallback:', token);
+        }
         tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 
                      endpoint.includes('/founder-messages') ? 'client (founder-messages endpoint)' : 
                      endpoint.includes('/brand-assets') ? 'client (brand-assets endpoint)' :
