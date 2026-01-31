@@ -237,6 +237,10 @@ export default {
       // Reset custom input when category changes
       showCustomInput.value = false;
       configForm.value.customChantingType = '';
+      // Refresh stats when category changes
+      fetchUserStats();
+      fetchConfigurations();
+      fetchClips();
     });
     
     // Handle dropdown change for category options
@@ -258,12 +262,22 @@ export default {
       )
     );
     
-    const filteredRecentActivities = computed(() => 
-      userStats.value.recentActivities?.filter(activity => {
+    const filteredRecentActivities = computed(() => {
+      const activities = userStats.value.recentActivities || [];
+      console.log('All activities before filtering:', activities);
+      console.log('Current category:', currentCategory.value);
+      
+      // Since we're already fetching category-specific data from backend,
+      // we should get all activities for the current category
+      // But let's still filter to be safe
+      const filtered = activities.filter(activity => {
         console.log('Filtering activity:', activity.type, 'Current category:', currentCategory.value);
         return activity.type === currentCategory.value;
-      }) || []
-    );
+      });
+      
+      console.log('Filtered activities:', filtered);
+      return filtered;
+    });
     
     const filteredClips = computed(() => 
       clips.value.filter(clip => {
@@ -637,16 +651,17 @@ export default {
 
     const fetchUserStats = async () => {
       try {
-        console.log('Fetching user stats for category:', currentCategory.value);
-        const response = await spiritualStatsService.getUserStats();
+        console.log('Fetching all users stats for category:', currentCategory.value);
+        // Fetch all users stats with category filter
+        const response = await spiritualStatsService.getAllUsersStats(currentCategory.value);
         if (response.success) {
-          console.log('User stats received:', response.data);
-          console.log('Recent activities:', response.data.recentActivities);
+          console.log('All users stats received:', response.data);
+          console.log('All recent activities:', response.data.recentActivities);
           console.log('Category stats:', response.data.categoryStats);
           userStats.value = response.data;
         }
       } catch (error) {
-        console.error('Fetch stats error:', error);
+        console.error('Fetch all users stats error:', error);
         // Keep default values on error
       }
     };
@@ -1242,6 +1257,7 @@ export default {
         return;
       }
       
+      // Fetch all data for the current category
       fetchConfigurations();
       fetchClips();
       fetchUserStats();
@@ -2102,9 +2118,22 @@ export default {
                     </div>
                     <div class="card border-0 shadow-sm">
                       <div class="card-header bg-light">
-                        <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                          <span>📋</span> User Activity History
-                        </h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div>
+                            <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                              <span>📋</span> All Users Activity History
+                            </h5>
+                            <small class="text-muted">Showing {currentCategoryInfo.value.name.toLowerCase()} activities from all users</small>
+                          </div>
+                          <div class="text-end">
+                            <div class="badge bg-primary px-3 py-2">
+                              <strong>{filteredRecentActivities.value.length}</strong> Activities
+                            </div>
+                            <div class="badge bg-success px-3 py-2 ms-2">
+                              <strong>{[...new Set(filteredRecentActivities.value.map(a => a.userDetails?.email))].length}</strong> Users
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div class="card-body p-0">
                         {filteredRecentActivities.value.length > 0 ? (
@@ -2112,7 +2141,7 @@ export default {
                             <table class="table table-hover mb-0">
                               <thead class="table-light">
                                 <tr>
-                                  <th scope="col" class="fw-semibold">User Email</th>
+                                  <th scope="col" class="fw-semibold">User</th>
                                   <th scope="col" class="fw-semibold">Activity</th>
                                   <th scope="col" class="fw-semibold">Type</th>
                                   {currentCategory.value !== 'chanting' && (
@@ -2160,9 +2189,20 @@ export default {
                                   return (
                                     <tr key={activity.id} style={{ opacity: activity.isActive ? 1 : 0.5 }}>
                                       <td>
-                                        <div>
-                                          <span class="fw-medium text-primary d-block">{activity.userDetails?.email || 'Unknown User'}</span>
-                                          <small class="text-muted">{formatUserName(activity.userDetails) || 'No Name'}</small>
+                                        <div class="d-flex align-items-center gap-2">
+                                          <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', minWidth: '32px' }}>
+                                            <span class="text-white fw-bold" style={{ fontSize: '0.8rem' }}>
+                                              {(activity.userDetails?.name || activity.userDetails?.email || 'U').charAt(0).toUpperCase()}
+                                            </span>
+                                          </div>
+                                          <div class="min-w-0">
+                                            <div class="fw-medium text-primary text-truncate" style={{ maxWidth: '150px' }}>
+                                              {formatUserName(activity.userDetails) || 'Unknown User'}
+                                            </div>
+                                            <small class="text-muted text-truncate d-block" style={{ maxWidth: '150px' }}>
+                                              {activity.userDetails?.email || 'No email'}
+                                            </small>
+                                          </div>
                                         </div>
                                       </td>
                                       <td>

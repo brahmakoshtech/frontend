@@ -1,4 +1,3 @@
-
 import { ref, computed, onMounted } from 'vue';
 import { 
   ChartBarIcon, 
@@ -16,6 +15,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import spiritualStatsService from '../../services/spiritualStatsService.js';
 import { useToast } from 'vue-toastification';
+
 
 export default {
   name: 'SpiritualStats',
@@ -59,6 +59,7 @@ export default {
         if (response.success) {
           console.log('Raw API response:', response.data);
           console.log('Recent activities:', response.data.recentActivities);
+          console.log('Activity types:', response.data.recentActivities?.map(a => a.type));
           
           userStats.value = {
             totalStats: {
@@ -221,26 +222,144 @@ export default {
         yoga: '🧘♀️',
         gratitude: '🙏',
         silence: '🤫',
-        reflection: '🤔'
+        reflection: '🤔',
+        video: '🎥',
+        audio: '🎧'
       };
       return icons[type] || '🧘';
     };
 
-    const getStatusColor = (status) => {
-      const colors = {
-        completed: '#10b981',
-        partial: '#f59e0b',
-        skipped: '#ef4444'
-      };
-      return colors[status] || '#6b7280';
+    const showVideoModal = ref(false);
+    const showAudioModal = ref(false);
+    const selectedMedia = ref(null);
+    const chartCanvas = ref(null);
+
+    const drawChart = () => {
+      if (!chartCanvas.value) return;
+      
+      const canvas = chartCanvas.value;
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Chart settings
+      const padding = 40;
+      const chartWidth = width - padding * 2;
+      const chartHeight = height - padding * 2;
+      const barWidth = chartWidth / 7;
+      const maxValue = 10;
+      
+      // Draw grid lines
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (i * chartHeight / 5);
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+      }
+      
+      // Draw Y-axis labels
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 5; i++) {
+        const value = maxValue - (i * 2);
+        const y = padding + (i * chartHeight / 5) + 4;
+        ctx.fillText(value.toString(), padding - 10, y);
+      }
+      
+      // Draw bars
+      weeklyData.value.forEach((day, index) => {
+        const x = padding + (index * barWidth) + barWidth * 0.2;
+        const barHeight = (day.checkIns / maxValue) * chartHeight;
+        const y = height - padding - barHeight;
+        
+        // Bar
+        ctx.fillStyle = day.mood ? getMoodColor(day.mood) : '#e2e8f0';
+        ctx.fillRect(x, y, barWidth * 0.6, barHeight);
+        
+        // Bar border
+        ctx.strokeStyle = day.checkIns > 0 ? '#2563eb' : '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, barWidth * 0.6, barHeight);
+        
+        // Value label
+        if (day.checkIns > 0) {
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 11px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(day.checkIns.toString(), x + barWidth * 0.3, y - 5);
+        }
+        
+        // Day label
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(day.day, x + barWidth * 0.3, height - 10);
+      });
+      
+      // Draw trend line
+      if (weeklyData.value.length > 1) {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        
+        weeklyData.value.forEach((day, index) => {
+          const x = padding + (index * barWidth) + barWidth * 0.5;
+          const y = height - padding - ((day.checkIns / maxValue) * chartHeight);
+          
+          if (index === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    };
+
+    const openVideoModal = (activity) => {
+      if (activity.videoUrl) {
+        selectedMedia.value = activity;
+        showVideoModal.value = true;
+      }
+    };
+
+    const openAudioModal = (activity) => {
+      if (activity.audioUrl) {
+        selectedMedia.value = activity;
+        showAudioModal.value = true;
+      }
+    };
+
+    const closeVideoModal = () => {
+      showVideoModal.value = false;
+      selectedMedia.value = null;
+    };
+
+    const closeAudioModal = () => {
+      showAudioModal.value = false;
+      selectedMedia.value = null;
     };
 
     onMounted(() => {
       fetchUserStats();
+      setTimeout(() => {
+        drawChart();
+      }, 100);
     });
 
     return () => (
-      <div class="spiritual-stats">
+      <>
+        <div class="spiritual-stats">
         <style>{`
           .spiritual-stats {
             padding: 1rem;
@@ -428,326 +547,196 @@ export default {
             line-height: 1.4;
           }
           
-          @media (max-width: 768px) {
-            .spiritual-stats {
-              padding: 0.75rem;
-            }
-            
-            .stats-header {
-              flex-direction: column;
-              gap: 1rem;
-              padding: 1.25rem 1.5rem;
-              text-align: center;
-            }
-            
-            .header-content .stats-title {
-              font-size: 1.75rem;
-            }
-            
-            .header-content .stats-subtitle {
-              font-size: 1rem;
-            }
-            
-            .stats-grid {
-              grid-template-columns: repeat(2, 1fr);
-              gap: 0.75rem;
-            }
-            
-            .stat-card {
-              padding: 1rem;
-            }
-            
-            .stat-value {
-              font-size: 1.25rem;
-            }
-            
-            .table-header {
-              grid-template-columns: 2fr 1fr 1fr;
-            }
-            
-            .table-row {
-              grid-template-columns: 2fr 1fr 1fr;
-            }
-            
-            .header-cell:nth-child(n+4),
-            .table-cell:nth-child(n+4) {
-              display: none;
-            }
-            
-            .activity-name {
-              font-size: 0.8rem;
-            }
+          .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
           }
-            
-            .activity-list {
-              max-height: 400px;
-              overflow-y: auto;
-            }
-            
-            .data-table {
-              background: white;
-              border-radius: 8px;
-              overflow: hidden;
-              border: 1px solid #e2e8f0;
-            }
-            
-            .table-header {
-              display: grid;
-              grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr 1fr 1fr;
-              background: #f8fafc;
-              border-bottom: 1px solid #e2e8f0;
-              font-weight: 600;
-              font-size: 0.8rem;
-              color: #374151;
-            }
-            
-            .header-cell {
-              padding: 0.75rem 0.5rem;
-              text-align: left;
-            }
-            
-            .table-row {
-              display: grid;
-              grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr 1fr 1fr;
-              border-bottom: 1px solid #f1f5f9;
-              transition: background-color 0.2s ease;
-            }
-            
-            .table-row:hover {
-              background: #f8fafc;
-            }
-            
-            .table-cell {
-              padding: 0.75rem 0.5rem;
-              display: flex;
-              align-items: center;
-              font-size: 0.8rem;
-            }
-            
-            .user-cell {
-              display: flex;
-              flex-direction: column;
-            }
-            
-            .user-name {
-              font-weight: 600;
-              color: #1e293b;
-              font-size: 0.85rem;
-            }
-            
-            .user-email {
-              font-size: 0.7rem;
-              color: #6b7280;
-            }
-            
-            .activity-cell {
-              display: flex;
-              align-items: center;
-              gap: 0.5rem;
-            }
-            
-            .activity-emoji {
-              font-size: 1.2rem;
-            }
-            
-            .activity-name {
-              font-weight: 500;
-              color: #1e293b;
-              margin-bottom: 0.125rem;
-            }
-            
-            .activity-emotion-small {
-              font-size: 0.7rem;
-              color: #6b7280;
-            }
-            
-            .type-badge {
-              background: #e2e8f0;
-              padding: 0.25rem 0.5rem;
-              border-radius: 12px;
-              font-size: 0.7rem;
-              text-transform: capitalize;
-              color: #374151;
-            }
-            
-            .status-cell {
-              display: flex;
-              flex-direction: column;
-              align-items: flex-start;
-              gap: 0.25rem;
-            }
-            
-            .status-dot {
-              width: 8px;
-              height: 8px;
-              border-radius: 50%;
-            }
-            
-            .status-text {
-              text-transform: capitalize;
-              font-size: 0.75rem;
-            }
-            
-            .completion-percentage {
-              font-size: 0.7rem;
-              color: #6b7280;
-            }
-            
-            .date-cell {
-              display: flex;
-              flex-direction: column;
-              color: #6b7280;
-              font-size: 0.75rem;
-            }
-            
-            .time-cell {
-              font-size: 0.7rem;
-              color: #9ca3af;
-            }
-            
-            .chanting-name {
-              font-size: 0.7rem;
-              color: #f59e0b;
-              font-style: italic;
-            }
-            
-            .chant-count {
-              color: #f59e0b;
-              font-weight: 600;
-              font-size: 0.75rem;
-            }
-            
-            .points-cell {
-              color: #f59e0b;
-              font-weight: 600;
-              font-size: 0.75rem;
-            }
-            
-            .activity-item {
-              background: white;
-              border: 1px solid #e2e8f0;
-              border-radius: 8px;
-              padding: 1rem;
-              margin-bottom: 0.75rem;
-              transition: all 0.2s ease;
-            }
-            
-            .activity-item:hover {
-              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            }
-            
-            .activity-header {
-              display: flex;
-              align-items: flex-start;
-              gap: 0.75rem;
-            }
-            
-            .activity-icon {
-              font-size: 1.5rem;
-              width: 40px;
-              height: 40px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: #f8fafc;
-              border-radius: 50%;
-              flex-shrink: 0;
-            }
-            
-            .activity-info {
-              flex: 1;
-              min-width: 0;
-            }
-            
-            .activity-title {
-              font-size: 0.9rem;
-              font-weight: 600;
-              color: #1e293b;
-              margin: 0 0 0.25rem 0;
-            }
-            
-            .activity-meta {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 0.5rem;
-              font-size: 0.75rem;
-              color: #64748b;
-            }
-            
-            .activity-type {
-              background: #e2e8f0;
-              padding: 0.125rem 0.5rem;
-              border-radius: 12px;
-              text-transform: capitalize;
-            }
-            
-            .activity-duration {
-              background: #dbeafe;
-              color: #1e40af;
-              padding: 0.125rem 0.5rem;
-              border-radius: 12px;
-            }
-            
-            .activity-date {
-              color: #9ca3af;
-            }
-            
-            .activity-status {
-              text-align: right;
-              flex-shrink: 0;
-            }
-            
-            .status-badge {
-              color: white;
-              padding: 0.25rem 0.5rem;
-              border-radius: 12px;
-              font-size: 0.7rem;
-              font-weight: 500;
-              text-transform: capitalize;
-              margin-bottom: 0.25rem;
-            }
-            
-            .karma-points {
-              font-size: 0.75rem;
-              color: #f59e0b;
-              font-weight: 600;
-            }
-            
-            .activity-emotion {
-              margin-top: 0.5rem;
-              font-size: 0.8rem;
-              color: #6b7280;
-            }
-            
-            .completion-bar {
-              margin-top: 0.5rem;
-              height: 4px;
-              background: #e2e8f0;
-              border-radius: 2px;
-              overflow: hidden;
-            }
-            
-            .completion-progress {
-              height: 100%;
-              background: #10b981;
-              transition: width 0.3s ease;
-            }
-            
-            .empty-state {
-              text-align: center;
-              padding: 2rem;
-              color: #64748b;
-            }
-            
-            .empty-icon {
-              font-size: 3rem;
-              margin-bottom: 1rem;
-            }
-            
-            .empty-state h6 {
-              color: #374151;
-              margin-bottom: 0.5rem;
-            }
+          
+          .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+          }
+          
+          .empty-state h6 {
+            color: #374151;
+            margin-bottom: 0.5rem;
+          }
+          
+          .activities-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          
+          .table-header {
+            display: grid;
+            grid-template-columns: 1.2fr 1.5fr 1fr 1.4fr 1.4fr 1.2fr 1fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr;
+            background: #f8fafc;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            gap: 0.75rem;
+          }
+          
+          .table-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1.5fr 1fr 1.4fr 1.4fr 1.2fr 1fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr;
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            align-items: center;
+            gap: 0.75rem;
+          }
+          
+          .table-row:hover {
+            background: #f9fafb;
+          }
+          
+          .table-cell {
+            font-size: 0.875rem;
+          }
+          
+          .activity-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+          }
+          
+          .activity-icon {
+            font-size: 1.25rem;
+          }
+          
+          .activity-title {
+            font-weight: 600;
+            color: #111827;
+          }
+          
+          .activity-emotion {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+          }
+          
+          .type-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: capitalize;
+            background: #dbeafe;
+            color: #1e40af;
+          }
+          
+          .status-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: capitalize;
+          }
+          
+          .status-completed {
+            background: #dcfce7;
+            color: #166534;
+          }
+          
+          .status-partial {
+            background: #fef3c7;
+            color: #92400e;
+          }
+          
+          .status-skipped {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+          
+          .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+          }
+          
+          .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            transition: width 0.3s ease;
+          }
+          
+          .karma-points {
+            color: #f59e0b;
+            font-weight: 600;
+          }
+          
+          .date-cell {
+            font-size: 0.8rem;
+          }
+          
+          .date-main {
+            color: #374151;
+          }
+          
+          .date-time {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+          }
+          
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          }
+          
+          .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 60vw;
+            max-height: 60vh;
+            overflow: hidden;
+          }
+          
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          
+          .modal-body {
+            padding: 1rem;
+          }
+          
+          .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+          }
+          
+          .media-icon {
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+          }
+          
+          .media-icon:hover {
+            transform: scale(1.2);
           }
         `}</style>
 
@@ -836,117 +825,89 @@ export default {
           </h3>
           
           {loading.value ? (
-            <div class="text-center py-4">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <div>Loading...</div>
             </div>
           ) : userStats.value.recentActivities?.length > 0 ? (
-            <div class="data-table">
+            <div class="activities-table">
               <div class="table-header">
-                <div class="header-cell">User</div>
-                <div class="header-cell">Activity</div>
-                <div class="header-cell">Type</div>
-                <div class="header-cell">Duration</div>
-                <div class="header-cell">Status</div>
-                <div class="header-cell">Video</div>
-                <div class="header-cell">Audio</div>
-                <div class="header-cell">Date</div>
-                <div class="header-cell">Points</div>
+                <div class="table-cell">User</div>
+                <div class="table-cell">Activity</div>
+                <div class="table-cell">Type</div>
+                <div class="table-cell">Target Duration</div>
+                <div class="table-cell">Actual Duration</div>
+                <div class="table-cell">Completion</div>
+                <div class="table-cell">Emotion</div>
+                <div class="table-cell">Karma Points</div>
+                <div class="table-cell">Video</div>
+                <div class="table-cell">Audio</div>
+                <div class="table-cell">Date</div>
+                <div class="table-cell">Status</div>
               </div>
-              {userStats.value.recentActivities.map((activity, index) => (
-                <div key={activity.id || index} class="table-row">
+              {userStats.value.recentActivities.slice(0, 10).map((activity, index) => (
+                <div key={index} class="table-row">
                   <div class="table-cell">
-                    <div class="user-cell">
-                      <div class="user-name">{activity.userDetails?.name || formatUserName(activity.userDetails) || 'User'}</div>
-                      <div class="user-email">{activity.userDetails?.email || 'No email'}</div>
+                    <div class="user-name">{formatUserName(activity.userDetails)}</div>
+                  </div>
+                  <div class="table-cell activity-cell">
+                    <span class="activity-icon">{getActivityIcon(activity.type)}</span>
+                    <div class="activity-info">
+                      <div class="activity-title">{activity.title}</div>
                     </div>
                   </div>
                   <div class="table-cell">
-                    <div class="activity-cell">
-                      <span class="activity-emoji">{getActivityIcon(activity.type)}</span>
-                      <div>
-                        <div class="activity-name">{activity.title}</div>
-                        {activity.emotion && (
-                          <div class="activity-emotion-small">Feeling: {activity.emotion}</div>
-                        )}
-                        {activity.type === 'chanting' && activity.chantingName && (
-                          <div class="chanting-name">{activity.chantingName}</div>
-                        )}
-                      </div>
-                    </div>
+                    <span class={`type-tag type-${activity.type}`}>{activity.type}</span>
                   </div>
                   <div class="table-cell">
-                    <span class="type-badge">{activity.type}</span>
+                    {activity.type === 'chanting' ? '-' : `${activity.targetDuration || 0} min`}
                   </div>
                   <div class="table-cell">
-                    {activity.type === 'chanting' ? (
-                      <span class="chant-count">{activity.chantCount || 0} chants</span>
-                    ) : (
-                      <span>{activity.actualDuration || activity.targetDuration || 0}m</span>
-                    )}
+                    {activity.type === 'chanting' ? `${activity.chantCount || 0} chants` : `${activity.actualDuration || 0} min`}
                   </div>
                   <div class="table-cell">
-                    <div class="status-cell">
-                      <div 
-                        class="status-dot"
-                        style={{ backgroundColor: getStatusColor(activity.status) }}
-                      ></div>
-                      <span class="status-text">{activity.status}</span>
-                      <div class="completion-percentage">{activity.completionPercentage || 100}%</div>
-                    </div>
+                    {activity.completionPercentage ? `${activity.completionPercentage}%` : '100%'}
                   </div>
                   <div class="table-cell">
-                    <div class="date-cell">
-                      {new Date(activity.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                      <div class="time-cell">
-                        {new Date(activity.createdAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </div>
+                    {activity.emotion || '-'}
+                  </div>
+                  <div class="table-cell">
+                    {activity.karmaPoints ? `+${activity.karmaPoints} ✨` : '-'}
                   </div>
                   <div class="table-cell">
                     {activity.videoUrl ? (
-                      <a 
-                        href={activity.videoUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                        style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                      <span 
+                        class="media-icon clickable" 
+                        onClick={() => openVideoModal(activity)}
+                        style={{ cursor: 'pointer' }}
                       >
-                        <PlayIcon style={{ width: '12px', height: '12px' }} />
-                        Video
-                      </a>
-                    ) : (
-                      <span class="text-muted">-</span>
-                    )}
+                        🎥
+                      </span>
+                    ) : '-'}
                   </div>
                   <div class="table-cell">
                     {activity.audioUrl ? (
-                      <a 
-                        href={activity.audioUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-                        style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                      <span 
+                        class="media-icon clickable" 
+                        onClick={() => openAudioModal(activity)}
+                        style={{ cursor: 'pointer' }}
                       >
-                        <MusicalNoteIcon style={{ width: '12px', height: '12px' }} />
-                        Audio
-                      </a>
-                    ) : (
-                      <span class="text-muted">-</span>
-                    )}
+                        🎧
+                      </span>
+                    ) : '-'}
+                  </div>
+                  <div class="table-cell date-cell">
+                    <div class="date-main">{new Date(activity.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}</div>
+                    <div class="date-time">{new Date(activity.createdAt).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</div>
                   </div>
                   <div class="table-cell">
-                    {activity.karmaPoints ? (
-                      <div class="points-cell">+{activity.karmaPoints} ✨</div>
-                    ) : '-'}
+                    <span class={`status-tag status-${activity.status}`}>{activity.status}</span>
                   </div>
                 </div>
               ))}
@@ -991,7 +952,52 @@ export default {
             </p>
           </div>
         </div>
-      </div>
+        </div>
+
+        {/* Video Modal */}
+        {showVideoModal.value && selectedMedia.value && (
+          <div class="modal-overlay" onClick={closeVideoModal}>
+            <div class="modal-content video-modal" onClick={(e) => e.stopPropagation()}>
+              <div class="modal-header">
+                <h3>{selectedMedia.value.title} - Video</h3>
+                <button class="close-btn" onClick={closeVideoModal}>×</button>
+              </div>
+              <div class="modal-body">
+                <video 
+                  controls 
+                  autoplay 
+                  style={{ width: '100%', maxHeight: '250px' }}
+                  src={selectedMedia.value.videoUrl}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Audio Modal */}
+        {showAudioModal.value && selectedMedia.value && (
+          <div class="modal-overlay" onClick={closeAudioModal}>
+            <div class="modal-content audio-modal" onClick={(e) => e.stopPropagation()}>
+              <div class="modal-header">
+                <h3>{selectedMedia.value.title} - Audio</h3>
+                <button class="close-btn" onClick={closeAudioModal}>×</button>
+              </div>
+              <div class="modal-body">
+                <audio 
+                  controls 
+                  autoplay 
+                  style={{ width: '100%' }}
+                  src={selectedMedia.value.audioUrl}
+                >
+                  Your browser does not support the audio tag.
+                </audio>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 };

@@ -12,17 +12,24 @@ export default {
     const clips = ref([]);
     const configurations = ref([]);
     const loading = ref(true);
-    const showSessionModal = ref(false);
     const selectedEmotion = ref('calm');
     const selectedDuration = ref(5);
     const selectedVideoUrl = ref('');
     const selectedAudioUrl = ref('');
+    const enableVideo = ref(false);
+    const enableAudio = ref(false);
+    const tempVideoUrl = ref('');
+    const tempAudioUrl = ref('');
     const isSessionActive = ref(false);
     const sessionTimer = ref(0);
     const timerInterval = ref(null);
     const showRewardModal = ref(false);
     const earnedPoints = ref(0);
     const isUserLoggedIn = ref(false);
+    const backgroundVideo = ref(null);
+    const backgroundAudio = ref(null);
+    const isVideoPlaying = ref(false);
+    const isAudioPlaying = ref(false);
     
     // Check if user is logged in
     const checkUserAuth = () => {
@@ -114,7 +121,7 @@ export default {
     };
 
     const startSession = () => {
-      showSessionModal.value = true;
+      beginMeditation();
     };
 
     const saveSession = async (targetDuration, actualDuration, emotion, karmaPoints, videoUrl = '', audioUrl = '') => {
@@ -154,15 +161,37 @@ export default {
     };
 
     const beginMeditation = () => {
-      showSessionModal.value = false;
       isSessionActive.value = true;
       sessionTimer.value = selectedDuration.value * 60; // Convert to seconds
+      
+      // Start background media playback after a short delay to ensure elements are mounted
+      setTimeout(() => {
+        if (selectedVideoUrl.value && backgroundVideo.value) {
+          console.log('Starting video:', selectedVideoUrl.value);
+          backgroundVideo.value.play().catch(e => console.log('Video autoplay prevented:', e));
+        }
+        if (selectedAudioUrl.value && backgroundAudio.value) {
+          console.log('Starting audio:', selectedAudioUrl.value);
+          backgroundAudio.value.play().catch(e => console.log('Audio autoplay prevented:', e));
+        }
+      }, 100);
       
       timerInterval.value = setInterval(() => {
         sessionTimer.value--;
         if (sessionTimer.value <= 0) {
           isSessionActive.value = false;
           clearInterval(timerInterval.value);
+          
+          // Stop background media
+          if (backgroundVideo.value) {
+            backgroundVideo.value.pause();
+            backgroundVideo.value.currentTime = 0;
+          }
+          if (backgroundAudio.value) {
+            backgroundAudio.value.pause();
+            backgroundAudio.value.currentTime = 0;
+          }
+          
           sessionTimer.value = 0;
           earnedPoints.value = selectedDuration.value * 3;
           // Save completed session to database
@@ -176,7 +205,7 @@ export default {
       isSessionActive.value = false;
       clearInterval(timerInterval.value);
       sessionTimer.value = 0;
-      alert('🧘‍♀️ Meditation session completed! Well done!');
+      alert('🧘♀️ Meditation session completed! Well done!');
     };
 
     const formatTime = (seconds) => {
@@ -201,271 +230,164 @@ export default {
         {/* Floating Particles */}
         <style>{`
           .meditate-page {
-            padding: 1rem;
+            padding: 0.75rem;
             min-height: 100vh;
             background: #f8fafc;
           }
           
           .page-header {
-            background: white;
-            color: #1e293b;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
           }
           
           .back-btn {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
             cursor: pointer;
             transition: all 0.2s ease;
           }
           
           .back-btn:hover {
-            background: #e2e8f0;
-            border-color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
           }
           
           .share-btn {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-            padding: 0.5rem;
-            border-radius: 8px;
-            font-size: 1.2rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.4rem;
+            border-radius: 6px;
+            font-size: 1rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
           }
           
           .share-btn:hover {
-            background: #e2e8f0;
-            border-color: #cbd5e1;
-            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
           }
           
           .header-content {
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 0.5rem;
           }
           
           .activity-icon {
-            font-size: 1.8rem;
+            font-size: 1.25rem;
           }
           
           .activity-title {
-            font-size: 1.3rem;
+            font-size: 1rem;
             font-weight: 600;
             margin: 0;
+            color: white;
           }
           
           .meditation-content {
             background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           }
           
           .start-btn {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-size: 1rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
+            width: 100%;
           }
           
           .start-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-          }
-          
-          .clips-list {
-            margin-top: 0;
-          }
-          
-          .clip-item {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-          
-          .clip-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          }
-          
-          .clip-title {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 0.5rem;
-          }
-          
-          .clip-desc {
-            color: #64748b;
-            font-size: 0.9rem;
-            line-height: 1.4;
-            margin-bottom: 1rem;
-          }
-          
-          .clip-media {
-            margin-top: 1rem;
-          }
-          
-          .clip-video {
-            width: 100%;
-            max-height: 200px;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            object-fit: cover;
-          }
-          
-          .clip-audio {
-            width: 100%;
-            height: 40px;
-          }
-          
-          .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #64748b;
-          }
-          
-          .session-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            animation: fadeIn 0.3s ease;
-            padding: 1rem;
-          }
-          
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          
-          .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem 1.5rem;
-            width: 100%;
-            max-width: 380px;
-            animation: scaleIn 0.4s ease;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
-          }
-          
-          .modal-content::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
-          }
-          
-          @keyframes scaleIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
           }
           
           .emotion-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.4rem;
-            margin: 0.8rem 0;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
           }
           
           .emotion-btn {
-            padding: 0.8rem 0.5rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
+            padding: 0.6rem 0.4rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
             background: white;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
             text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
           }
           
           .emotion-btn:hover {
             border-color: #667eea;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           }
           
           .emotion-btn.active {
             border-color: #667eea;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #667eea;
             color: white;
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
           }
           
           .duration-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.4rem;
-            margin: 0.8rem 0;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
           }
           
           .duration-btn {
-            padding: 0.8rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
+            padding: 0.6rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
             background: white;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
             text-align: center;
             font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
           }
           
           .duration-btn:hover {
             border-color: #667eea;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           }
           
           .duration-btn.active {
             border-color: #667eea;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #667eea;
             color: white;
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
           }
           
           .session-screen {
@@ -488,13 +410,13 @@ export default {
           }
           
           .session-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
+            background: transparent;
+            backdrop-filter: none;
             border-radius: 25px;
-            padding: 1.5rem;
-            margin: 1rem auto;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 0.75rem;
+            margin: 0.5rem auto;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: none;
             max-width: 320px;
             width: calc(100% - 2rem);
             text-align: center;
@@ -520,6 +442,13 @@ export default {
             background: linear-gradient(135deg, #667eea, #764ba2);
             box-shadow: 0 0 40px rgba(102, 126, 234, 0.6), 0 0 80px rgba(118, 75, 162, 0.4);
             animation: breathingGlow 4s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .zen-icon {
+            font-size: 4rem;
           }
           
           @keyframes breathingGlow {
@@ -545,6 +474,11 @@ export default {
             justify-content: center;
             z-index: 2000;
             animation: fadeIn 0.5s ease;
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
           
           .reward-content {
@@ -666,9 +600,322 @@ export default {
               </button>
             </div>
           ) : null}
+        </div>
+        
+        {/* Session Setup - Now directly on page */}
+        <div class="session-setup" style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+          <h3 style={{ marginBottom: '1.5rem', color: '#1e293b', fontSize: '1.2rem', textAlign: 'center', fontWeight: '600' }}>Customize Your Meditation</h3>
+          
+          <div class="emotion-selector" style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>How are you feeling?</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              {[
+                { emotion: 'calm', emoji: '😌' },
+                { emotion: 'stressed', emoji: '😰' },
+                { emotion: 'anxious', emoji: '😟' },
+                { emotion: 'happy', emoji: '😊' },
+                { emotion: 'sad', emoji: '😢' },
+                { emotion: 'peaceful', emoji: '🕊️' }
+              ].map(item => (
+                <label key={item.emotion} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '6px',
+                  border: selectedEmotion.value === item.emotion ? '2px solid #667eea' : '1px solid #e2e8f0',
+                  background: selectedEmotion.value === item.emotion ? '#f0f9ff' : 'white'
+                }}>
+                  <input
+                    type="radio"
+                    name="emotion"
+                    value={item.emotion}
+                    checked={selectedEmotion.value === item.emotion}
+                    onChange={() => selectedEmotion.value = item.emotion}
+                    style={{ marginRight: '0.5rem', accentColor: '#667eea' }}
+                  />
+                  <span style={{ fontSize: '0.85rem', color: '#1e293b' }}>{item.emoji} {item.emotion} {selectedEmotion.value === item.emotion ? '(Default)' : ''}</span>
+                </label>
+              ))}
+            </div>
+            {selectedEmotion.value && (
+              <div style={{ 
+                marginTop: '0.75rem', 
+                padding: '0.75rem', 
+                background: 'white', 
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>Selected Emotion</h5>
+                  <span style={{ 
+                    background: '#10b981', 
+                    color: 'white', 
+                    padding: '0.2rem 0.4rem', 
+                    borderRadius: '4px', 
+                    fontSize: '0.7rem',
+                    fontWeight: '500'
+                  }}>
+                    Default
+                  </span>
+                </div>
+                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Perfect choice for mindful meditation practice</p>
+                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                  <span>😌 {selectedEmotion.value}</span>
+                  <span>✨ Recommended</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div class="duration-selector" style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>Duration</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              {[1, 3, 5, 10, 15, 20, 25, 30].map(duration => (
+                <label key={duration} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: '0.6rem 0.3rem',
+                  borderRadius: '6px',
+                  border: selectedDuration.value === duration ? '2px solid #667eea' : '1px solid #e2e8f0',
+                  background: selectedDuration.value === duration ? '#f0f9ff' : 'white',
+                  textAlign: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  <input
+                    type="radio"
+                    name="duration"
+                    value={duration}
+                    checked={selectedDuration.value === duration}
+                    onChange={() => selectedDuration.value = duration}
+                    style={{ marginRight: '0.3rem', accentColor: '#667eea' }}
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#1e293b', fontWeight: '500' }}>{duration}m {selectedDuration.value === duration ? '(Default)' : ''}</span>
+                </label>
+              ))}
+            </div>
+            {selectedDuration.value && (
+              <div style={{ 
+                marginTop: '0.75rem', 
+                padding: '0.75rem', 
+                background: 'white', 
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>Selected Duration</h5>
+                  <span style={{ 
+                    background: '#8b5cf6', 
+                    color: 'white', 
+                    padding: '0.2rem 0.4rem', 
+                    borderRadius: '4px', 
+                    fontSize: '0.7rem',
+                    fontWeight: '500'
+                  }}>
+                    {selectedDuration.value * 3} pts
+                  </span>
+                </div>
+                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Ideal duration for daily meditation practice</p>
+                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                  <span>⏱️ {selectedDuration.value} minutes</span>
+                  <span>🎯 Optimal</span>
+                </div>
+                <div style={{ 
+                  marginTop: '0.5rem', 
+                  padding: '0.5rem', 
+                  background: '#f0f9ff', 
+                  borderRadius: '6px',
+                  border: '1px solid #0ea5e9'
+                }}>
+                  <div style={{ fontSize: '0.8rem', color: '#0369a1', fontWeight: '500' }}>💎 Karma Points Preview</div>
+                  <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '0.2rem' }}>You will earn {selectedDuration.value * 3} karma points for completing this {selectedDuration.value}-minute meditation session</div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Media Selection */}
+          <div class="media-selector" style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>Select Media (Optional)</h4>
+            
+            {/* Available Clips Dropdown */}
+            {clips.value.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <select 
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    marginBottom: '0.5rem'
+                  }}
+                  onChange={(e) => {
+                    const selectedClip = clips.value.find(clip => clip._id === e.target.value);
+                    if (selectedClip) {
+                      const videoUrl = selectedClip.videoUrl || selectedClip.videoPresignedUrl || '';
+                      const audioUrl = selectedClip.audioUrl || selectedClip.audioPresignedUrl || '';
+                      
+                      if (videoUrl) {
+                        enableVideo.value = true;
+                        selectedVideoUrl.value = videoUrl;
+                        tempVideoUrl.value = videoUrl;
+                      }
+                      if (audioUrl) {
+                        enableAudio.value = true;
+                        selectedAudioUrl.value = audioUrl;
+                        tempAudioUrl.value = audioUrl;
+                      }
+                    } else {
+                      enableVideo.value = false;
+                      enableAudio.value = false;
+                      selectedVideoUrl.value = '';
+                      selectedAudioUrl.value = '';
+                    }
+                  }}
+                >
+                  <option value="">Select a clip...</option>
+                  {clips.value.map(clip => (
+                    <option key={clip._id} value={clip._id}>
+                      {clip.title} {clip.videoUrl || clip.videoPresignedUrl ? '📹' : ''} {clip.audioUrl || clip.audioPresignedUrl ? '🎵' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {/* Selected Clip Preview */}
+            {(selectedVideoUrl.value && selectedVideoUrl.value !== '' && selectedVideoUrl.value !== 'https://') || (selectedAudioUrl.value && selectedAudioUrl.value !== '' && selectedAudioUrl.value !== 'https://') ? (
+              <div style={{ 
+                marginBottom: '1rem',
+                padding: '0.75rem', 
+                background: 'white', 
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}>
+                <h5 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Selected Media Preview</h5>
+                
+                {selectedVideoUrl.value && selectedVideoUrl.value !== '' && selectedVideoUrl.value !== 'https://' && (
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <video 
+                      style={{
+                        width: '100%',
+                        maxHeight: '120px',
+                        borderRadius: '6px',
+                        objectFit: 'cover'
+                      }}
+                      controls
+                      preload="metadata"
+                    >
+                      <source src={selectedVideoUrl.value} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                )}
+                
+                {selectedAudioUrl.value && selectedAudioUrl.value !== '' && selectedAudioUrl.value !== 'https://' && (
+                  <div>
+                    <audio 
+                      style={{
+                        width: '100%',
+                        height: '32px'
+                      }}
+                      controls
+                      preload="metadata"
+                    >
+                      <source src={selectedAudioUrl.value} type="audio/mpeg" />
+                      Your browser does not support the audio tag.
+                    </audio>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            
+            {/* Manual URL Inputs */}
+            <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>Or enter custom URLs:</div>
+            
+            {/* Video Selection */}
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={enableVideo.value}
+                  onChange={(e) => {
+                    enableVideo.value = e.target.checked;
+                    if (!e.target.checked) {
+                      tempVideoUrl.value = selectedVideoUrl.value;
+                      selectedVideoUrl.value = '';
+                    } else {
+                      selectedVideoUrl.value = tempVideoUrl.value || '';
+                    }
+                  }}
+                  style={{ marginRight: '0.5rem', accentColor: '#667eea' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: '#374151', fontWeight: '500' }}>📹 Include Video</span>
+              </label>
+              {enableVideo.value && (
+                <input 
+                  type="url" 
+                  placeholder="Video URL"
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                  value={selectedVideoUrl.value}
+                  onInput={(e) => selectedVideoUrl.value = e.target.value}
+                />
+              )}
+            </div>
+            
+            {/* Audio Selection */}
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={enableAudio.value}
+                  onChange={(e) => {
+                    enableAudio.value = e.target.checked;
+                    if (!e.target.checked) {
+                      tempAudioUrl.value = selectedAudioUrl.value;
+                      selectedAudioUrl.value = '';
+                    } else {
+                      selectedAudioUrl.value = tempAudioUrl.value || '';
+                    }
+                  }}
+                  style={{ marginRight: '0.5rem', accentColor: '#667eea' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: '#374151', fontWeight: '500' }}>🎵 Include Audio</span>
+              </label>
+              {enableAudio.value && (
+                <input 
+                  type="url" 
+                  placeholder="Audio URL"
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                  value={selectedAudioUrl.value}
+                  onInput={(e) => selectedAudioUrl.value = e.target.value}
+                />
+              )}
+            </div>
+          </div>
           
           <button class="start-btn" onClick={startSession}>
-            🧘‍♀️ Start Meditation Session
+            🧘♀️ Begin Meditation
           </button>
         </div>
         
@@ -676,10 +923,9 @@ export default {
           <div class="loading">Loading meditation clips...</div>
         ) : (
           <>
-            {/* Configurations Section */}
             {configurations.value.length > 0 && (
               <div class="configurations-section">
-                <h3 style={{ marginBottom: '1rem', color: '#1e293b' }}>Available Configurations</h3>
+                <h4 style={{ marginBottom: '0.75rem', color: '#1e293b', fontSize: '0.95rem', fontWeight: '600' }}>Available Configurations</h4>
                 <div class="configurations-list">
                   {configurations.value.map(config => (
                     <div 
@@ -687,27 +933,28 @@ export default {
                       class="config-item"
                       style={{
                         background: 'white',
-                        borderRadius: '12px',
-                        padding: '1rem',
-                        marginBottom: '1rem',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                        borderRadius: '8px',
+                        padding: '0.75rem',
+                        marginBottom: '0.75rem',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
                         border: '1px solid #e2e8f0'
                       }}
                     >
-                      <div class="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <h4 style={{ color: '#1e293b', margin: 0, fontSize: '1rem' }}>{config.title}</h4>
+                      <div class="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                        <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>{config.title}</h5>
                         <span style={{ 
                           background: '#8b5cf6', 
                           color: 'white', 
-                          padding: '0.25rem 0.5rem', 
-                          borderRadius: '6px', 
-                          fontSize: '0.75rem' 
+                          padding: '0.2rem 0.4rem', 
+                          borderRadius: '4px', 
+                          fontSize: '0.7rem',
+                          fontWeight: '500'
                         }}>
                           {config.karmaPoints} pts
                         </span>
                       </div>
-                      <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0.5rem 0' }}>{config.description}</p>
-                      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                      <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>{config.description}</p>
+                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
                         <span>⏱️ {config.duration}</span>
                         <span>😌 {config.emotion}</span>
                       </div>
@@ -722,15 +969,27 @@ export default {
               {clips.value.map(clip => (
                 <div 
                   key={clip._id}
-                  class="clip-item"
+                  style={{
+                    background: 'white',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    marginBottom: '0.75rem',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                  }}
                 >
-                  <div class="clip-title">{clip.title}</div>
-                  <div class="clip-desc">{clip.description}</div>
+                  <h5 style={{ fontWeight: '600', color: '#1e293b', marginBottom: '0.4rem', fontSize: '0.9rem' }}>{clip.title}</h5>
+                  <p style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: '1.3', marginBottom: '0.75rem' }}>{clip.description}</p>
                   
                   <div class="clip-media">
                     {(clip.videoUrl || clip.videoPresignedUrl) && (
                       <video 
-                        class="clip-video"
+                        style={{
+                          width: '100%',
+                          maxHeight: '150px',
+                          borderRadius: '6px',
+                          marginBottom: '0.5rem',
+                          objectFit: 'cover'
+                        }}
                         controls
                         preload="metadata"
                       >
@@ -741,7 +1000,10 @@ export default {
                     
                     {(clip.audioUrl || clip.audioPresignedUrl) && (
                       <audio 
-                        class="clip-audio"
+                        style={{
+                          width: '100%',
+                          height: '32px'
+                        }}
                         controls
                         preload="metadata"
                       >
@@ -756,160 +1018,54 @@ export default {
           </>
         )}
         
-        {/* Session Setup Modal */}
-        {showSessionModal.value && (
-          <div class="session-modal">
-            <div class="modal-content">
-              <h3 style={{ marginBottom: '1.5rem', color: '#1e293b', fontSize: '1.3rem', textAlign: 'center', fontWeight: '600' }}>Customize Your Meditation</h3>
-              
-              <div class="emotion-selector">
-                <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>How are you feeling?</h4>
-                <div class="emotion-grid">
-                  {[
-                    { emotion: 'calm', emoji: '😌' },
-                    { emotion: 'stressed', emoji: '😰' },
-                    { emotion: 'anxious', emoji: '😟' },
-                    { emotion: 'happy', emoji: '😊' },
-                    { emotion: 'sad', emoji: '😢' },
-                    { emotion: 'peaceful', emoji: '🕊️' }
-                  ].map(item => (
-                    <button 
-                      key={item.emotion}
-                      class={`emotion-btn ${selectedEmotion.value === item.emotion ? 'active' : ''}`}
-                      onClick={() => selectedEmotion.value = item.emotion}
-                    >
-                      {item.emoji} {item.emotion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div class="duration-selector">
-                <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>Duration (minutes)</h4>
-                <div class="duration-grid">
-                  {[1, 3, 5, 10, 15, 20, 25, 30].map(duration => (
-                    <button 
-                      key={duration}
-                      class={`duration-btn ${selectedDuration.value === duration ? 'active' : ''}`}
-                      onClick={() => selectedDuration.value = duration}
-                    >
-                      {duration}m
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Media Selection */}
-              <div class="media-selector">
-                <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>Select Media (Optional)</h4>
-                
-                {/* Available Clips */}
-                {clips.value.length > 0 && (
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem', display: 'block' }}>Choose from available clips:</label>
-                    <select 
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.5rem', 
-                        border: '1px solid #d1d5db', 
-                        borderRadius: '6px',
-                        fontSize: '0.9rem',
-                        marginBottom: '0.5rem'
-                      }}
-                      onChange={(e) => {
-                        const selectedClip = clips.value.find(clip => clip._id === e.target.value);
-                        if (selectedClip) {
-                          selectedVideoUrl.value = selectedClip.videoUrl || selectedClip.videoPresignedUrl || '';
-                          selectedAudioUrl.value = selectedClip.audioUrl || selectedClip.audioPresignedUrl || '';
-                        }
-                      }}
-                    >
-                      <option value="">Select a clip...</option>
-                      {clips.value.map(clip => (
-                        <option key={clip._id} value={clip._id}>
-                          {clip.title} {clip.videoUrl || clip.videoPresignedUrl ? '📹' : ''} {clip.audioUrl || clip.audioPresignedUrl ? '🎵' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                
-                {/* Manual URL Inputs */}
-                <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>Or enter custom URLs:</div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <input 
-                    type="url" 
-                    placeholder="Video URL (optional)"
-                    style={{ 
-                      flex: 1, 
-                      padding: '0.5rem', 
-                      border: '1px solid #d1d5db', 
-                      borderRadius: '6px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={selectedVideoUrl.value}
-                    onInput={(e) => selectedVideoUrl.value = e.target.value}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
-                    type="url" 
-                    placeholder="Audio URL (optional)"
-                    style={{ 
-                      flex: 1, 
-                      padding: '0.5rem', 
-                      border: '1px solid #d1d5db', 
-                      borderRadius: '6px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={selectedAudioUrl.value}
-                    onInput={(e) => selectedAudioUrl.value = e.target.value}
-                  />
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1.2rem' }}>
-                <button 
-                  style={{ 
-                    flex: 1, 
-                    padding: '0.8rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '8px', 
-                    background: 'white',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => showSessionModal.value = false}
-                >
-                  Cancel
-                </button>
-                <button 
-                  style={{ 
-                    flex: 1, 
-                    padding: '0.8rem', 
-                    border: 'none', 
-                    borderRadius: '8px', 
-                    background: '#10b981',
-                    color: 'white',
-                    cursor: 'pointer'
-                  }}
-                  onClick={beginMeditation}
-                >
-                  Begin 🧘‍♀️
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
         {/* Active Session Screen */}
         {isSessionActive.value && (
-          <div class="session-screen">
+          <div class="session-screen" style={{ overflow: 'hidden' }}>
+            {/* Background media elements */}
+            {selectedVideoUrl.value && (
+              <div style={{
+                position: 'absolute',
+                top: '1%',
+                left: '0.5%',
+                width: '99%',
+                height: '98%',
+                zIndex: -1,
+                borderRadius: '12px',
+                overflow: 'hidden',
+                // opacity: 0.7
+              }}>
+                <video 
+                  ref={backgroundVideo}
+                  style={{ 
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                  loop
+                  muted
+                  preload="auto"
+                >
+                  <source src={selectedVideoUrl.value} type="video/mp4" />
+                </video>
+              </div>
+            )}
+            
+            {selectedAudioUrl.value && (
+              <audio 
+                ref={backgroundAudio}
+                loop
+                preload="auto"
+              >
+                <source src={selectedAudioUrl.value} type="audio/mpeg" />
+              </audio>
+            )}
+            
             <div class="session-card">
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#1e293b' }}>Meditation in Progress</h2>
             <p style={{ opacity: 0.9, marginBottom: '2rem', color: '#1e293b' }}>Feeling: {selectedEmotion.value}</p>
             
             <div class="zen-circle">
-              <div class="zen-icon">🧘‍♀️</div>
+              <div class="zen-icon">🧘</div>
             </div>
             
             <div class="session-timer">{formatTime(sessionTimer.value)}</div>
@@ -917,6 +1073,92 @@ export default {
             <p style={{ opacity: 0.9, lineHeight: '1.6', color: '#1e293b' }}>
               Focus on your breath. Let thoughts come and go like clouds in the sky.
             </p>
+            
+            {/* Media Controls */}
+            {(selectedVideoUrl.value || selectedAudioUrl.value) && (
+              <div style={{ 
+                display: 'flex', 
+                gap: '1rem', 
+                marginTop: '1.5rem',
+                justifyContent: 'center'
+              }}>
+                {selectedVideoUrl.value && (
+                  <button 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      color: '#1e293b',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                    onClick={() => {
+                      if (backgroundVideo.value) {
+                        if (backgroundVideo.value.paused) {
+                          backgroundVideo.value.play();
+                          isVideoPlaying.value = true;
+                        } else {
+                          backgroundVideo.value.pause();
+                          isVideoPlaying.value = false;
+                        }
+                      }
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {isVideoPlaying.value ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      )}
+                      Video
+                    </span>
+                  </button>
+                )}
+                
+                {selectedAudioUrl.value && (
+                  <button 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      color: '#1e293b',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                    onClick={() => {
+                      if (backgroundAudio.value) {
+                        if (backgroundAudio.value.paused) {
+                          backgroundAudio.value.play();
+                          isAudioPlaying.value = true;
+                        } else {
+                          backgroundAudio.value.pause();
+                          isAudioPlaying.value = false;
+                        }
+                      }
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {isAudioPlaying.value ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                      )}
+                      Audio
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
             
             <button 
               style={{
@@ -931,6 +1173,17 @@ export default {
               onClick={() => {
                 isSessionActive.value = false;
                 clearInterval(timerInterval.value);
+                
+                // Stop background media
+                if (backgroundVideo.value) {
+                  backgroundVideo.value.pause();
+                  backgroundVideo.value.currentTime = 0;
+                }
+                if (backgroundAudio.value) {
+                  backgroundAudio.value.pause();
+                  backgroundAudio.value.currentTime = 0;
+                }
+                
                 const completedMinutes = selectedDuration.value - Math.ceil(sessionTimer.value / 60);
                 sessionTimer.value = 0;
                 earnedPoints.value = Math.max(0, completedMinutes * 3);
