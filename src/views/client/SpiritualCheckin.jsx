@@ -131,16 +131,19 @@ export default {
           if (response.success) {
             let updatedActivity = response.data;
             
-            // Upload new image if provided
+            // Handle image upload (endpoint may not exist)
             if (editForm.value.image) {
-              try {
-                const imageResponse = await spiritualActivityService.uploadActivityImage(editingActivity.value._id, editForm.value.image);
-                if (imageResponse.success && imageResponse.data) {
-                  updatedActivity.image = imageResponse.data.imageUrl;
-                  updatedActivity.imageKey = imageResponse.data.imageKey;
+              const imageResponse = await spiritualActivityService.uploadActivityImage(editingActivity.value._id, editForm.value.image);
+              
+              if (imageResponse.success && imageResponse.data) {
+                updatedActivity.image = imageResponse.data.imageUrl;
+                updatedActivity.imageKey = imageResponse.data.imageKey;
+              } else {
+                // Keep existing image if upload fails
+                if (originalActivity && originalActivity.image) {
+                  updatedActivity.image = originalActivity.image;
+                  updatedActivity.imageKey = originalActivity.imageKey;
                 }
-              } catch (error) {
-                toast.error('Activity updated but image upload failed');
               }
             } else if (originalActivity && originalActivity.image) {
               // Preserve existing image if no new image uploaded
@@ -148,14 +151,19 @@ export default {
               updatedActivity.imageKey = originalActivity.imageKey;
             }
             
-            // Update local state
+            // Update local state with proper reactivity
             const index = activities.value.findIndex(a => a._id === editingActivity.value._id);
             if (index !== -1) {
-              activities.value[index] = { ...activities.value[index], ...updatedActivity };
+              // Force reactivity by creating new array
+              const newActivities = [...activities.value];
+              newActivities[index] = updatedActivity;
+              activities.value = newActivities;
             }
             
             toast.success('Activity updated successfully!');
             closeEditModal();
+          } else {
+            toast.error(response.message || 'Failed to update activity');
           }
         } catch (error) {
           console.error('Update activity error:', error);
@@ -163,6 +171,8 @@ export default {
         } finally {
           loading.value = false;
         }
+      } else {
+        toast.error('Please fill in all required fields');
       }
     };
 
@@ -252,40 +262,22 @@ export default {
             // First add activity to state without image
             activities.value.unshift(createdActivity);
             
-            // Then upload image if provided
+            // Upload image if provided
             if (newActivity.value.image && createdActivity._id) {
-              try {
-                console.log('Uploading image for activity:', createdActivity._id);
-                const imageResponse = await spiritualActivityService.uploadActivityImage(createdActivity._id, newActivity.value.image);
-                console.log('Image upload response:', imageResponse);
-                
-                if (imageResponse.success && imageResponse.data) {
-                  // Immediately update local state with uploaded image URL
-                  const activityIndex = activities.value.findIndex(a => a._id === createdActivity._id);
-                  if (activityIndex !== -1) {
-                    const updatedActivities = [...activities.value];
-                    updatedActivities[activityIndex] = {
-                      ...updatedActivities[activityIndex],
-                      image: imageResponse.data.imageUrl,
-                      imageKey: imageResponse.data.imageKey
-                    };
-                    activities.value = updatedActivities;
-                    console.log('Image updated immediately:', imageResponse.data.imageUrl);
-                  }
-                  
-                  // Then refresh to get presigned URL after 1 second
-                  setTimeout(async () => {
-                    try {
-                      await fetchActivities();
-                      console.log('Activities refreshed with presigned URLs');
-                    } catch (error) {
-                      console.error('Failed to refresh activities:', error);
-                    }
-                  }, 1000);
+              const imageResponse = await spiritualActivityService.uploadActivityImage(createdActivity._id, newActivity.value.image);
+              
+              if (imageResponse.success && imageResponse.data) {
+                // Update local state with uploaded image URL
+                const activityIndex = activities.value.findIndex(a => a._id === createdActivity._id);
+                if (activityIndex !== -1) {
+                  const updatedActivities = [...activities.value];
+                  updatedActivities[activityIndex] = {
+                    ...updatedActivities[activityIndex],
+                    image: imageResponse.data.imageUrl,
+                    imageKey: imageResponse.data.imageKey
+                  };
+                  activities.value = updatedActivities;
                 }
-              } catch (imageError) {
-                console.error('Image upload error:', imageError);
-                toast.error('Activity created but image upload failed');
               }
             }
             
@@ -471,10 +463,9 @@ export default {
                                 class="rounded-3"
                                 style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                                 onLoad={(e) => {
-                                  console.log('Image loaded successfully:', activity.image);
+                                  // Image loaded successfully
                                 }}
                                 onError={(e) => {
-                                  console.error('Image failed to load:', activity.image);
                                   e.target.style.display = 'none';
                                   e.target.nextElementSibling.style.display = 'block';
                                 }}
@@ -619,7 +610,8 @@ export default {
                         <input 
                           type="text" 
                           class="form-control" 
-                          v-model={newActivity.value.title}
+                          value={newActivity.value.title}
+                          onInput={(e) => { newActivity.value.title = e.target.value; }}
                           placeholder="Enter activity name"
                         />
                       </div>
@@ -628,7 +620,8 @@ export default {
                         <textarea 
                           class="form-control" 
                           rows="4"
-                          v-model={newActivity.value.description}
+                          value={newActivity.value.description}
+                          onInput={(e) => { newActivity.value.description = e.target.value; }}
                           placeholder="Describe the spiritual activity..."
                         ></textarea>
                       </div>
@@ -691,7 +684,8 @@ export default {
                         <input 
                           type="text" 
                           class="form-control" 
-                          v-model={editForm.value.title}
+                          value={editForm.value.title}
+                          onInput={(e) => { editForm.value.title = e.target.value; }}
                           placeholder="Enter activity name"
                         />
                       </div>
@@ -700,7 +694,8 @@ export default {
                         <textarea 
                           class="form-control" 
                           rows="4"
-                          v-model={editForm.value.description}
+                          value={editForm.value.description}
+                          onInput={(e) => { editForm.value.description = e.target.value; }}
                           placeholder="Describe the spiritual activity..."
                         ></textarea>
                       </div>

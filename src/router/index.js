@@ -230,6 +230,31 @@ const routes = [
         path: 'silence',
         name: 'MobileSilence',
         component: () => import('../views/mobile/SpiritualCheck-in/MobileSilence.jsx')
+      },
+      {
+        path: 'home',
+        name: 'MobileHome',
+        component: () => import('../views/mobile/Navigation/Home.jsx')
+      },
+      {
+        path: 'checkin',
+        name: 'MobileCheckIn',
+        component: () => import('../views/mobile/Navigation/CheckIn.jsx')
+      },
+      {
+        path: 'ask-bi-nav',
+        name: 'MobileAskBINav',
+        component: () => import('../views/mobile/Navigation/AskBI.jsx')
+      },
+      {
+        path: 'connect',
+        name: 'MobileConnect',
+        component: () => import('../views/mobile/Navigation/Connect.jsx')
+      },
+      {
+        path: 'remedies',
+        name: 'MobileRemedies',
+        component: () => import('../views/mobile/Navigation/Remedies.jsx')
       }
     ]
   },

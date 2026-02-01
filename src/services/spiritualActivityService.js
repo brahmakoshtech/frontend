@@ -98,6 +98,7 @@ const spiritualActivityService = {
   uploadActivityImage: async (activityId, file) => {
     try {
       const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
+      
       const formData = new FormData();
       formData.append('image', file);
       
@@ -109,8 +110,20 @@ const spiritualActivityService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Upload activity image error:', error);
-      throw error;
+      // Handle 404 errors gracefully (endpoint not implemented)
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: 'Image upload endpoint not available',
+          error: 'ENDPOINT_NOT_FOUND'
+        };
+      }
+      // For other errors, return structured response instead of throwing
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to upload image',
+        error: error.message
+      };
     }
   },
 
