@@ -135,7 +135,7 @@ export default {
             min-height: 100vh;
             width: 100%;
             max-width: 100vw;
-            background: linear-gradient(135deg, #f5f1eb 0%, #ede7d9 100%);
+            background: linear-gradient(135deg, #EEE0C4 0%, #E6D7B8 50%, #DDD0AC 100%);
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow-x: hidden;
@@ -146,12 +146,12 @@ export default {
             justify-content: space-between;
             align-items: center;
             padding: 1rem;
-            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            background: linear-gradient(135deg, #EEE0C4 0%, #E6D7B8 50%, #DDD0AC 100%);
             color: #2d3748;
             border-radius: 20px;
             margin: 1rem;
             width: calc(100% - 2rem);
-            box-shadow: 0 8px 25px rgba(255, 154, 158, 0.3);
+            box-shadow: 0 8px 25px rgba(238, 224, 196, 0.3);
             border: 1px solid rgba(255,255,255,0.4);
           }
           

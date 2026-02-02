@@ -547,6 +547,17 @@ const routes = [
         name: 'PushNotification',
         component: () => import('../views/client/tools/PushNotification.jsx')
       },
+      {
+        path: 'tools/geeta-chapters',
+        name: 'GeetaChapterManagement',
+        component: () => import('../views/client/tools/geeta/GeetaChapterManagement.jsx')
+      },
+      {
+        path: 'tools/geeta-shlokas/:chapterId',
+        name: 'GeetaShlokaManagement',
+        component: () => import('../views/client/tools/geeta/GeetaShlokaManagement.jsx')
+      },
+
       // Client Services
       {
         path: 'services/brahma-bazar',

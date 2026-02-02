@@ -14,7 +14,8 @@ import {
   ClockIcon,
   BuildingOffice2Icon,
   VideoCameraIcon,
-  FilmIcon
+  FilmIcon,
+  BookOpenIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -139,6 +140,15 @@ export default {
         route: '/client/tools/brahm-avatar',
         color: '#ff9500',
         category: 'Content'
+      },
+      { 
+        id: 14, 
+        name: 'Geeta Shloka', 
+        icon: BookOpenIcon, 
+        description: 'Manage Bhagavad Geeta shlokas with Sanskrit, Hindi and English meanings', 
+        route: '/client/tools/geeta-chapters',
+        color: '#ff6b35',
+        category: 'Spiritual'
       }
     ];
 
@@ -153,7 +163,8 @@ export default {
         'Design': 'bg-warning',
         'Communication': 'bg-danger',
         'Analytics': 'bg-primary',
-        'Support': 'bg-secondary'
+        'Support': 'bg-secondary',
+        'Spiritual': 'bg-warning'
       };
       return colors[category] || 'bg-secondary';
     };

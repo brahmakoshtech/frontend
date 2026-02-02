@@ -130,14 +130,26 @@ const spiritualActivityService = {
   // Get spiritual check-in data (activities + user stats)
   getSpiritualCheckinData: async () => {
     try {
-      const token = localStorage.getItem('token_user') || localStorage.getItem('token_client');
-      const response = await axios.get(`${API_BASE_URL}/mobile/content/spiritual-checkin`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      // Use existing spiritual activities endpoint instead of missing mobile endpoint
+      const activitiesResponse = await spiritualActivityService.getSpiritualActivities(false);
+      
+      return {
+        success: true,
+        data: {
+          activities: activitiesResponse.data || activitiesResponse || [],
+          stats: {
+            sessions: 0,
+            minutes: 0,
+            points: 0,
+            days: 0
+          },
+          motivation: {
+            emoji: '🌸 ✨ 🕊️',
+            title: 'Small steps, big transformation',
+            text: 'Every moment of mindfulness counts. Start where you are, with what you have.'
+          }
         }
-      });
-      return response.data;
+      };
     } catch (error) {
       console.error('Get spiritual checkin data error:', error);
       return {
