@@ -130,33 +130,43 @@ const spiritualActivityService = {
   // Get spiritual check-in data (activities + user stats)
   getSpiritualCheckinData: async () => {
     try {
-      // Use existing spiritual activities endpoint instead of missing mobile endpoint
-      const activitiesResponse = await spiritualActivityService.getSpiritualActivities(false);
-      
-      return {
-        success: true,
-        data: {
-          activities: activitiesResponse.data || activitiesResponse || [],
-          stats: {
-            sessions: 0,
-            minutes: 0,
-            points: 0,
-            days: 0
-          },
-          motivation: {
-            emoji: '🌸 ✨ 🕊️',
-            title: 'Small steps, big transformation',
-            text: 'Every moment of mindfulness counts. Start where you are, with what you have.'
-          }
+      const token = localStorage.getItem('token_user') || localStorage.getItem('token_client');
+      const response = await axios.get(`${API_BASE_URL}/mobile/content/spiritual-checkin`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      };
+      });
+      return response.data;
     } catch (error) {
       console.error('Get spiritual checkin data error:', error);
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to fetch data',
-        error: error.message
-      };
+      // Fallback to activities only if mobile endpoint fails
+      try {
+        const activitiesResponse = await spiritualActivityService.getSpiritualActivities(false);
+        return {
+          success: true,
+          data: {
+            activities: activitiesResponse.data || activitiesResponse || [],
+            stats: {
+              sessions: 0,
+              minutes: 0,
+              points: 0,
+              days: 0
+            },
+            motivation: {
+              emoji: '🌸 ✨ 🕊️',
+              title: 'Small steps, big transformation',
+              text: 'Your spiritual check-in earns karma points that feed cows, educate children, and help those in need.'
+            }
+          }
+        };
+      } catch (fallbackError) {
+        return {
+          success: false,
+          message: 'Failed to fetch data',
+          error: fallbackError.message
+        };
+      }
     }
   },
 
