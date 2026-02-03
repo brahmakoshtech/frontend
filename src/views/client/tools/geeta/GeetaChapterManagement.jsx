@@ -142,7 +142,6 @@ export default {
         const result = await chapterService.getChapters();
         
         if (result.success) {
-          console.log('Chapters data:', result.data);
           chapters.value = result.data;
         }
       } catch (error) {
@@ -203,6 +202,10 @@ export default {
         if (result.success) {
           const index = chapters.value.findIndex(c => c._id === editingChapter.value._id);
           if (index !== -1) {
+            // If no new image was uploaded, preserve the existing imageUrl
+            if (!editForm.value.image && editingChapter.value.imageUrl) {
+              result.data.imageUrl = editingChapter.value.imageUrl;
+            }
             chapters.value[index] = result.data;
           }
           
@@ -268,8 +271,12 @@ export default {
 
     const navigateToShlokas = (chapter) => {
       router.push({
-        path: `/client/tools/geeta-shlokas/${chapter.id}`,
-        state: { chapter }
+        path: `/client/tools/geeta-shlokas/${chapter._id}`,
+        query: { 
+          chapter: chapter.chapterNumber,
+          chapterName: chapter.name,
+          chapterId: chapter._id
+        }
       });
     };
 
@@ -460,9 +467,7 @@ export default {
                                   alt={chapter.name}
                                   class="rounded-3"
                                   style={{ width: '90px', height: '90px', objectFit: 'cover' }}
-                                  onLoad={() => console.log('Image loaded successfully:', chapter.imageUrl)}
                                   onError={(e) => { 
-                                    console.log('Image load error:', chapter.imageUrl);
                                     // Fallback to a placeholder or hide
                                     e.target.style.display = 'none';
                                   }}
