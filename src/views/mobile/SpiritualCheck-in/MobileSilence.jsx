@@ -35,7 +35,9 @@ export default {
       { emoji: '🕊️', label: 'Peaceful', value: 'peaceful' },
       { emoji: '🧘', label: 'Centered', value: 'centered' },
       { emoji: '✨', label: 'Mindful', value: 'mindful' },
-      { emoji: '🌙', label: 'Calm', value: 'calm' }
+      { emoji: '🌙', label: 'Calm', value: 'calm' },
+      { emoji: '😐', label: 'Neutral', value: 'neutral' },
+      { emoji: '😰', label: 'Stress', value: 'stress' }
     ];
     
     const goBack = () => {
@@ -613,7 +615,7 @@ export default {
           <div class="duration-selector" style={{ marginBottom: '1.5rem' }}>
             <h4 style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>Duration</h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              {[1, 3, 5, 10, 15, 20, 25, 30].map(duration => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(duration => (
                 <label key={duration} style={{ 
                   display: 'flex', 
                   alignItems: 'center', 

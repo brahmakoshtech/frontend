@@ -17,6 +17,7 @@ export default {
   setup() {
     const toast = useToast();
     const router = useRouter();
+    const activeTab = ref('activity');
     const loading = ref(false);
     const activities = ref([]);
     const showAddModal = ref(false);
@@ -360,238 +361,346 @@ export default {
               </div>
             </div>
 
-            {/* Spiritual Activities Grid */}
-            {loading.value ? (
-              <div class="text-center py-5">
-                <div class="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
-                  <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="text-muted">Loading spiritual activities...</p>
+            {/* Tabs */}
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-body p-0">
+                <nav class="nav nav-pills nav-fill">
+                  <button 
+                    class={`nav-link ${activeTab.value === 'activity' ? 'active' : ''}`}
+                    onClick={() => activeTab.value = 'activity'}
+                    style={{ 
+                      borderRadius: '0',
+                      fontWeight: '600',
+                      padding: '1rem 2rem',
+                      backgroundColor: activeTab.value === 'activity' ? '#8b5cf6' : 'transparent',
+                      color: activeTab.value === 'activity' ? 'white' : '#6c757d',
+                      border: 'none'
+                    }}
+                  >
+                    📋 Activity
+                  </button>
+                  <button 
+                    class={`nav-link ${activeTab.value === 'rewards' ? 'active' : ''}`}
+                    onClick={() => activeTab.value = 'rewards'}
+                    style={{ 
+                      borderRadius: '0',
+                      fontWeight: '600',
+                      padding: '1rem 2rem',
+                      backgroundColor: activeTab.value === 'rewards' ? '#8b5cf6' : 'transparent',
+                      color: activeTab.value === 'rewards' ? 'white' : '#6c757d',
+                      border: 'none'
+                    }}
+                  >
+                    🎁 Rewards
+                  </button>
+                  <button 
+                    class={`nav-link ${activeTab.value === 'orders' ? 'active' : ''}`}
+                    onClick={() => activeTab.value = 'orders'}
+                    style={{ 
+                      borderRadius: '0',
+                      fontWeight: '600',
+                      padding: '1rem 2rem',
+                      backgroundColor: activeTab.value === 'orders' ? '#8b5cf6' : 'transparent',
+                      color: activeTab.value === 'orders' ? 'white' : '#6c757d',
+                      border: 'none'
+                    }}
+                  >
+                    🛒 Orders
+                  </button>
+                  <button 
+                    class={`nav-link ${activeTab.value === 'stats' ? 'active' : ''}`}
+                    onClick={() => activeTab.value = 'stats'}
+                    style={{ 
+                      borderRadius: '0',
+                      fontWeight: '600',
+                      padding: '1rem 2rem',
+                      backgroundColor: activeTab.value === 'stats' ? '#8b5cf6' : 'transparent',
+                      color: activeTab.value === 'stats' ? 'white' : '#6c757d',
+                      border: 'none'
+                    }}
+                  >
+                    📊 Stats
+                  </button>
+                </nav>
               </div>
-            ) : activities.value.length > 0 ? (
-              <div class="row g-4">
-                {activities.value.map(activity => (
-                  <div key={activity._id} class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-                    <div 
-                      class={`spiritual-activity-card card h-100 border-0 shadow-sm position-relative overflow-hidden ${!activity.isActive ? 'disabled opacity-50' : ''}`}
-                      style={{
-                        background: `linear-gradient(135deg, #8b5cf608 0%, #8b5cf615 30%, #f8fafc 100%)`,
-                        borderRadius: '16px',
-                        pointerEvents: activity.isActive ? 'auto' : 'none'
-                      }}
-                      onClick={activity.isActive ? () => {} : undefined}
-                    >
-                      {!activity.isActive && (
-                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1, pointerEvents: 'none' }}>
-                          <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled</span>
-                        </div>
-                      )}
-                      {/* Status Badge */}
-                      <div class="position-absolute top-0 end-0 m-3" style={{ zIndex: 2, pointerEvents: 'auto' }}>
-                        <div class="dropdown position-relative">
-                          <button 
-                            class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
-                            onClick={(e) => { e.stopPropagation(); toggleDropdown(activity._id); }}
-                            style={{ width: '32px', height: '32px', transition: 'all 0.2s ease' }}
-                          >
-                            <EllipsisVerticalIcon style={{ width: '1.25rem', height: '1.25rem' }} />
-                          </button>
-                          {activeDropdown.value === activity._id && (
-                            <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
-                              {activity.isActive ? (
-                                <>
-                                  <button 
-                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                    onClick={(e) => { e.stopPropagation(); viewActivity(activity); }}
-                                  >
-                                    <EyeIcon style={{ width: '1rem', height: '1rem', color: '#0d6efd' }} />
-                                    <span class="fw-medium">View Details</span>
-                                  </button>
-                                  <button 
-                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                    onClick={(e) => { e.stopPropagation(); editActivity(activity); }}
-                                  >
-                                    <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
-                                    <span class="fw-medium">Edit Activity</span>
-                                  </button>
-                                  <button 
-                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                    onClick={(e) => { e.stopPropagation(); toggleActivityStatus(activity); }}
-                                  >
-                                    <span class="rounded-circle bg-warning" style={{ width: '1rem', height: '1rem' }}></span>
-                                    <span class="fw-medium">Disable</span>
-                                  </button>
-                                  <hr class="dropdown-divider my-1" />
-                                  <button 
-                                    class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
-                                    onClick={(e) => { e.stopPropagation(); deleteActivity(activity._id); }}
-                                  >
-                                    <TrashIcon style={{ width: '1rem', height: '1rem' }} />
-                                    <span class="fw-medium">Delete</span>
-                                  </button>
-                                </>
-                              ) : (
-                                <button 
-                                  class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
-                                  onClick={(e) => { e.stopPropagation(); toggleActivityStatus(activity); }}
-                                >
-                                  <span class="rounded-circle bg-success" style={{ width: '1rem', height: '1rem' }}></span>
-                                  <span class="fw-medium">Enable</span>
-                                </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab.value === 'activity' && (
+              <>
+                {/* Spiritual Activities Grid */}
+                {loading.value ? (
+                  <div class="text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted">Loading spiritual activities...</p>
+                  </div>
+                ) : activities.value.length > 0 ? (
+                  <div class="row g-4">
+                    {activities.value.map(activity => (
+                      <div key={activity._id} class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                        <div 
+                          class={`spiritual-activity-card card h-100 border-0 shadow-sm position-relative overflow-hidden ${!activity.isActive ? 'disabled opacity-50' : ''}`}
+                          style={{
+                            background: `linear-gradient(135deg, #8b5cf608 0%, #8b5cf615 30%, #f8fafc 100%)`,
+                            borderRadius: '16px',
+                            pointerEvents: activity.isActive ? 'auto' : 'none'
+                          }}
+                          onClick={activity.isActive ? () => {} : undefined}
+                        >
+                          {!activity.isActive && (
+                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.1)', zIndex: 1, pointerEvents: 'none' }}>
+                              <span class="badge bg-secondary px-3 py-2 rounded-pill shadow">🔒 Disabled</span>
+                            </div>
+                          )}
+                          {/* Status Badge */}
+                          <div class="position-absolute top-0 end-0 m-3" style={{ zIndex: 2, pointerEvents: 'auto' }}>
+                            <div class="dropdown position-relative">
+                              <button 
+                                class="btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                                onClick={(e) => { e.stopPropagation(); toggleDropdown(activity._id); }}
+                                style={{ width: '32px', height: '32px', transition: 'all 0.2s ease' }}
+                              >
+                                <EllipsisVerticalIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                              </button>
+                              {activeDropdown.value === activity._id && (
+                                <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
+                                  {activity.isActive ? (
+                                    <>
+                                      <button 
+                                        class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                        onClick={(e) => { e.stopPropagation(); viewActivity(activity); }}
+                                      >
+                                        <EyeIcon style={{ width: '1rem', height: '1rem', color: '#0d6efd' }} />
+                                        <span class="fw-medium">View Details</span>
+                                      </button>
+                                      <button 
+                                        class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                        onClick={(e) => { e.stopPropagation(); editActivity(activity); }}
+                                      >
+                                        <PencilIcon style={{ width: '1rem', height: '1rem', color: '#8b5cf6' }} />
+                                        <span class="fw-medium">Edit Activity</span>
+                                      </button>
+                                      <button 
+                                        class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                        onClick={(e) => { e.stopPropagation(); toggleActivityStatus(activity); }}
+                                      >
+                                        <span class="rounded-circle bg-warning" style={{ width: '1rem', height: '1rem' }}></span>
+                                        <span class="fw-medium">Disable</span>
+                                      </button>
+                                      <hr class="dropdown-divider my-1" />
+                                      <button 
+                                        class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger rounded-2"
+                                        onClick={(e) => { e.stopPropagation(); deleteActivity(activity._id); }}
+                                      >
+                                        <TrashIcon style={{ width: '1rem', height: '1rem' }} />
+                                        <span class="fw-medium">Delete</span>
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button 
+                                      class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
+                                      onClick={(e) => { e.stopPropagation(); toggleActivityStatus(activity); }}
+                                    >
+                                      <span class="rounded-circle bg-success" style={{ width: '1rem', height: '1rem' }}></span>
+                                      <span class="fw-medium">Enable</span>
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
+                          </div>
+
+                          <div class="card-body p-4">
+                            {/* Icon */}
+                            <div class="mb-4">
+                              <div 
+                                class="activity-icon d-inline-flex align-items-center justify-content-center rounded-3"
+                                style={{ 
+                                  width: '72px', 
+                                  height: '72px',
+                                  backgroundColor: '#8b5cf615',
+                                  border: '2px solid #8b5cf625'
+                                }}
+                              >
+                                {activity.image ? (
+                                  <img 
+                                    src={activity.image} 
+                                    alt={activity.title}
+                                    class="rounded-3"
+                                    style={{ width: '60px', height: '60px', objectFit: 'cover' }}
+                                    onLoad={(e) => {
+                                      // Image loaded successfully
+                                    }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      e.target.nextElementSibling.style.display = 'block';
+                                    }}
+                                  />
+                                ) : null}
+                                <span 
+                                  class="text-muted"
+                                  style={{ 
+                                    fontSize: '2rem',
+                                    color: '#8b5cf6',
+                                    display: activity.image ? 'none' : 'block'
+                                  }}
+                                >
+                                  {activity.icon || '🌟'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Content */}
+                            <div class="mb-4">
+                              <h5 class="card-title fw-bold mb-2 text-dark">{activity.title}</h5>
+                              <div class="card-text text-muted mb-0 lh-base" style={{ fontSize: '0.95rem' }}>
+                                {expandedDescriptions.value.has(activity._id) ? (
+                                  <>
+                                    <p class="mb-1">{activity.description}</p>
+                                    <button 
+                                      class="btn btn-link p-0 text-primary" 
+                                      style={{ fontSize: '0.85rem', textDecoration: 'none' }}
+                                      onClick={(e) => { e.stopPropagation(); toggleDescription(activity._id); }}
+                                    >
+                                      See less
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p class="mb-1">{truncateText(activity.description, 100)}</p>
+                                    {activity.description && activity.description.length > 100 && (
+                                      <button 
+                                        class="btn btn-link p-0 text-primary" 
+                                        style={{ fontSize: '0.85rem', textDecoration: 'none' }}
+                                        onClick={(e) => { e.stopPropagation(); toggleDescription(activity._id); }}
+                                      >
+                                        See more
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div class="d-flex align-items-center justify-content-between">
+                              <div class="d-flex align-items-center text-muted" style={{ fontSize: '0.85rem' }}>
+                                <CalendarIcon style={{ width: '12px', height: '12px' }} class="me-1" />
+                                <span>{activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                }) : 'No date'}</span>
+                              </div>
+                              <div 
+                                class="arrow-btn d-flex align-items-center justify-content-center rounded-circle"
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  backgroundColor: '#8b5cf610',
+                                  color: '#8b5cf6',
+                                  cursor: activity.isActive ? 'pointer' : 'not-allowed'
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (activity.isActive) {
+                                    // Dynamic category detection based on activity title
+                                    const detectCategory = (title) => {
+                                      const titleLower = title.toLowerCase();
+                                      if (titleLower.includes('meditation') || titleLower.includes('meditate') || titleLower.includes('dhyan')) return 'meditation';
+                                      if (titleLower.includes('prayer') || titleLower.includes('pray') || titleLower.includes('prarthana') || titleLower.includes('dua')) return 'prayer';
+                                      if (titleLower.includes('chant') || titleLower.includes('mantra') || titleLower.includes('kirtan') || titleLower.includes('bhajan')) return 'chanting';
+                                      if (titleLower.includes('breath') || titleLower.includes('pranayam') || titleLower.includes('breathing')) return 'breathing';
+                                      if (titleLower.includes('mindful') || titleLower.includes('awareness') || titleLower.includes('conscious')) return 'mindfulness';
+                                      if (titleLower.includes('yoga') || titleLower.includes('asana')) return 'yoga';
+                                      if (titleLower.includes('gratitude') || titleLower.includes('thankful') || titleLower.includes('grateful')) return 'gratitude';
+                                      if (titleLower.includes('silence') || titleLower.includes('quiet') || titleLower.includes('maun')) return 'silence';
+                                      if (titleLower.includes('reflection') || titleLower.includes('contemplate') || titleLower.includes('introspect')) return 'reflection';
+                                      return 'meditation'; // default
+                                    };
+                                    
+                                    const categoryType = detectCategory(activity.title);
+                                    router.push(`/client/spiritual-management/${categoryType}`);
+                                  }
+                                }}
+                              >
+                                <ArrowRightIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Hover Effect Overlay */}
+                          {activity.isActive && (
+                            <div 
+                              class="hover-overlay position-absolute top-0 start-0 w-100 h-100"
+                              style={{
+                                background: 'linear-gradient(135deg, #8b5cf615 0%, #8b5cf625 100%)',
+                                pointerEvents: 'none',
+                                borderRadius: '16px'
+                              }}
+                            ></div>
                           )}
                         </div>
                       </div>
-
-                      <div class="card-body p-4">
-                        {/* Icon */}
-                        <div class="mb-4">
-                          <div 
-                            class="activity-icon d-inline-flex align-items-center justify-content-center rounded-3"
-                            style={{ 
-                              width: '72px', 
-                              height: '72px',
-                              backgroundColor: '#8b5cf615',
-                              border: '2px solid #8b5cf625'
-                            }}
-                          >
-                            {activity.image ? (
-                              <img 
-                                src={activity.image} 
-                                alt={activity.title}
-                                class="rounded-3"
-                                style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                                onLoad={(e) => {
-                                  // Image loaded successfully
-                                }}
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  e.target.nextElementSibling.style.display = 'block';
-                                }}
-                              />
-                            ) : null}
-                            <span 
-                              class="text-muted"
-                              style={{ 
-                                fontSize: '2rem',
-                                color: '#8b5cf6',
-                                display: activity.image ? 'none' : 'block'
-                              }}
-                            >
-                              {activity.icon || '🌟'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div class="mb-4">
-                          <h5 class="card-title fw-bold mb-2 text-dark">{activity.title}</h5>
-                          <div class="card-text text-muted mb-0 lh-base" style={{ fontSize: '0.95rem' }}>
-                            {expandedDescriptions.value.has(activity._id) ? (
-                              <>
-                                <p class="mb-1">{activity.description}</p>
-                                <button 
-                                  class="btn btn-link p-0 text-primary" 
-                                  style={{ fontSize: '0.85rem', textDecoration: 'none' }}
-                                  onClick={(e) => { e.stopPropagation(); toggleDescription(activity._id); }}
-                                >
-                                  See less
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <p class="mb-1">{truncateText(activity.description, 100)}</p>
-                                {activity.description && activity.description.length > 100 && (
-                                  <button 
-                                    class="btn btn-link p-0 text-primary" 
-                                    style={{ fontSize: '0.85rem', textDecoration: 'none' }}
-                                    onClick={(e) => { e.stopPropagation(); toggleDescription(activity._id); }}
-                                  >
-                                    See more
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Action Button */}
-                        <div class="d-flex align-items-center justify-content-between">
-                          <div class="d-flex align-items-center text-muted" style={{ fontSize: '0.85rem' }}>
-                            <CalendarIcon style={{ width: '12px', height: '12px' }} class="me-1" />
-                            <span>{activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric' 
-                            }) : 'No date'}</span>
-                          </div>
-                          <div 
-                            class="arrow-btn d-flex align-items-center justify-content-center rounded-circle"
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              backgroundColor: '#8b5cf610',
-                              color: '#8b5cf6',
-                              cursor: activity.isActive ? 'pointer' : 'not-allowed'
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (activity.isActive) {
-                                // Dynamic category detection based on activity title
-                                const detectCategory = (title) => {
-                                  const titleLower = title.toLowerCase();
-                                  if (titleLower.includes('meditation') || titleLower.includes('meditate') || titleLower.includes('dhyan')) return 'meditation';
-                                  if (titleLower.includes('prayer') || titleLower.includes('pray') || titleLower.includes('prarthana') || titleLower.includes('dua')) return 'prayer';
-                                  if (titleLower.includes('chant') || titleLower.includes('mantra') || titleLower.includes('kirtan') || titleLower.includes('bhajan')) return 'chanting';
-                                  if (titleLower.includes('breath') || titleLower.includes('pranayam') || titleLower.includes('breathing')) return 'breathing';
-                                  if (titleLower.includes('mindful') || titleLower.includes('awareness') || titleLower.includes('conscious')) return 'mindfulness';
-                                  if (titleLower.includes('yoga') || titleLower.includes('asana')) return 'yoga';
-                                  if (titleLower.includes('gratitude') || titleLower.includes('thankful') || titleLower.includes('grateful')) return 'gratitude';
-                                  if (titleLower.includes('silence') || titleLower.includes('quiet') || titleLower.includes('maun')) return 'silence';
-                                  if (titleLower.includes('reflection') || titleLower.includes('contemplate') || titleLower.includes('introspect')) return 'reflection';
-                                  return 'meditation'; // default
-                                };
-                                
-                                const categoryType = detectCategory(activity.title);
-                                router.push(`/client/spiritual-management/${categoryType}`);
-                              }
-                            }}
-                          >
-                            <ArrowRightIcon style={{ width: '1.25rem', height: '1.25rem' }} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Hover Effect Overlay */}
-                      {activity.isActive && (
-                        <div 
-                          class="hover-overlay position-absolute top-0 start-0 w-100 h-100"
-                          style={{
-                            background: 'linear-gradient(135deg, #8b5cf615 0%, #8b5cf625 100%)',
-                            pointerEvents: 'none',
-                            borderRadius: '16px'
-                          }}
-                        ></div>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
+                ) : (
+                  <div class="text-center py-5">
+                    <div class="mb-4">
+                      <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                        <PlusIcon style={{ width: '2rem', height: '2rem', color: '#6c757d' }} />
+                      </div>
+                    </div>
+                    <h4 class="fw-bold mb-2">No Spiritual Activities Yet</h4>
+                    <p class="text-muted mb-4">Create your first spiritual check-in to get started</p>
+                    <button 
+                      class="btn btn-primary rounded-pill px-4"
+                      onClick={openAddModal}
+                    >
+                      Add Spiritual Check-in
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Rewards Tab */}
+            {activeTab.value === 'rewards' && (
               <div class="text-center py-5">
                 <div class="mb-4">
                   <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                    <PlusIcon style={{ width: '2rem', height: '2rem', color: '#6c757d' }} />
+                    <span style={{ fontSize: '2rem' }}>🎁</span>
                   </div>
                 </div>
-                <h4 class="fw-bold mb-2">No Spiritual Activities Yet</h4>
-                <p class="text-muted mb-4">Create your first spiritual check-in to get started</p>
-                <button 
-                  class="btn btn-primary rounded-pill px-4"
-                  onClick={openAddModal}
-                >
-                  Add Spiritual Check-in
-                </button>
+                <h4 class="fw-bold mb-2">Rewards Coming Soon</h4>
+                <p class="text-muted mb-4">Earn rewards for completing spiritual activities</p>
+              </div>
+            )}
+
+            {/* Orders Tab */}
+            {activeTab.value === 'orders' && (
+              <div class="text-center py-5">
+                <div class="mb-4">
+                  <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                    <span style={{ fontSize: '2rem' }}>🛒</span>
+                  </div>
+                </div>
+                <h4 class="fw-bold mb-2">Orders Coming Soon</h4>
+                <p class="text-muted mb-4">Track your spiritual product orders</p>
+              </div>
+            )}
+
+            {/* Stats Tab */}
+            {activeTab.value === 'stats' && (
+              <div class="text-center py-5">
+                <div class="mb-4">
+                  <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                    <span style={{ fontSize: '2rem' }}>📊</span>
+                  </div>
+                </div>
+                <h4 class="fw-bold mb-2">Statistics Coming Soon</h4>
+                <p class="text-muted mb-4">View your spiritual progress and analytics</p>
               </div>
             )}
 
