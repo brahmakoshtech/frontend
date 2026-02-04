@@ -5,4 +5,19 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), vueJsx()],
+  server: {
+    proxy: {
+      // API proxy - avoids CORS, requests go to same origin
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      // Socket.IO proxy - required for WebSocket to work in dev
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
+  },
 })

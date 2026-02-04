@@ -1,26 +1,27 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// In dev, use /api (Vite proxy forwards to backend). In prod, use VITE_API_URL or default.
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:5000/api');
 
 // Helper to get role from path
 const getRoleFromPath = (path) => {
   if (path?.startsWith('/super-admin')) return 'super_admin';
   if (path?.startsWith('/admin')) return 'admin';
   if (path?.startsWith('/client')) return 'client';
+  if (path?.startsWith('/partner')) return 'partner';
   if (path?.startsWith('/user')) return 'user';
   return null;
 };
 
 // Helper to get token for a specific role
-// IMPORTANT: Never fallback to other roles - each role must use its own token
 const getTokenForRole = (role) => {
   if (!role) {
-    // Try to get role from current path
     const currentPath = window.location.pathname;
     role = getRoleFromPath(currentPath);
   }
 
   if (role) {
-    const token = localStorage.getItem(`token_${role}`);
-    // Verify token role matches (decode and check)
+    const tokenKey = role === 'partner' ? 'partner_token' : `token_${role}`;
+    const token = localStorage.getItem(tokenKey);
+    
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -28,18 +29,15 @@ const getTokenForRole = (role) => {
           return token;
         } else {
           console.warn(`[Token Mismatch] Token role (${payload.role}) doesn't match requested role (${role})`);
-          return null; // Don't return mismatched token
+          return null;
         }
       } catch (e) {
-        // If can't decode, return as-is (might be invalid token)
         return token;
       }
     }
     return null;
   }
 
-  // NO FALLBACK - return null if role not specified
-  // This prevents using wrong tokens
   return null;
 };
 
@@ -49,7 +47,6 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    // Get token from options or determine from endpoint/context
     let token = options.token;
     console.log('token', token);
     console.log('endpoint', endpoint);
@@ -74,15 +71,20 @@ class ApiService {
         '/auth/super-admin/login',
         '/auth/admin/login',
         '/auth/client/login',
-        '/auth/client/register'
+        '/auth/client/register',
+        '/partners/login',
+        '/partners/register'
       ];
   
       const isPublicEndpoint = publicEndpoints.some(pub => endpoint.includes(pub));
   
       if (isPublicEndpoint) {
-        // Public endpoint - no token needed
         token = null;
         tokenSource = 'none (public endpoint)';
+      } else if (endpoint.includes('/partner/') || endpoint.includes('/chat/partner/')) {
+        // PARTNER ENDPOINTS - Use partner token
+        token = getTokenForRole('partner');
+        tokenSource = 'partner (endpoint match)';
       } else if (endpoint.includes('/super-admin/') || endpoint.includes('/auth/super-admin/')) {
         token = getTokenForRole('super_admin');
         tokenSource = 'super_admin (endpoint match)';
@@ -94,11 +96,9 @@ class ApiService {
         endpoint.includes('/brand-assets') || endpoint.includes('/meditations') || 
         endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars') ||
         endpoint.includes('/reviews') || endpoint.includes('/experts')) {
-        // TESTIMONIALS, FOUNDER MESSAGES, BRAND ASSETS, MEDITATIONS, CHANTINGS, BRAHM-AVATARS, REVIEWS & EXPERTS: Always use client token
         token = getTokenForRole('client');
         console.log('getTokenForRole result:', token);
         if (!token) {
-          // Fallback: directly get client token
           token = localStorage.getItem('token_client');
           console.log('Direct localStorage fallback:', token);
         }
@@ -111,16 +111,43 @@ class ApiService {
                      endpoint.includes('/reviews') ? 'client (reviews endpoint)' :
                      endpoint.includes('/experts') ? 'client (experts endpoint)' :
                      'client (endpoint match)';
+      } else if (endpoint.includes('/chat/conversations') || 
+                 endpoint.includes('/chat/unread-count') || 
+                 endpoint.includes('/chat/conversation/') ||
+                 endpoint.includes('/chat/partners')) {
+        // ✅ FIXED: Chat endpoints - determine user vs partner based on current route
+        const currentPath = window.location.pathname;
+        
+        if (currentPath.includes('/partner')) {
+          // Partner chat
+          token = getTokenForRole('partner');
+          tokenSource = 'chat (partner)';
+        } else if (currentPath.includes('/user')) {
+          // User chat
+          token = getTokenForRole('user');
+          tokenSource = 'chat (user)';
+        } else {
+          // Fallback: try partner first, then user
+          token = getTokenForRole('partner') || getTokenForRole('user');
+          tokenSource = token ? 'chat (fallback)' : 'none';
+        }
+        
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            console.log('[Chat Endpoint] Using token with role:', payload.role);
+          } catch (e) {
+            console.warn('[API Warning] Could not verify token role:', e);
+          }
+        }
       } else if (endpoint.includes('/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
         endpoint.includes('/spiritual-stats')) {
-        // AUTHENTICATED USER ENDPOINTS - Require user token
-        // (Excluding public registration/login endpoints which are handled above)
+        // USER ENDPOINTS - Use user token
         token = getTokenForRole('user');
         tokenSource = 'user (authenticated endpoint)';
   
-        // Verify token is actually a user token
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
@@ -139,12 +166,12 @@ class ApiService {
           }
         }
   
-        // Only warn if no user token for authenticated endpoints
         if (!token && !isPublicEndpoint) {
           const otherTokens = {
             super_admin: !!localStorage.getItem('token_super_admin'),
             admin: !!localStorage.getItem('token_admin'),
-            client: !!localStorage.getItem('token_client')
+            client: !!localStorage.getItem('token_client'),
+            partner: !!localStorage.getItem('partner_token')
           };
           const hasOtherTokens = Object.values(otherTokens).some(v => v);
           if (hasOtherTokens) {
@@ -157,39 +184,27 @@ class ApiService {
           }
         }
       } else {
-        // For other endpoints, try to get token from current route
         const currentPath = window.location.pathname;
         const routeRole = getRoleFromPath(currentPath);
         if (routeRole) {
           token = getTokenForRole(routeRole);
           tokenSource = `route-based (${routeRole})`;
         } else {
-          // No role detected, no token
           token = null;
           tokenSource = 'none (no role detected)';
         }
       }
     }
   
-    // Debug logging
-    // console.log('[API Request]', {
-    //   endpoint,
-    //   hasToken: !!token,
-    //   tokenSource
-    // });
-  
-    // Merge headers without dropping Authorization when options.headers is provided
     const config = {
       ...options,
       headers: {
-        // Only set Content-Type for non-FormData requests
         ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
         ...(token && { Authorization: `Bearer ${token}` }),
         ...(options.headers || {}),
       },
     };
   
-    // Remove token from options to avoid sending it in body
     delete config.token;
   
     if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
@@ -199,19 +214,16 @@ class ApiService {
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
       
-      // Check content type before parsing
       const contentType = response.headers.get('content-type');
       let data;
       
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
-        // Handle non-JSON responses (like HTML 404 pages)
         const text = await response.text();
         if (!response.ok) {
           throw new Error(`Server returned ${response.status} ${response.statusText}. ${response.status === 404 ? 'Endpoint not found. Please ensure the server is deployed with the latest routes.' : ''}`);
         }
-        // If response is OK but not JSON, try to parse as JSON anyway
         try {
           data = JSON.parse(text);
         } catch {
@@ -219,9 +231,7 @@ class ApiService {
         }
       }
   
-      // Debug logging for errors
       if (!response.ok) {
-        // Check for role mismatch errors
         if (response.status === 403 && data.error === 'INVALID_ROLE') {
           console.error('[API Error - Role Mismatch]', {
             endpoint,
@@ -233,14 +243,11 @@ class ApiService {
             tokenSource
           });
   
-          // Show user-friendly error for role mismatch
           if (data.currentRole && data.requiredRole) {
             const errorMsg = `You are logged in as '${data.currentRole}' but this feature requires '${data.requiredRole}' role. Please logout and login as a user.`;
             console.error('[Role Mismatch]', errorMsg);
-            // You can trigger a notification/toast here if needed
           }
         } else {
-          // Include detailed error message if available (for development)
           const errorMessage = data.error && data.message 
             ? `${data.message} (${data.error})` 
             : data.error || data.message || 'Request failed';
@@ -272,7 +279,116 @@ class ApiService {
     }
   }
 
+  // ==================== PARTNER AUTH ====================
+  async partnerLogin(email, password) {
+    return this.request('/partners/login', {
+      method: 'POST',
+      body: { email, password },
+    });
+  }
 
+  async partnerRegister(name, email, password, specialization) {
+    return this.request('/partners/register', {
+      method: 'POST',
+      body: { name, email, password, specialization },
+    });
+  }
+
+  async getCurrentPartner(token = null) {
+    return this.request('/partners/me', { token });
+  }
+
+  // ==================== CHAT API - PARTNER ====================
+  
+  // Partner Status Management
+  async updatePartnerStatus(status) {
+    return this.request('/chat/partner/status', {
+      method: 'PATCH',
+      body: { status },
+    });
+  }
+
+  async getPartnerStatus() {
+    return this.request('/chat/partner/status');
+  }
+
+  // Partner Requests
+  async getPartnerRequests() {
+    return this.request('/chat/partner/requests');
+  }
+
+  async acceptConversationRequest(conversationId) {
+    return this.request(`/chat/partner/requests/${conversationId}/accept`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectConversationRequest(conversationId) {
+    return this.request(`/chat/partner/requests/${conversationId}/reject`, {
+      method: 'POST',
+    });
+  }
+
+  // ==================== CHAT API - USER ====================
+  
+  // Get available partners (for users)
+  async getAvailablePartners() {
+    return this.request('/chat/partners');
+  }
+
+  // Create conversation request
+  async createConversation(data) {
+    return this.request('/chat/conversations', {
+      method: 'POST',
+      body: data,
+    });
+  }
+
+  // ==================== CHAT API - COMMON ====================
+  
+  // Get conversations
+  async getConversations() {
+    return this.request('/chat/conversations');
+  }
+
+  // Get messages for a conversation
+  async getConversationMessages(conversationId, page = 1, limit = 50) {
+    return this.request(`/chat/conversations/${conversationId}/messages?page=${page}&limit=${limit}`);
+  }
+
+  // Send message (REST fallback)
+  async sendMessage(conversationId, data) {
+    return this.request(`/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: data,
+    });
+  }
+
+  // Mark messages as read
+  async markMessagesAsRead(conversationId) {
+    return this.request(`/chat/conversations/${conversationId}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  // End conversation
+  async endConversation(conversationId) {
+    return this.request(`/chat/conversations/${conversationId}/end`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Get unread count
+  async getUnreadCount() {
+    return this.request('/chat/unread-count');
+  }
+
+  // Get user astrology data (for partners)
+  async getUserAstrologyData(conversationId) {
+    return this.request(`/chat/conversation/${conversationId}/astrology`);
+  }
+
+  // ==================== EXISTING METHODS ====================
 
   // Super Admin Auth endpoints
   async superAdminLogin(email, password) {
@@ -332,7 +448,7 @@ class ApiService {
     return this.request('/auth/user/me', { token });
   }
 
-  // Mobile User Registration (Multi-step with OTP)
+  // Mobile User Registration
   async mobileUserRegisterStep1(email, password) {
     return this.request('/mobile/user/register/step1', {
       method: 'POST',
@@ -387,7 +503,6 @@ class ApiService {
     });
   }
 
-  // Mobile User Login (after registration is complete)
   async mobileUserLogin(email, password) {
     return this.request('/auth/user/login', {
       method: 'POST',
@@ -395,7 +510,7 @@ class ApiService {
     });
   }
 
-  // Firebase Authentication endpoints
+  // Firebase Authentication
   async firebaseSignUp(idToken) {
     return this.request('/mobile/user/register/firebase', {
       method: 'POST',
@@ -410,7 +525,7 @@ class ApiService {
     });
   }
 
-  // Chat APIs
+  // Chat APIs (AI Chat)
   async createChat(token, title = null) {
     return this.request('/mobile/chat', {
       method: 'POST',
@@ -564,34 +679,30 @@ class ApiService {
   }
 
   // Client endpoints
-// frontend/src/services/api.js
+  async getClientUsers() {
+    return this.request('/client/users');
+  }
 
-// Update getClientUsers method to match backend
-async getClientUsers() {
-  return this.request('/client/users');
-}
+  async createClientUser(email, password, profile) {
+    return this.request('/client/users', {
+      method: 'POST',
+      body: { email, password, profile },
+    });
+  }
 
-async createClientUser(email, password, profile) {
-  return this.request('/client/users', {
-    method: 'POST',
-    body: { email, password, profile },
-  });
-}
+  async updateClientUser(id, data) {
+    return this.request(`/client/users/${id}`, {
+      method: 'PUT',
+      body: data,
+    });
+  }
 
-async updateClientUser(id, data) {
-  return this.request(`/client/users/${id}`, {
-    method: 'PUT',
-    body: data,
-  });
-}
+  async deleteClientUser(id) {
+    return this.request(`/client/users/${id}`, {
+      method: 'DELETE',
+    });
+  }
 
-async deleteClientUser(id) {
-  return this.request(`/client/users/${id}`, {
-    method: 'DELETE',
-  });
-}
-
-  // User Kundali endpoints - Use user token
   async getUserOwnCompleteDetails() {
     return this.request('/users/me/complete-details');
   }
@@ -600,7 +711,6 @@ async deleteClientUser(id) {
     return this.request('/users/me/astrology');
   }
 
-  // Client endpoints - Use client token
   async getUserCompleteDetails(userId) {
     return this.request(`/client/users/${userId}/complete-details`);
   }
@@ -609,9 +719,10 @@ async deleteClientUser(id) {
     return this.request(`/client/users/${userId}/astrology`);
   }
 
-async getClientDashboard() {
-  return this.request('/client/dashboard/overview');
-}
+  async getClientDashboard() {
+    return this.request('/client/dashboard/overview');
+  }
+
   // User endpoints
   async getUserProfile() {
     return this.request('/users/profile');
@@ -642,7 +753,7 @@ async getClientDashboard() {
     });
   }
 
-  // Real-time Agent APIs
+  // Real-time Agent
   async createRealtimeAgentRoom(token) {
     return this.request('/mobile/realtime-agent/create-room', {
       method: 'POST',
@@ -650,7 +761,7 @@ async getClientDashboard() {
     });
   }
 
-  // Password Reset APIs
+  // Password Reset
   async forgotPassword(email) {
     return this.request('/auth/user/forgot-password', {
       method: 'POST',
@@ -679,7 +790,7 @@ async getClientDashboard() {
     });
   }
 
-  // Testimonial APIs - Client Bearer Token Required
+  // Testimonials
   async getTestimonials() {
     return this.request('/testimonials');
   }
@@ -712,14 +823,12 @@ async getClientDashboard() {
     const formData = new FormData();
     formData.append('image', imageFile);
 
-    // Get client token for testimonial image upload
     const token = getTokenForRole('client');
 
     return fetch(`${this.baseURL}/testimonials/${id}/upload-image`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        // Don't set Content-Type for FormData - browser sets it with boundary
       },
       body: formData,
     }).then(async (response) => {
@@ -737,11 +846,9 @@ async getClientDashboard() {
 
   // Mobile User Registration with Image
   async registerUserWithImage(formData) {
-    // formData should be FormData object with fields: email, password, name, dob, timeOfBirth, placeOfBirth, gowthra, profession, image (file)
     return fetch(`${this.baseURL}/mobile/user/register-with-image`, {
       method: 'POST',
       body: formData,
-      // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
     }).then(async (response) => {
       const data = await response.json();
       if (!response.ok) {
@@ -751,14 +858,11 @@ async getClientDashboard() {
     });
   }
 
-  // Update User Profile with Image
   async updateUserProfileWithImage(formData, token) {
-    // formData should be FormData object with optional fields: email, password, profile (JSON string), image (file)
     return fetch(`${this.baseURL}/mobile/user/profile`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
-        // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
       },
       body: formData,
     }).then(async (response) => {
@@ -770,14 +874,11 @@ async getClientDashboard() {
     });
   }
 
-  // Mobile User Registration - Step 4: Upload Profile Image
   async mobileUserRegisterStep4UploadImage(formData, token) {
-    // formData should have field: image (file)
     return fetch(`${this.baseURL}/mobile/user/profile/image`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        // No Content-Type; browser sets it for multipart/form-data
       },
       body: formData,
     }).then(async (response) => {
@@ -789,7 +890,6 @@ async getClientDashboard() {
     });
   }
 }
-
 
 const apiService = new ApiService();
 
@@ -815,7 +915,33 @@ const api = {
     const response = await apiService.request(url, { method: 'PATCH', body: data, ...config });
     return { data: response };
   },
-  // Auth methods
+  
+  // Partner Auth
+  partnerLogin: apiService.partnerLogin.bind(apiService),
+  partnerRegister: apiService.partnerRegister.bind(apiService),
+  getCurrentPartner: apiService.getCurrentPartner.bind(apiService),
+  
+  // Chat - Partner Methods
+  updatePartnerStatus: apiService.updatePartnerStatus.bind(apiService),
+  getPartnerStatus: apiService.getPartnerStatus.bind(apiService),
+  getPartnerRequests: apiService.getPartnerRequests.bind(apiService),
+  acceptConversationRequest: apiService.acceptConversationRequest.bind(apiService),
+  rejectConversationRequest: apiService.rejectConversationRequest.bind(apiService),
+  
+  // Chat - User Methods
+  getAvailablePartners: apiService.getAvailablePartners.bind(apiService),
+  createConversation: apiService.createConversation.bind(apiService),
+  
+  // Chat - Common Methods
+  getConversations: apiService.getConversations.bind(apiService),
+  getConversationMessages: apiService.getConversationMessages.bind(apiService),
+  sendMessage: apiService.sendMessage.bind(apiService),
+  markMessagesAsRead: apiService.markMessagesAsRead.bind(apiService),
+  endConversation: apiService.endConversation.bind(apiService),
+  getUnreadCount: apiService.getUnreadCount.bind(apiService),
+  getUserAstrologyData: apiService.getUserAstrologyData.bind(apiService),
+  
+  // All existing methods
   superAdminLogin: apiService.superAdminLogin.bind(apiService),
   adminLogin: apiService.adminLogin.bind(apiService),
   getCurrentAdmin: apiService.getCurrentAdmin.bind(apiService),
@@ -825,7 +951,6 @@ const api = {
   userLogin: apiService.userLogin.bind(apiService),
   userRegister: apiService.userRegister.bind(apiService),
   getCurrentUser: apiService.getCurrentUser.bind(apiService),
-  // Mobile registration methods
   mobileUserRegisterStep1: apiService.mobileUserRegisterStep1.bind(apiService),
   mobileUserRegisterStep1Verify: apiService.mobileUserRegisterStep1Verify.bind(apiService),
   mobileUserRegisterStep2: apiService.mobileUserRegisterStep2.bind(apiService),
@@ -834,19 +959,15 @@ const api = {
   resendEmailOTP: apiService.resendEmailOTP.bind(apiService),
   resendMobileOTP: apiService.resendMobileOTP.bind(apiService),
   mobileUserLogin: apiService.mobileUserLogin.bind(apiService),
-  // Firebase methods
   firebaseSignUp: apiService.firebaseSignUp.bind(apiService),
   firebaseSignIn: apiService.firebaseSignIn.bind(apiService),
-  // Chat methods
   createChat: apiService.createChat.bind(apiService),
   getChats: apiService.getChats.bind(apiService),
   getChat: apiService.getChat.bind(apiService),
   sendChatMessage: apiService.sendChatMessage.bind(apiService),
   deleteChat: apiService.deleteChat.bind(apiService),
-  // Voice methods
   startVoiceSession: apiService.startVoiceSession.bind(apiService),
   processVoice: apiService.processVoice.bind(apiService),
-  // Super Admin methods
   getAdmins: apiService.getAdmins.bind(apiService),
   createAdmin: apiService.createAdmin.bind(apiService),
   updateAdmin: apiService.updateAdmin.bind(apiService),
@@ -857,7 +978,6 @@ const api = {
   deleteUser: apiService.deleteUser.bind(apiService),
   approveLogin: apiService.approveLogin.bind(apiService),
   rejectLogin: apiService.rejectLogin.bind(apiService),
-  // Admin methods
   getClients: apiService.getClients.bind(apiService),
   createClient: apiService.createClient.bind(apiService),
   getClientLoginToken: apiService.getClientLoginToken.bind(apiService),
@@ -865,26 +985,20 @@ const api = {
   deleteClient: apiService.deleteClient.bind(apiService),
   getAdminUsers: apiService.getAdminUsers.bind(apiService),
   getAdminDashboard: apiService.getAdminDashboard.bind(apiService),
-  // Client methods
   getClientUsers: apiService.getClientUsers.bind(apiService),
   createClientUser: apiService.createClientUser.bind(apiService),
   updateClientUser: apiService.updateClientUser.bind(apiService),
   deleteClientUser: apiService.deleteClientUser.bind(apiService),
   getClientDashboard: apiService.getClientDashboard.bind(apiService),
-  // User methods
   getUserProfile: apiService.getUserProfile.bind(apiService),
   updateUserProfile: apiService.updateUserProfile.bind(apiService),
-  // Upload methods
   getPresignedUrl: apiService.getPresignedUrl.bind(apiService),
   uploadToS3: apiService.uploadToS3.bind(apiService),
-  // Realtime agent
   createRealtimeAgentRoom: apiService.createRealtimeAgentRoom.bind(apiService),
-  // Password reset
   forgotPassword: apiService.forgotPassword.bind(apiService),
   verifyResetOTP: apiService.verifyResetOTP.bind(apiService),
   resetPassword: apiService.resetPassword.bind(apiService),
   resendResetOTP: apiService.resendResetOTP.bind(apiService),
-  // Testimonials
   getTestimonials: apiService.getTestimonials.bind(apiService),
   getTestimonial: apiService.getTestimonial.bind(apiService),
   createTestimonial: apiService.createTestimonial.bind(apiService),
@@ -892,18 +1006,12 @@ const api = {
   deleteTestimonial: apiService.deleteTestimonial.bind(apiService),
   uploadTestimonialImage: apiService.uploadTestimonialImage.bind(apiService),
   getTestimonialStats: apiService.getTestimonialStats.bind(apiService),
-  // Mobile user registration with image
   registerUserWithImage: apiService.registerUserWithImage.bind(apiService),
   updateUserProfileWithImage: apiService.updateUserProfileWithImage.bind(apiService),
   mobileUserRegisterStep4UploadImage: apiService.mobileUserRegisterStep4UploadImage.bind(apiService),
-  // Direct request method
   request: apiService.request.bind(apiService),
-
-  // User own data methods
   getUserOwnCompleteDetails: apiService.getUserOwnCompleteDetails.bind(apiService),
   getUserOwnAstrology: apiService.getUserOwnAstrology.bind(apiService),
-
-  // Client methods for user data
   getUserCompleteDetails: apiService.getUserCompleteDetails.bind(apiService),
   getUserAstrology: apiService.getUserAstrology.bind(apiService)
 };
