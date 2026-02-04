@@ -37,7 +37,9 @@ export default {
       { emoji: '🔥', label: 'Energized', value: 'energized' },
       { emoji: '🌟', label: 'Focused', value: 'focused' },
       { emoji: '💫', label: 'Elevated', value: 'elevated' },
-      { emoji: '🙏', label: 'Reverent', value: 'reverent' }
+      { emoji: '🙏', label: 'Reverent', value: 'reverent' },
+      { emoji: '😐', label: 'Neutral', value: 'neutral' },
+      { emoji: '😰', label: 'Stress', value: 'stress' }
     ];
     
     const chantingNames = [

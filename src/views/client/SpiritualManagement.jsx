@@ -51,7 +51,7 @@ export default {
     });
     const configForm = ref({
       title: '',
-      duration: '15 minutes',
+      duration: '5 minutes',
       description: '',
       emotion: '',
       chantingType: '',
@@ -326,7 +326,7 @@ export default {
 
     const editConfigForm = ref({
       title: '',
-      duration: '15 minutes',
+      duration: '5 minutes',
       description: '',
       emotion: '',
       karmaPoints: 10,
@@ -335,7 +335,7 @@ export default {
 
     const newActivity = ref({
       title: '',
-      duration: '15 minutes',
+      duration: '5 minutes',
       description: '',
       emotion: '',
       suitableTime: '',
@@ -735,7 +735,7 @@ export default {
           configurations.value.unshift(response.data);
           configForm.value = {
             title: '',
-            duration: '15 minutes',
+            duration: '5 minutes',
             description: '',
             emotion: '',
             karmaPoints: 10,
@@ -1198,7 +1198,7 @@ export default {
       showAddModal.value = false;
       newActivity.value = {
         title: '',
-        duration: '15 minutes',
+        duration: '5 minutes',
         description: '',
         emotion: '',
         suitableTime: '',
@@ -1560,8 +1560,9 @@ export default {
                                 <label class="form-label fw-semibold">Duration</label>
                                 <div class="row g-2">
                                   {[
-                                    '5 minutes', '10 minutes', '15 minutes', '20 minutes', 
-                                    '30 minutes', '45 minutes', '1 hour'
+                                    '1 minute', '2 minutes', '3 minutes', '4 minutes', 
+                                    '5 minutes', '6 minutes', '7 minutes', '8 minutes', 
+                                    '9 minutes', '10 minutes'
                                   ].map(duration => (
                                     <div key={duration} class="col-4">
                                       <div class="form-check">
@@ -1600,7 +1601,9 @@ export default {
                                   { value: 'loved', emoji: '🥰', label: 'Loved' },
                                   { value: 'surprised', emoji: '😲', label: 'Surprised' },
                                   { value: 'calm', emoji: '😌', label: 'Calm' },
-                                  { value: 'disgusted', emoji: '🤢', label: 'Disgusted' }
+                                  { value: 'disgusted', emoji: '🤢', label: 'Disgusted' },
+                                  { value: 'neutral', emoji: '😐', label: 'Neutral' },
+                                  { value: 'stress', emoji: '😰', label: 'Stress' }
                                 ].map(emotion => (
                                   <div key={emotion.value} class="col-3">
                                     <div class="form-check">
@@ -1737,7 +1740,9 @@ export default {
                                           loved: '🥰 Loved',
                                           surprised: '😲 Surprised',
                                           calm: '😌 Calm',
-                                          disgusted: '🤢 Disgusted'
+                                          disgusted: '🤢 Disgusted',
+                                          neutral: '😐 Neutral',
+                                          stress: '😰 Stress'
                                         }[config.emotion] || config.emotion}
                                       </span>
                                     </div>
@@ -2184,7 +2189,9 @@ export default {
                                     loved: '🥰',
                                     surprised: '😲',
                                     calm: '😌',
-                                    disgusted: '🤢'
+                                    disgusted: '🤢',
+                                    neutral: '😐',
+                                    stress: '😰'
                                   };
                                   return (
                                     <tr key={activity.id} style={{ opacity: activity.isActive ? 1 : 0.5 }}>
@@ -2832,8 +2839,9 @@ export default {
                         <label class="form-label fw-semibold">Duration</label>
                         <div class="row g-2">
                           {[
-                            '5 minutes', '10 minutes', '15 minutes', '20 minutes', 
-                            '30 minutes', '45 minutes', '1 hour', '1.5 hours', '2 hours'
+                            '1 minute', '2 minutes', '3 minutes', '4 minutes', 
+                            '5 minutes', '6 minutes', '7 minutes', '8 minutes', 
+                            '9 minutes', '10 minutes'
                           ].map(duration => (
                             <div key={duration} class="col-4">
                               <div class="form-check">
@@ -2881,6 +2889,8 @@ export default {
                           <option value="surprised">😲 Surprised</option>
                           <option value="calm">😌 Calm</option>
                           <option value="disgusted">🤢 Disgusted</option>
+                          <option value="neutral">😐 Neutral</option>
+                          <option value="stress">😰 Stress</option>
                         </select>
                       </div>
                     </div>
@@ -3043,7 +3053,9 @@ export default {
                             loved: '🥰 Loved',
                             surprised: '😲 Surprised',
                             calm: '😌 Calm',
-                            disgusted: '🤢 Disgusted'
+                            disgusted: '🤢 Disgusted',
+                            neutral: '😐 Neutral',
+                            stress: '😰 Stress'
                           }[selectedConfig.value.emotion] || selectedConfig.value.emotion}
                         </span>
                       </div>
@@ -3104,13 +3116,16 @@ export default {
                         <div class="mb-3">
                           <label class="form-label fw-semibold">Duration</label>
                           <select class="form-select" v-model={editConfigForm.value.duration}>
+                            <option value="1 minute">1 minute</option>
+                            <option value="2 minutes">2 minutes</option>
+                            <option value="3 minutes">3 minutes</option>
+                            <option value="4 minutes">4 minutes</option>
                             <option value="5 minutes">5 minutes</option>
+                            <option value="6 minutes">6 minutes</option>
+                            <option value="7 minutes">7 minutes</option>
+                            <option value="8 minutes">8 minutes</option>
+                            <option value="9 minutes">9 minutes</option>
                             <option value="10 minutes">10 minutes</option>
-                            <option value="15 minutes">15 minutes</option>
-                            <option value="20 minutes">20 minutes</option>
-                            <option value="30 minutes">30 minutes</option>
-                            <option value="45 minutes">45 minutes</option>
-                            <option value="1 hour">1 hour</option>
                           </select>
                         </div>
                       )}
@@ -3141,6 +3156,8 @@ export default {
                           <option value="surprised">😲 Surprised</option>
                           <option value="calm">😌 Calm</option>
                           <option value="disgusted">🤢 Disgusted</option>
+                          <option value="neutral">😐 Neutral</option>
+                          <option value="stress">😰 Stress</option>
                         </select>
                       </div>
                     </div>
@@ -3346,7 +3363,9 @@ export default {
                               disgusted: '🤢 Disgusted',
                               devoted: '🙏 Devoted',
                               elevated: '✨ Elevated',
-                              reverent: '🕉️ Reverent'
+                              reverent: '🕉️ Reverent',
+                              neutral: '😐 Neutral',
+                              stress: '😰 Stress'
                             }[selectedActivity.value.emotion] || selectedActivity.value.emotion}
                           </span>
                         </div>
