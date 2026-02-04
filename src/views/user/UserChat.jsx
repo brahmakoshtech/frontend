@@ -46,7 +46,10 @@ export default {
       
       console.log('🔌 Connecting to WebSocket...');
       
-      const wsUrl = import.meta.env.VITE_WS_URL || (import.meta.env.DEV ? window.location.origin : 'http://localhost:5000');
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const wsUrl = import.meta.env.VITE_WS_URL
+        || (apiUrl ? apiUrl.replace(/\/api\/?$/, '') : null)
+        || (import.meta.env.DEV ? window.location.origin : 'http://localhost:5000');
       socket.value = io(wsUrl, {
         path: '/socket.io/',
         auth: { token },
