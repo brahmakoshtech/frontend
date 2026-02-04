@@ -25,7 +25,7 @@ export default {
 
       loading.value = true;
       try {
-        const response = await fetch('https://stage.brahmakosh.com/api/partners/register', {
+        const response = await fetch('http://localhost:5000/api/partners/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(registerForm.value)

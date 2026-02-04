@@ -62,7 +62,7 @@ export default {
         socket.value.disconnect();
       }
       
-      socket.value = io(import.meta.env.VITE_WS_URL || 'https://stage.brahmakosh.com', {
+      socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
         path: '/socket.io/',
         auth: { 
           token: token  // Send token in auth object
