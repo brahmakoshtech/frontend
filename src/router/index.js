@@ -392,6 +392,11 @@ const routes = [
         component: () => import('../views/client/SpiritualCheckin.jsx')
       },
       {
+        path: 'spiritual-rewards',
+        name: 'SpiritualRewards',
+        component: () => import('../views/client/SpiritualRewards.jsx')
+      },
+      {
         path: 'users',
         name: 'ClientUsers',
         component: () => import('../views/client/Users.jsx')

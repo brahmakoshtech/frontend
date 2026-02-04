@@ -381,7 +381,7 @@ export default {
                   </button>
                   <button 
                     class={`nav-link ${activeTab.value === 'rewards' ? 'active' : ''}`}
-                    onClick={() => activeTab.value = 'rewards'}
+                    onClick={() => router.push('/client/spiritual-rewards')}
                     style={{ 
                       borderRadius: '0',
                       fontWeight: '600',
@@ -665,20 +665,7 @@ export default {
               </>
             )}
 
-            {/* Rewards Tab */}
-            {activeTab.value === 'rewards' && (
-              <div class="text-center py-5">
-                <div class="mb-4">
-                  <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                    <span style={{ fontSize: '2rem' }}>🎁</span>
-                  </div>
-                </div>
-                <h4 class="fw-bold mb-2">Rewards Coming Soon</h4>
-                <p class="text-muted mb-4">Earn rewards for completing spiritual activities</p>
-              </div>
-            )}
-
-            {/* Orders Tab */}
+{/* Orders Tab */}
             {activeTab.value === 'orders' && (
               <div class="text-center py-5">
                 <div class="mb-4">

@@ -3365,7 +3365,7 @@ export default {
                               elevated: '✨ Elevated',
                               reverent: '🕉️ Reverent',
                               neutral: '😐 Neutral',
-                              stress: '😰 Stress'
+                              stress: '😰 Stressed'
                             }[selectedActivity.value.emotion] || selectedActivity.value.emotion}
                           </span>
                         </div>
