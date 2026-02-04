@@ -1,5 +1,4 @@
-// In dev, use /api (Vite proxy forwards to backend). In prod, use VITE_API_URL or default.
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:5000/api');
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Helper to get role from path
 const getRoleFromPath = (path) => {
