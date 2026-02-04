@@ -1,5 +1,6 @@
 import { ref, onMounted, computed } from 'vue';
 import logo from '../../assets/logo.jpeg';
+import PartnerChat from './PartnerChat.jsx';
 
 export default {
   name: 'PartnerDashboard',
@@ -27,16 +28,14 @@ export default {
     };
 
     const handleLogout = () => {
-      // Clear localStorage/sessionStorage
-      localStorage.removeItem('partnerToken');
-      sessionStorage.removeItem('partnerToken');
-      
-      // Redirect to login page
+      localStorage.removeItem('partner_token');
+      sessionStorage.removeItem('partner_token');
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = '/partner/login';
     };
 
     onMounted(() => {
-      // Get partner data from localStorage
       const partnerData = localStorage.getItem('partner_data');
       if (partnerData) {
         try {
@@ -109,40 +108,6 @@ export default {
       </div>
     );
 
-    const renderSessions = () => (
-      <div style="background-color: white; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6;">
-        <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
-          <h2 style="font-size: 24px; font-weight: bold; color: #1f2937;">All Sessions</h2>
-        </div>
-        <div style="overflow-x: auto;">
-          <table style="width: 100%;">
-            <thead style="background-color: #f9fafb;">
-              <tr>
-                <th style="padding: 16px 24px; text-align: left; font-size: 12px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Client</th>
-                <th style="padding: 16px 24px; text-align: left; font-size: 12px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Type</th>
-                <th style="padding: 16px 24px; text-align: left; font-size: 12px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Amount</th>
-                <th style="padding: 16px 24px; text-align: left; font-size: 12px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
-                <th style="padding: 16px 24px; text-align: left; font-size: 12px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
-              </tr>
-            </thead>
-            <tbody style="background-color: white;">
-              {sessions.value.map(session => (
-                <tr key={session.id} style="border-top: 1px solid #e5e7eb;">
-                  <td style="padding: 16px 24px; white-space: nowrap; font-weight: 500; color: #111827;">{session.client}</td>
-                  <td style="padding: 16px 24px; white-space: nowrap; color: #6b7280;">{session.type}</td>
-                  <td style="padding: 16px 24px; white-space: nowrap; font-weight: 600; color: #111827;">₹{session.amount}</td>
-                  <td style="padding: 16px 24px; white-space: nowrap; color: #6b7280;">{session.date}</td>
-                  <td style="padding: 16px 24px; white-space: nowrap;">
-                    <Badge status={session.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-
     const renderPlaceholder = (title) => (
       <div style="background-color: white; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6; padding: 48px; text-align: center;">
         <div style="margin-bottom: 16px;">
@@ -162,7 +127,7 @@ export default {
         case 'analytics':
           return renderPlaceholder('Analytics');
         case 'chat':
-          return renderPlaceholder('Chat Sessions');
+          return <PartnerChat />;
         case 'voice':
           return renderPlaceholder('Voice Sessions');
         case 'video':
@@ -209,7 +174,7 @@ export default {
           <nav style="margin-top: 24px; padding: 0 12px;">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg> },
-              { id: 'Request', label: 'Request', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg> },
+              { id: 'analytics', label: 'Analytics', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg> },
               { id: 'chat', label: 'Chat', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/></svg> },
               { id: 'voice', label: 'Voice', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/></svg> },
               { id: 'video', label: 'Video', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/></svg> },
@@ -239,17 +204,7 @@ export default {
           {/* Logout Button */}
           <div style="position: absolute; bottom: 0; width: 100%; padding: 24px; border-top: 1px solid #2d2d3e; z-index: 100;">
             <div
-              onClick={() => {
-                console.log('Logout clicked');
-                localStorage.removeItem('partnerToken');
-                sessionStorage.removeItem('partnerToken');
-                localStorage.clear();
-                sessionStorage.clear();
-                alert('Logging out...');
-                setTimeout(() => {
-                  window.location.replace('/partner/login');
-                }, 100);
-              }}
+              onClick={handleLogout}
               style={`width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; color: #b4b4c0; background: transparent; border: none; border-radius: 8px; transition: background-color 0.2s; cursor: pointer; justify-content: ${sidebarCollapsed.value ? 'center' : 'flex-start'};`}
             >
               <span style="font-size: 18px;">
@@ -298,7 +253,7 @@ export default {
         
         {/* Main Content */}
         <div style={`margin-left: ${sidebarCollapsed.value ? '80px' : '260px'}; padding-top: 64px; min-height: 100vh; transition: margin-left 0.3s ease;`}>
-          <main style="padding: 24px;">
+          <main style={activeTab.value === 'chat' ? 'padding: 0;' : 'padding: 24px;'}>
             {renderContent()}
           </main>
         </div>

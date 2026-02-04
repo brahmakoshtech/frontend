@@ -22,7 +22,7 @@ export default {
 
       loading.value = true;
       try {
-        const response = await fetch('http://localhost:5000/api/partners/login', {
+        const response = await fetch('https://stage.brahmakosh.com/api/partners/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(loginForm.value)
@@ -49,7 +49,7 @@ export default {
     const handleGoogleLogin = async (response) => {
       loading.value = true;
       try {
-        const res = await fetch('http://localhost:5000/api/partners/google-login', {
+        const res = await fetch('https://stage.brahmakosh.com/api/partners/google-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ credential: response.credential })

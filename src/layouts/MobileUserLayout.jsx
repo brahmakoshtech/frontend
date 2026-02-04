@@ -66,6 +66,7 @@ export default {
       if (path.includes('/brahma-bazar')) return 'brahma-bazar';
       if (path.includes('/utility')) return 'utility';
       if (path.includes('/profile')) return 'profile';
+      if (path.includes('/user-chat')) return 'user-chat';
       return 'home';
     });
 
@@ -99,6 +100,8 @@ export default {
         router.push('/mobile/user/utility');
       } else if (page === 'profile') {
         router.push('/mobile/user/profile');
+      } else if(page === 'user-chat') {
+        router.push('/mobile/user/user-chat');
       }
     };
 
@@ -204,7 +207,8 @@ export default {
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
               { id: 'voice', label: 'Voice', icon: MicrophoneIcon },
-              { id: 'realtime-agent', label: 'Real Time Agent', icon: CpuChipIcon }
+              { id: 'realtime-agent', label: 'Real Time Agent', icon: CpuChipIcon },
+              { id: 'user-chat', label: 'User Chat', icon: ChatBubbleLeftRightIcon }
             ].map(item => (
               <button
                 key={item.id}

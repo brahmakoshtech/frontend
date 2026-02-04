@@ -1,9 +1,11 @@
-<<<<<<< HEAD
+# Dependencies
 node_modules
+
+# Env (keep .env.staging committed for staging build)
 .env
 .env.local
 .env.production
-=======
+
 # Logs
 logs
 *.log
@@ -13,7 +15,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
+# Build
 dist
 dist-ssr
 *.local
@@ -28,4 +30,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
->>>>>>> eb30e387dabdf40c497c991c09422c4f2ec57ed1
