@@ -62,12 +62,7 @@ export default {
         socket.value.disconnect();
       }
       
-      // In dev, use same origin (Vite proxy forwards). In prod, use VITE_WS_URL or derive from VITE_API_URL.
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const wsUrl = import.meta.env.VITE_WS_URL
-        || (apiUrl ? apiUrl.replace(/\/api\/?$/, '') : null)
-        || (import.meta.env.DEV ? window.location.origin : 'http://localhost:5000');
-      socket.value = io(wsUrl, {
+      socket.value = io(import.meta.env.VITE_WS_URL || 'https://stage.brahmakosh.com', {
         path: '/socket.io/',
         auth: { 
           token: token  // Send token in auth object

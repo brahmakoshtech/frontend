@@ -353,7 +353,7 @@ export default {
         const formData = new FormData();
         formData.append('image', imageFile.value);
 
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/mobile/user/profile/image`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://stage.brahmakosh.com/api'}/mobile/user/profile/image`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${userToken.value}`,
