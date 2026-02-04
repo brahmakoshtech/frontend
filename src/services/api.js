@@ -1016,4 +1016,5 @@ const api = {
   getUserAstrology: apiService.getUserAstrology.bind(apiService)
 };
 
+
 export default api;
