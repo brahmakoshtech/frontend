@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://stage.brahmakosh.com/api';
 
 // Helper to get role from path
 const getRoleFromPath = (path) => {
@@ -377,6 +377,14 @@ class ApiService {
     });
   }
 
+  // Submit conversation feedback (rating + satisfaction + description)
+  async submitConversationFeedback(conversationId, payload) {
+    return this.request(`/chat/conversations/${conversationId}/feedback`, {
+      method: 'PATCH',
+      body: payload,
+    });
+  }
+
   // Get unread count
   async getUnreadCount() {
     return this.request('/chat/unread-count');
@@ -702,6 +710,14 @@ class ApiService {
     });
   }
 
+  // Credits: add credits to a user (client/admin)
+  async addUserCredits(userId, amount, description = null) {
+    return this.request(`/client/users/${userId}/credits`, {
+      method: 'POST',
+      body: { amount, description },
+    });
+  }
+
   async getUserOwnCompleteDetails() {
     return this.request('/users/me/complete-details');
   }
@@ -716,6 +732,10 @@ class ApiService {
 
   async getUserAstrology(userId) {
     return this.request(`/client/users/${userId}/astrology`);
+  }
+
+  async getUserDoshas(userId) {
+    return this.request(`/client/users/${userId}/doshas`);
   }
 
   async getClientDashboard() {
@@ -988,6 +1008,8 @@ const api = {
   createClientUser: apiService.createClientUser.bind(apiService),
   updateClientUser: apiService.updateClientUser.bind(apiService),
   deleteClientUser: apiService.deleteClientUser.bind(apiService),
+  addUserCredits: apiService.addUserCredits.bind(apiService),
+  submitConversationFeedback: apiService.submitConversationFeedback.bind(apiService),
   getClientDashboard: apiService.getClientDashboard.bind(apiService),
   getUserProfile: apiService.getUserProfile.bind(apiService),
   updateUserProfile: apiService.updateUserProfile.bind(apiService),
@@ -1012,7 +1034,8 @@ const api = {
   getUserOwnCompleteDetails: apiService.getUserOwnCompleteDetails.bind(apiService),
   getUserOwnAstrology: apiService.getUserOwnAstrology.bind(apiService),
   getUserCompleteDetails: apiService.getUserCompleteDetails.bind(apiService),
-  getUserAstrology: apiService.getUserAstrology.bind(apiService)
+  getUserAstrology: apiService.getUserAstrology.bind(apiService),
+  getUserDoshas: apiService.getUserDoshas.bind(apiService)
 };
 
 

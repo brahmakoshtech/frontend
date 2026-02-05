@@ -412,6 +412,11 @@ const routes = [
         component: () => import('../views/client/Users.jsx')
       },
       {
+        path: 'credits',
+        name: 'ClientCredits',
+        component: () => import('../views/client/Credits.jsx')
+      },
+      {
         path: 'users/:userId/kundali',
         name: 'UserKundali',
         component: () => import('../views/client/UserKundali.jsx')

@@ -19,6 +19,13 @@ export default {
     const newMessage = ref('');
     const typingUsers = ref(new Set());
     const onlineStatuses = ref(new Map());
+    const showEndModal = ref(false);
+    const showFeedbackModal = ref(false);
+    const endFeedbackStars = ref(0);
+    const endFeedbackText = ref('');
+    const endFeedbackSatisfaction = ref('');
+    const endModalSubmitting = ref(false);
+    const conversationDetails = ref({ sessionDetails: null, rating: null });
     
     // Partner info
     const partnerInfo = ref({
@@ -307,15 +314,19 @@ export default {
     // Load messages
     const loadMessages = async (conversationId) => {
       loading.value = true;
+      conversationDetails.value = { sessionDetails: null, rating: null };
       try {
         const response = await api.getConversationMessages(conversationId);
         if (response && response.success) {
           messages.value = (response.data && response.data.messages) || [];
+          if (response.data.sessionDetails) conversationDetails.value.sessionDetails = response.data.sessionDetails;
+          if (response.data.rating) conversationDetails.value.rating = response.data.rating;
           console.log('✅ Loaded messages:', messages.value.length);
           scrollToBottom();
           
-          // Mark as read
-          markMessagesAsRead(conversationId);
+          if (selectedConversation.value?.status !== 'ended') {
+            markMessagesAsRead(conversationId);
+          }
         }
       } catch (error) {
         console.error('❌ Error loading messages:', error);
@@ -401,34 +412,97 @@ export default {
       }
     };
     
-    // End conversation
+    const openEndModal = () => {
+      if (!selectedConversation.value || selectedConversation.value.status === 'ended') return;
+      endFeedbackStars.value = 0;
+      endFeedbackText.value = '';
+      endFeedbackSatisfaction.value = '';
+      showEndModal.value = true;
+    };
+
+    const closeEndModal = () => {
+      showEndModal.value = false;
+    };
+
+    const sessionSummary = computed(() => {
+      const conv = selectedConversation.value;
+      if (!conv) return { duration: 0, messagesCount: 0 };
+      const start = conv.startedAt || conv.createdAt ? new Date(conv.startedAt || conv.createdAt) : new Date();
+      const duration = Math.round((Date.now() - start.getTime()) / (1000 * 60));
+      return { duration: Math.max(0, duration), messagesCount: messages.value.length };
+    });
+
     const endConversation = async () => {
-      if (!selectedConversation.value) return;
+      if (!selectedConversation.value || endModalSubmitting.value) return;
       
-      if (!confirm('Are you sure you want to end this conversation?')) return;
-      
+      endModalSubmitting.value = true;
       try {
-        await api.endConversation(selectedConversation.value.conversationId);
+        const endRes = await api.endConversation(selectedConversation.value.conversationId);
+        
+        if (endFeedbackStars.value > 0 || endFeedbackText.value.trim() || endFeedbackSatisfaction.value) {
+          await api.submitConversationFeedback(selectedConversation.value.conversationId, {
+            stars: endFeedbackStars.value || undefined,
+            feedback: endFeedbackText.value.trim() || undefined,
+            satisfaction: endFeedbackSatisfaction.value || undefined
+          });
+        }
         
         console.log('✅ Conversation ended');
         
-        // Remove from conversations list
-        conversations.value = conversations.value.filter(
-          c => c.conversationId !== selectedConversation.value.conversationId
-        );
-        
-        selectedConversation.value = null;
-        messages.value = [];
-        
-        if (messagePollInterval) {
-          clearInterval(messagePollInterval);
-          messagePollInterval = null;
+        const conv = conversations.value.find(c => c.conversationId === selectedConversation.value.conversationId);
+        if (conv) {
+          conv.status = 'ended';
+          if (endRes?.data?.sessionDetails) conv.sessionDetails = endRes.data.sessionDetails;
+          if (endRes?.data?.rating) conv.rating = endRes.data.rating;
         }
         
-        // Reload conversations to update counts
+        selectedConversation.value = {
+          ...selectedConversation.value,
+          status: 'ended',
+          sessionDetails: endRes?.data?.sessionDetails,
+          rating: endRes?.data?.rating
+        };
+        conversationDetails.value = { sessionDetails: endRes?.data?.sessionDetails, rating: endRes?.data?.rating };
+        
+        closeEndModal();
         await loadConversations();
+        await loadMessages(selectedConversation.value.conversationId);
       } catch (error) {
         console.error('❌ Error ending conversation:', error);
+        alert(error.response?.data?.message || 'Failed to end session');
+      } finally {
+        endModalSubmitting.value = false;
+      }
+    };
+
+    const hasPartnerSubmittedFeedback = computed(() => {
+      const r = conversationDetails.value.rating || selectedConversation.value?.rating;
+      return !!(r?.byPartner?.stars != null || r?.byPartner?.feedback || r?.byPartner?.ratedAt);
+    });
+
+    const openFeedbackModal = () => {
+      endFeedbackStars.value = 0;
+      endFeedbackText.value = '';
+      endFeedbackSatisfaction.value = '';
+      showFeedbackModal.value = true;
+    };
+
+    const submitFeedbackOnly = async () => {
+      if (!selectedConversation.value || endModalSubmitting.value) return;
+      endModalSubmitting.value = true;
+      try {
+        await api.submitConversationFeedback(selectedConversation.value.conversationId, {
+          stars: endFeedbackStars.value || undefined,
+          feedback: endFeedbackText.value.trim() || undefined,
+          satisfaction: endFeedbackSatisfaction.value || undefined
+        });
+        await loadConversations();
+        await loadMessages(selectedConversation.value.conversationId);
+        showFeedbackModal.value = false;
+      } catch (e) {
+        alert(e?.response?.data?.message || 'Failed to submit feedback');
+      } finally {
+        endModalSubmitting.value = false;
       }
     };
     
@@ -642,9 +716,13 @@ export default {
                             {formatTime(conv.lastMessageAt)}
                           </span>
                         </div>
-                        <p style="font-size: 14px; color: #6b7280; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                          {conv.lastMessage?.content || 'No messages yet'}
-                        </p>
+                        {conv.status === 'ended' ? (
+                          <p style="font-size: 13px; color: #6b7280; margin: 0; font-style: italic;">Ended</p>
+                        ) : (
+                          <p style="font-size: 14px; color: #6b7280; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {conv.lastMessage?.content || 'No messages yet'}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -798,14 +876,16 @@ export default {
                   </div>
                 </div>
                 
-                <button
-                  onClick={endConversation}
-                  style="padding: 8px 16px; background-color: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s;"
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                >
-                  End Session
-                </button>
+                {selectedConversation.value.status !== 'ended' && (
+                  <button
+                    onClick={openEndModal}
+                    style="padding: 8px 16px; background-color: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s;"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                  >
+                    End Session
+                  </button>
+                )}
               </div>
               
               {/* Messages */}
@@ -817,12 +897,13 @@ export default {
                   <div style="text-align: center; padding: 40px;">
                     <div style="width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #6366f1; border-radius: 50%; margin: 0 auto; animation: spin 1s linear infinite;" />
                   </div>
-                ) : messages.value.length === 0 ? (
+                ) : messages.value.length === 0 && selectedConversation.value.status !== 'ended' ? (
                   <div style="text-align: center; padding: 40px; color: #6b7280;">
                     <p>No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
-                  messages.value.map((message, index) => {
+                  <>
+                  {messages.value.map((message, index) => {
                     const isPartnerMessage = message.senderModel === 'Partner';
                     const showDate = index === 0 || 
                       formatDate(messages.value[index - 1]?.createdAt) !== formatDate(message.createdAt);
@@ -858,13 +939,81 @@ export default {
                         </div>
                       </div>
                     );
-                  })
+                  })}
+                  {/* End of chat: Session Summary & Feedback */}
+                  {selectedConversation.value.status === 'ended' && (
+                    <div style={{ marginTop: 32, paddingTop: 24, borderTop: '2px solid #e5e7eb' }}>
+                      <div style={{
+                        background: 'white',
+                        borderRadius: 16,
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06)',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{
+                          padding: '20px 20px 16px',
+                          background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                          color: 'white'
+                        }}>
+                          <p style={{ margin: 0, fontSize: 11, fontWeight: 600, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Session Summary</p>
+                          <p style={{ margin: '10px 0 0', fontSize: 18, fontWeight: 600 }}>{(conversationDetails.value.sessionDetails?.duration ?? 0)} min</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 14, opacity: 0.95 }}>{(conversationDetails.value.sessionDetails?.messagesCount ?? messages.value.length)} messages</p>
+                        </div>
+                        <div style={{ padding: 20 }}>
+                          <p style={{ margin: '0 0 14px 0', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Feedback</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <div style={{ padding: 14, background: '#f8fafc', borderRadius: 12, borderLeft: '4px solid #6366f1' }}>
+                              <p style={{ margin: '0 0 6px 0', fontSize: 12, fontWeight: 600, color: '#4f46e5' }}>Your feedback</p>
+                              {(conversationDetails.value.rating?.byPartner?.stars != null || conversationDetails.value.rating?.byPartner?.feedback) ? (
+                                <>
+                                  {conversationDetails.value.rating?.byPartner?.stars != null && (
+                                    <p style={{ margin: 0, fontSize: 15, color: '#f59e0b' }}>{"★".repeat(conversationDetails.value.rating.byPartner.stars)}{"☆".repeat(5 - (conversationDetails.value.rating.byPartner.stars || 0))}</p>
+                                  )}
+                                  {conversationDetails.value.rating?.byPartner?.feedback && (
+                                    <p style={{ margin: '6px 0 0', fontSize: 14, color: '#334155', lineHeight: 1.5 }}>{conversationDetails.value.rating.byPartner.feedback}</p>
+                                  )}
+                                </>
+                              ) : (
+                                <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>No feedback submitted</p>
+                              )}
+                            </div>
+                            <div style={{ padding: 14, background: '#f0fdf4', borderRadius: 12, borderLeft: '4px solid #10b981' }}>
+                              <p style={{ margin: '0 0 6px 0', fontSize: 12, fontWeight: 600, color: '#059669' }}>User feedback</p>
+                              {(conversationDetails.value.rating?.byUser?.stars != null || conversationDetails.value.rating?.byUser?.feedback) ? (
+                                <>
+                                  {conversationDetails.value.rating?.byUser?.stars != null && (
+                                    <p style={{ margin: 0, fontSize: 15, color: '#f59e0b' }}>{"★".repeat(conversationDetails.value.rating.byUser.stars)}{"☆".repeat(5 - (conversationDetails.value.rating.byUser.stars || 0))}</p>
+                                  )}
+                                  {conversationDetails.value.rating?.byUser?.feedback && (
+                                    <p style={{ margin: '6px 0 0', fontSize: 14, color: '#334155', lineHeight: 1.5 }}>{conversationDetails.value.rating.byUser.feedback}</p>
+                                  )}
+                                </>
+                              ) : (
+                                <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>No feedback submitted yet</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
               
-              {/* Message Input */}
+              {/* Message Input / Ended actions */}
               <div style="padding: 16px 24px; background-color: white; border-top: 1px solid #e5e7eb;">
-                {selectedConversation.value.status === 'pending' ? (
+                {selectedConversation.value.status === 'ended' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {!hasPartnerSubmittedFeedback.value && (
+                      <button onClick={openFeedbackModal}
+                        style={{ padding: '12px 20px', backgroundColor: '#6366f1', color: 'white', border: 'none', borderRadius: 8, fontWeight: 500, cursor: 'pointer', fontSize: 14 }}>
+                        Add your feedback
+                      </button>
+                    )}
+                    <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>This consultation has ended.</p>
+                  </div>
+                ) : selectedConversation.value.status === 'pending' ? (
                   <div style="text-align: center; padding: 12px; background-color: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px;">
                     Please accept the conversation request to enable messaging
                   </div>
@@ -921,6 +1070,154 @@ export default {
             </div>
           )}
         </div>
+        
+        {/* End Session Modal - improved card design */}
+        {showEndModal.value && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15,23,42,0.6)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: 24
+            }}
+            onClick={closeEndModal}
+          >
+            <div
+              style={{
+                background: 'white',
+                borderRadius: 16,
+                maxWidth: 440,
+                width: '100%',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #f3f4f6' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>End Consultation</h3>
+                <p style={{ color: '#6b7280', margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>Please provide feedback before ending.</p>
+              </div>
+              <div style={{ padding: 24 }}>
+                <div style={{ marginBottom: 20, padding: 16, background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Summary</p>
+                  <p style={{ fontSize: 15, color: '#334155', margin: 0, fontWeight: 500 }}>{sessionSummary.value.duration} min • {sessionSummary.value.messagesCount} messages</p>
+                </div>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>Rating (1-5 stars)</label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" onClick={() => endFeedbackStars.value = n}
+                        style={{ width: 40, height: 40, borderRadius: 10, border: endFeedbackStars.value >= n ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                          background: endFeedbackStars.value >= n ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
+                          color: endFeedbackStars.value >= n ? 'white' : '#9ca3af', cursor: 'pointer', fontSize: 18 }}>★</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Feedback (optional)</label>
+                  <textarea value={endFeedbackText.value} onInput={(e) => endFeedbackText.value = e.target.value} placeholder="Share your experience..."
+                    rows={3} style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, resize: 'vertical' }} />
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Satisfaction</label>
+                  <select value={endFeedbackSatisfaction.value} onChange={(e) => endFeedbackSatisfaction.value = e.target.value}
+                    style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, backgroundColor: 'white' }}>
+                    <option value="">Select...</option>
+                    <option value="very_happy">Very Happy</option>
+                    <option value="happy">Happy</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="unhappy">Unhappy</option>
+                    <option value="very_unhappy">Very Unhappy</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button onClick={closeEndModal} style={{ flex: 1, padding: 14, backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+                  <button onClick={endConversation} disabled={endModalSubmitting.value}
+                    style={{ flex: 1, padding: 14, background: endModalSubmitting.value ? '#9ca3af' : 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: 10, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer', fontSize: 14, boxShadow: endModalSubmitting.value ? 'none' : '0 4px 14px rgba(239,68,68,0.4)' }}>
+                    {endModalSubmitting.value ? 'Ending...' : 'End Consultation'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Add Feedback Modal */}
+        {showFeedbackModal.value && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15,23,42,0.6)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: 24
+            }}
+            onClick={() => showFeedbackModal.value = false}
+          >
+            <div
+              style={{
+                background: 'white',
+                borderRadius: 16,
+                maxWidth: 440,
+                width: '100%',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #f3f4f6' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>Add Your Feedback</h3>
+                <p style={{ color: '#6b7280', margin: '8px 0 0', fontSize: 14 }}>Your feedback helps improve our service.</p>
+              </div>
+              <div style={{ padding: 24 }}>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>Rating</label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" onClick={() => endFeedbackStars.value = n}
+                        style={{ width: 40, height: 40, borderRadius: 10, border: endFeedbackStars.value >= n ? '2px solid #6366f1' : '1px solid #e5e7eb',
+                          background: endFeedbackStars.value >= n ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
+                          color: endFeedbackStars.value >= n ? 'white' : '#9ca3af', cursor: 'pointer', fontSize: 18 }}>★</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Feedback (optional)</label>
+                  <textarea value={endFeedbackText.value} onInput={(e) => endFeedbackText.value = e.target.value} placeholder="Share your experience..."
+                    rows={3} style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, resize: 'vertical' }} />
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Satisfaction</label>
+                  <select value={endFeedbackSatisfaction.value} onChange={(e) => endFeedbackSatisfaction.value = e.target.value}
+                    style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14 }}>
+                    <option value="">Select...</option>
+                    <option value="very_happy">Very Happy</option>
+                    <option value="happy">Happy</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="unhappy">Unhappy</option>
+                    <option value="very_unhappy">Very Unhappy</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button onClick={() => showFeedbackModal.value = false}
+                    style={{ flex: 1, padding: 14, backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={submitFeedbackOnly} disabled={endModalSubmitting.value}
+                    style={{ flex: 1, padding: 14, background: endModalSubmitting.value ? '#9ca3af' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none', borderRadius: 10, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer' }}>
+                    {endModalSubmitting.value ? 'Submitting...' : 'Submit Feedback'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         <style>{`
           @keyframes spin {

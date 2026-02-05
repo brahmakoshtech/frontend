@@ -109,6 +109,7 @@ export default {
                   <th>Name</th>
                   <th>DOB</th>
                   <th>Place of Birth</th>
+                  <th>Credits</th>
                   <th>Created At</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -121,6 +122,7 @@ export default {
                     <td>{user.profile?.name || '-'}</td>
                     <td>{user.profile?.dob ? new Date(user.profile.dob).toLocaleDateString() : '-'}</td>
                     <td>{user.profile?.placeOfBirth || '-'}</td>
+                    <td>{user.credits ?? 0}</td>
                     <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>
                       <span class={`badge ${user.isActive ? 'bg-success' : 'bg-danger'}`}>

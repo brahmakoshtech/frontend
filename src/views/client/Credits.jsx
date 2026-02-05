@@ -2,7 +2,7 @@ import { ref, onMounted } from 'vue';
 import api from '../../services/api.js';
 
 export default {
-  name: 'AdminCredits',
+  name: 'ClientCredits',
   setup() {
     const users = ref([]);
     const loading = ref(false);
@@ -21,12 +21,13 @@ export default {
         if (search.value) {
           params.append('search', search.value);
         }
-        const response = await api.getAdminUsers(`?${params.toString()}`);
-        const data = response.data || {};
-        users.value = data.users || data.data?.users || [];
-        total.value = data.total ?? data.data?.total ?? users.value.length;
+        const response = await api.getClientUsers(`?${params.toString()}`);
+        // /client/users returns { success, data: { users, count, ... } }
+        const payload = response.data || response.data?.data || {};
+        users.value = payload.users || payload.data?.users || [];
+        total.value = payload.total ?? payload.count ?? users.value.length;
       } catch (error) {
-        console.error('[AdminCredits] Failed to fetch users:', error);
+        console.error('[ClientCredits] Failed to fetch users:', error);
       } finally {
         loading.value = false;
       }
@@ -34,10 +35,7 @@ export default {
 
     const handleAddCredits = async (user) => {
       selectedUser.value = user;
-      creditForm.value = {
-        amount: '',
-        description: ''
-      };
+      creditForm.value = { amount: '', description: '' };
     };
 
     const submitCredits = async () => {
@@ -62,7 +60,7 @@ export default {
         selectedUser.value = null;
         creditForm.value = { amount: '', description: '' };
       } catch (e) {
-        console.error('[AdminCredits] Failed to add credits', e);
+        console.error('[ClientCredits] Failed to add credits', e);
         alert(e?.message || 'Failed to add credits');
       }
     };
@@ -186,7 +184,8 @@ export default {
                 <tr>
                   <th>Email</th>
                   <th>Name</th>
-                  <th>Client</th>
+                  <th>DOB</th>
+                  <th>Place of Birth</th>
                   <th>Credits</th>
                   <th>Created At</th>
                   <th>Status</th>
@@ -198,7 +197,8 @@ export default {
                   <tr key={user._id}>
                     <td>{user.email}</td>
                     <td>{user.profile?.name || '-'}</td>
-                    <td>{user.clientId?.email || user.clientId?.businessName || '-'}</td>
+                    <td>{user.profile?.dob ? new Date(user.profile.dob).toLocaleDateString() : '-'}</td>
+                    <td>{user.profile?.placeOfBirth || '-'}</td>
                     <td>{user.credits ?? 0}</td>
                     <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>
@@ -209,7 +209,7 @@ export default {
                     <td>
                       <button
                         onClick={() => handleAddCredits(user)}
-                        class="btn btn-warning btn-sm me-2"
+                        class="btn btn-warning btn-sm"
                       >
                         Add Credits
                       </button>
@@ -219,8 +219,6 @@ export default {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
           <div class="d-flex justify-content-between align-items-center mt-3">
             <div>
               Page {page.value} of {totalPages()} ({total.value} users)
@@ -247,3 +245,4 @@ export default {
     );
   }
 };
+
