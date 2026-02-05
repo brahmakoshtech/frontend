@@ -43,7 +43,7 @@ export default {
         console.error('No user token found');
         return;
       }
-      
+
       
       console.log('🔌 Connecting to WebSocket...');
       

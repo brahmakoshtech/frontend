@@ -1071,14 +1071,15 @@ export default {
           )}
         </div>
         
-        {/* End Session Modal - improved card design */}
+        {/* End Session Modal - polished card design */}
         {showEndModal.value && (
           <div
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(15,23,42,0.6)',
-              backdropFilter: 'blur(8px)',
+              backgroundColor: 'rgba(15,23,42,0.65)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1089,71 +1090,105 @@ export default {
           >
             <div
               style={{
-                background: 'white',
-                borderRadius: 16,
-                maxWidth: 440,
+                background: 'linear-gradient(180deg, #ffffff 0%, #fafbff 100%)',
+                borderRadius: 20,
+                maxWidth: 460,
                 width: '100%',
                 overflow: 'hidden',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)'
+                boxShadow: '0 32px 64px -12px rgba(99,102,241,0.15), 0 0 0 1px rgba(99,102,241,0.08), 0 20px 40px -20px rgba(0,0,0,0.12)'
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #f3f4f6' }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>End Consultation</h3>
-                <p style={{ color: '#6b7280', margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>Please provide feedback before ending.</p>
+              <div style={{
+                padding: '28px 28px 24px',
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)',
+                color: 'white',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+                <div style={{ position: 'absolute', bottom: -30, left: -30, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <h3 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', position: 'relative' }}>End Consultation</h3>
+                <p style={{ color: 'rgba(255,255,255,0.9)', margin: '10px 0 0', fontSize: 14, lineHeight: 1.5, position: 'relative' }}>Share your experience before closing this session.</p>
               </div>
-              <div style={{ padding: 24 }}>
-                <div style={{ marginBottom: 20, padding: 16, background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Summary</p>
-                  <p style={{ fontSize: 15, color: '#334155', margin: 0, fontWeight: 500 }}>{sessionSummary.value.duration} min • {sessionSummary.value.messagesCount} messages</p>
+              <div style={{ padding: '28px 28px 28px' }}>
+                <div style={{
+                  marginBottom: 24,
+                  padding: '18px 20px',
+                  background: 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)',
+                  borderRadius: 14,
+                  border: '1px solid rgba(99,102,241,0.2)'
+                }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#4f46e5', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Session Summary</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 16, color: '#1e293b', fontWeight: 600 }}>⏱ {sessionSummary.value.duration} min</span>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8' }} />
+                    <span style={{ fontSize: 16, color: '#1e293b', fontWeight: 600 }}>💬 {sessionSummary.value.messagesCount} messages</span>
+                  </div>
                 </div>
-                <div style={{ marginBottom: 18 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>Rating (1-5 stars)</label>
-                  <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 12 }}>Rating (1–5 stars)</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} type="button" onClick={() => endFeedbackStars.value = n}
-                        style={{ width: 40, height: 40, borderRadius: 10, border: endFeedbackStars.value >= n ? '2px solid #6366f1' : '1px solid #e5e7eb',
-                          background: endFeedbackStars.value >= n ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
-                          color: endFeedbackStars.value >= n ? 'white' : '#9ca3af', cursor: 'pointer', fontSize: 18 }}>★</button>
+                        style={{
+                          width: 44, height: 44, borderRadius: 12, border: 'none',
+                          background: endFeedbackStars.value >= n ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                          color: endFeedbackStars.value >= n ? 'white' : '#94a3b8', cursor: 'pointer', fontSize: 20,
+                          boxShadow: endFeedbackStars.value >= n ? '0 4px 12px rgba(245,158,11,0.35)' : '0 1px 3px rgba(0,0,0,0.06)',
+                          transition: 'transform 0.15s, box-shadow 0.15s'
+                        }}
+                        onMouseEnter={(e) => { if (endFeedbackStars.value < n) { e.currentTarget.style.transform = 'scale(1.05)'; } }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                      >★</button>
                     ))}
                   </div>
                 </div>
-                <div style={{ marginBottom: 18 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Feedback (optional)</label>
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 10 }}>Feedback (optional)</label>
                   <textarea value={endFeedbackText.value} onInput={(e) => endFeedbackText.value = e.target.value} placeholder="Share your experience..."
-                    rows={3} style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, resize: 'vertical' }} />
+                    rows={3} style={{ width: '100%', padding: 14, border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Satisfaction</label>
+                <div style={{ marginBottom: 28 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 10 }}>Satisfaction</label>
                   <select value={endFeedbackSatisfaction.value} onChange={(e) => endFeedbackSatisfaction.value = e.target.value}
-                    style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, backgroundColor: 'white' }}>
-                    <option value="">Select...</option>
-                    <option value="very_happy">Very Happy</option>
-                    <option value="happy">Happy</option>
-                    <option value="neutral">Neutral</option>
-                    <option value="unhappy">Unhappy</option>
-                    <option value="very_unhappy">Very Unhappy</option>
+                    style={{ width: '100%', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 14, backgroundColor: 'white', color: '#334155', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <option value="">Select how you feel...</option>
+                    <option value="very_happy">😊 Very Happy</option>
+                    <option value="happy">🙂 Happy</option>
+                    <option value="neutral">😐 Neutral</option>
+                    <option value="unhappy">😕 Unhappy</option>
+                    <option value="very_unhappy">😞 Very Unhappy</option>
                   </select>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button onClick={closeEndModal} style={{ flex: 1, padding: 14, backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+                <div style={{ display: 'flex', gap: 14 }}>
+                  <button onClick={closeEndModal}
+                    style={{ flex: 1, padding: 15, backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer', fontSize: 15 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e2e8f0'; e.currentTarget.style.color = '#334155'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
+                  >Cancel</button>
                   <button onClick={endConversation} disabled={endModalSubmitting.value}
-                    style={{ flex: 1, padding: 14, background: endModalSubmitting.value ? '#9ca3af' : 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: 10, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer', fontSize: 14, boxShadow: endModalSubmitting.value ? 'none' : '0 4px 14px rgba(239,68,68,0.4)' }}>
-                    {endModalSubmitting.value ? 'Ending...' : 'End Consultation'}
-                  </button>
+                    style={{
+                      flex: 1, padding: 15,
+                      background: endModalSubmitting.value ? '#94a3b8' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
+                      color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer', fontSize: 15,
+                      boxShadow: endModalSubmitting.value ? 'none' : '0 4px 16px rgba(239,68,68,0.4)'
+                    }}
+                  >{endModalSubmitting.value ? 'Ending...' : 'End Consultation'}</button>
                 </div>
               </div>
             </div>
           </div>
         )}
-        {/* Add Feedback Modal */}
+        {/* Add Feedback Modal - polished card design */}
         {showFeedbackModal.value && (
           <div
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(15,23,42,0.6)',
-              backdropFilter: 'blur(8px)',
+              backgroundColor: 'rgba(15,23,42,0.65)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1164,55 +1199,76 @@ export default {
           >
             <div
               style={{
-                background: 'white',
-                borderRadius: 16,
-                maxWidth: 440,
+                background: 'linear-gradient(180deg, #ffffff 0%, #fafbff 100%)',
+                borderRadius: 20,
+                maxWidth: 460,
                 width: '100%',
                 overflow: 'hidden',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)'
+                boxShadow: '0 32px 64px -12px rgba(99,102,241,0.15), 0 0 0 1px rgba(99,102,241,0.08), 0 20px 40px -20px rgba(0,0,0,0.12)'
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #f3f4f6' }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>Add Your Feedback</h3>
-                <p style={{ color: '#6b7280', margin: '8px 0 0', fontSize: 14 }}>Your feedback helps improve our service.</p>
+              <div style={{
+                padding: '28px 28px 24px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #7c3aed 100%)',
+                color: 'white',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+                <h3 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', position: 'relative' }}>Add Your Feedback</h3>
+                <p style={{ color: 'rgba(255,255,255,0.9)', margin: '10px 0 0', fontSize: 14, position: 'relative' }}>Your feedback helps us improve.</p>
               </div>
-              <div style={{ padding: 24 }}>
-                <div style={{ marginBottom: 18 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>Rating</label>
-                  <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ padding: '28px 28px 28px' }}>
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 12 }}>Rating</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} type="button" onClick={() => endFeedbackStars.value = n}
-                        style={{ width: 40, height: 40, borderRadius: 10, border: endFeedbackStars.value >= n ? '2px solid #6366f1' : '1px solid #e5e7eb',
-                          background: endFeedbackStars.value >= n ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
-                          color: endFeedbackStars.value >= n ? 'white' : '#9ca3af', cursor: 'pointer', fontSize: 18 }}>★</button>
+                        style={{
+                          width: 44, height: 44, borderRadius: 12, border: 'none',
+                          background: endFeedbackStars.value >= n ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                          color: endFeedbackStars.value >= n ? 'white' : '#94a3b8', cursor: 'pointer', fontSize: 20,
+                          boxShadow: endFeedbackStars.value >= n ? '0 4px 12px rgba(245,158,11,0.35)' : '0 1px 3px rgba(0,0,0,0.06)',
+                          transition: 'transform 0.15s, box-shadow 0.15s'
+                        }}
+                        onMouseEnter={(e) => { if (endFeedbackStars.value < n) { e.currentTarget.style.transform = 'scale(1.05)'; } }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                      >★</button>
                     ))}
                   </div>
                 </div>
-                <div style={{ marginBottom: 18 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Feedback (optional)</label>
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 10 }}>Feedback (optional)</label>
                   <textarea value={endFeedbackText.value} onInput={(e) => endFeedbackText.value = e.target.value} placeholder="Share your experience..."
-                    rows={3} style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, resize: 'vertical' }} />
+                    rows={3} style={{ width: '100%', padding: 14, border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Satisfaction</label>
+                <div style={{ marginBottom: 28 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 10 }}>Satisfaction</label>
                   <select value={endFeedbackSatisfaction.value} onChange={(e) => endFeedbackSatisfaction.value = e.target.value}
-                    style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14 }}>
-                    <option value="">Select...</option>
-                    <option value="very_happy">Very Happy</option>
-                    <option value="happy">Happy</option>
-                    <option value="neutral">Neutral</option>
-                    <option value="unhappy">Unhappy</option>
-                    <option value="very_unhappy">Very Unhappy</option>
+                    style={{ width: '100%', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 14, backgroundColor: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <option value="">Select how you feel...</option>
+                    <option value="very_happy">😊 Very Happy</option>
+                    <option value="happy">🙂 Happy</option>
+                    <option value="neutral">😐 Neutral</option>
+                    <option value="unhappy">😕 Unhappy</option>
+                    <option value="very_unhappy">😞 Very Unhappy</option>
                   </select>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 14 }}>
                   <button onClick={() => showFeedbackModal.value = false}
-                    style={{ flex: 1, padding: 14, backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                    style={{ flex: 1, padding: 15, backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer', fontSize: 15 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e2e8f0'; e.currentTarget.style.color = '#334155'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
+                  >Cancel</button>
                   <button onClick={submitFeedbackOnly} disabled={endModalSubmitting.value}
-                    style={{ flex: 1, padding: 14, background: endModalSubmitting.value ? '#9ca3af' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none', borderRadius: 10, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer' }}>
-                    {endModalSubmitting.value ? 'Submitting...' : 'Submit Feedback'}
-                  </button>
+                    style={{
+                      flex: 1, padding: 15,
+                      background: endModalSubmitting.value ? '#94a3b8' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #7c3aed 100%)',
+                      color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer', fontSize: 15,
+                      boxShadow: endModalSubmitting.value ? 'none' : '0 4px 16px rgba(99,102,241,0.4)'
+                    }}
+                  >{endModalSubmitting.value ? 'Submitting...' : 'Submit Feedback'}</button>
                 </div>
               </div>
             </div>
