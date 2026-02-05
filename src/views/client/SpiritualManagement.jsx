@@ -23,6 +23,38 @@ import spiritualConfigurationService from '../../services/spiritualConfiguration
 import spiritualClipService from '../../services/spiritualClipService.js';
 import spiritualStatsService from '../../services/spiritualStatsService.js';
 
+// Constants
+const EMOTION_OPTIONS = [
+  { value: 'happy', emoji: '😊', label: 'Happy' },
+  { value: 'sad', emoji: '😢', label: 'Sad' },
+  { value: 'angry', emoji: '😠', label: 'Angry' },
+  { value: 'afraid', emoji: '😨', label: 'Afraid' },
+  { value: 'loved', emoji: '🥰', label: 'Loved' },
+  { value: 'surprised', emoji: '😲', label: 'Surprised' },
+  { value: 'calm', emoji: '😌', label: 'Calm' },
+  { value: 'disgusted', emoji: '🤢', label: 'Disgusted' },
+  { value: 'neutral', emoji: '😐', label: 'Neutral' },
+  { value: 'stressed', emoji: '😰', label: 'Stressed' }
+];
+
+const DURATION_OPTIONS = [
+  '1 minute', '2 minutes', '3 minutes', '4 minutes', 
+  '5 minutes', '6 minutes', '7 minutes', '8 minutes', 
+  '9 minutes', '10 minutes'
+];
+
+const TIME_OPTIONS = [
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
+  { value: 'night', label: 'Night' }
+];
+
+const GUIDE_OPTIONS = [
+  { value: 'guided', label: 'Guided' },
+  { value: 'unguided', label: 'Unguided' }
+];
+
 export default {
   name: 'SpiritualManagement',
   setup() {
@@ -214,12 +246,11 @@ export default {
       ]
     };
     
-    // Get current category fields
+    // Memoized computed values for better performance
     const currentCategoryFields = computed(() => 
       categoryFields[currentCategory.value] || categoryFields.meditation
     );
     
-    // Get current category options
     const currentCategoryOptions = computed(() => 
       categoryOptions[currentCategory.value] || []
     );
@@ -227,17 +258,37 @@ export default {
     const currentCategoryInfo = computed(() => 
       categoryInfo[currentCategory.value] || categoryInfo.meditation
     );
+
+    // Memoized filtered data
+    const filteredConfigurations = computed(() => 
+      configurations.value.filter(config => 
+        config.type === currentCategory.value || (!config.type && currentCategory.value === 'meditation')
+      )
+    );
     
+    const filteredRecentActivities = computed(() => {
+      const activities = userStats.value.recentActivities || [];
+      const filtered = activities.filter(activity => {
+        return activity.type === currentCategory.value;
+      });
+      return filtered;
+    });
+    
+    const filteredClips = computed(() => 
+      clips.value.filter(clip => {
+        if (!clip.type) return currentCategory.value === 'meditation';
+        return clip.type === currentCategory.value;
+      })
+    );
+
     // Watch for category changes and update form types
     watch(currentCategory, (newCategory) => {
       configForm.value.type = newCategory;
       addClipForm.value.type = newCategory;
       editClipForm.value.type = newCategory;
       editConfigForm.value.type = newCategory;
-      // Reset custom input when category changes
       showCustomInput.value = false;
       configForm.value.customChantingType = '';
-      // Refresh stats when category changes
       fetchUserStats();
       fetchConfigurations();
       fetchClips();
@@ -254,38 +305,6 @@ export default {
         configForm.value.customChantingType = '';
       }
     };
-    
-    // Filter configurations and clips by category
-    const filteredConfigurations = computed(() => 
-      configurations.value.filter(config => 
-        config.type === currentCategory.value || (!config.type && currentCategory.value === 'meditation')
-      )
-    );
-    
-    const filteredRecentActivities = computed(() => {
-      const activities = userStats.value.recentActivities || [];
-      console.log('All activities before filtering:', activities);
-      console.log('Current category:', currentCategory.value);
-      
-      // Since we're already fetching category-specific data from backend,
-      // we should get all activities for the current category
-      // But let's still filter to be safe
-      const filtered = activities.filter(activity => {
-        console.log('Filtering activity:', activity.type, 'Current category:', currentCategory.value);
-        return activity.type === currentCategory.value;
-      });
-      
-      console.log('Filtered activities:', filtered);
-      return filtered;
-    });
-    
-    const filteredClips = computed(() => 
-      clips.value.filter(clip => {
-        // If clip has no type, show in meditation category
-        if (!clip.type) return currentCategory.value === 'meditation';
-        return clip.type === currentCategory.value;
-      })
-    );
 
     const openDropdownId = ref(null);
     const showViewClipModal = ref(false);
@@ -651,13 +670,8 @@ export default {
 
     const fetchUserStats = async () => {
       try {
-        console.log('Fetching all users stats for category:', currentCategory.value);
-        // Fetch all users stats with category filter
         const response = await spiritualStatsService.getAllUsersStats(currentCategory.value);
         if (response.success) {
-          console.log('All users stats received:', response.data);
-          console.log('All recent activities:', response.data.recentActivities);
-          console.log('Category stats:', response.data.categoryStats);
           userStats.value = response.data;
         }
       } catch (error) {
@@ -680,9 +694,7 @@ export default {
           completionPercentage: 100
         };
         
-        console.log('Testing silence session save:', testSessionData);
         const response = await spiritualStatsService.saveSession(testSessionData);
-        console.log('Test save response:', response);
         
         if (response.success) {
           toast.success('Test silence session saved!');
@@ -742,10 +754,12 @@ export default {
             type: currentCategory.value
           };
           toast.success('Configuration saved successfully!');
+        } else {
+          toast.error(response.message || 'Failed to save configuration');
         }
       } catch (error) {
         console.error('Add configuration error:', error);
-        toast.error('Failed to save configuration');
+        toast.error(error.response?.data?.message || error.message || 'Failed to save configuration');
       } finally {
         loading.value = false;
       }
@@ -805,7 +819,7 @@ export default {
         }
       } catch (error) {
         console.error('Update configuration error:', error);
-        toast.error('Failed to update configuration');
+        toast.error(error.response?.data?.message || error.message || 'Failed to update configuration');
       } finally {
         loading.value = false;
       }
@@ -821,9 +835,9 @@ export default {
             toast.success('Configuration deleted successfully!');
           }
         } catch (error) {
-          console.error('Delete configuration error:', error);
-          toast.error('Failed to delete configuration');
-        } finally {
+        console.error('Delete configuration error:', error);
+        toast.error(error.response?.data?.message || error.message || 'Failed to delete configuration');
+      } finally {
           loading.value = false;
         }
         activeConfigDropdown.value = null;
@@ -843,7 +857,7 @@ export default {
         }
       } catch (error) {
         console.error('Toggle configuration error:', error);
-        toast.error('Failed to toggle configuration status');
+        toast.error(error.response?.data?.message || error.message || 'Failed to toggle configuration status');
       } finally {
         loading.value = false;
       }
@@ -1247,12 +1261,8 @@ export default {
         currentCategory.value = route.params.category;
       }
       
-      // Check if client is logged in
       const clientToken = localStorage.getItem('token_client');
-      console.log('Client token check:', clientToken ? 'Token exists' : 'No token found');
-      
       if (!clientToken) {
-        console.error('Client not logged in - redirecting to login');
         router.push('/client/login');
         return;
       }
@@ -1559,11 +1569,7 @@ export default {
                               <div class="mb-3">
                                 <label class="form-label fw-semibold">Duration</label>
                                 <div class="row g-2">
-                                  {[
-                                    '1 minute', '2 minutes', '3 minutes', '4 minutes', 
-                                    '5 minutes', '6 minutes', '7 minutes', '8 minutes', 
-                                    '9 minutes', '10 minutes'
-                                  ].map(duration => (
+                                  {DURATION_OPTIONS.map(duration => (
                                     <div key={duration} class="col-4">
                                       <div class="form-check">
                                         <input 
@@ -1593,18 +1599,7 @@ export default {
                             <div class="mb-3">
                               <label class="form-label fw-semibold">Emotion</label>
                               <div class="row g-2">
-                                {[
-                                  { value: 'happy', emoji: '😊', label: 'Happy' },
-                                  { value: 'sad', emoji: '😢', label: 'Sad' },
-                                  { value: 'angry', emoji: '😠', label: 'Angry' },
-                                  { value: 'afraid', emoji: '😨', label: 'Afraid' },
-                                  { value: 'loved', emoji: '🥰', label: 'Loved' },
-                                  { value: 'surprised', emoji: '😲', label: 'Surprised' },
-                                  { value: 'calm', emoji: '😌', label: 'Calm' },
-                                  { value: 'disgusted', emoji: '🤢', label: 'Disgusted' },
-                                  { value: 'neutral', emoji: '😐', label: 'Neutral' },
-                                  { value: 'stressed', emoji: '😰', label: 'Stressed' }
-                                ].map(emotion => (
+                                {EMOTION_OPTIONS.map(emotion => (
                                   <div key={emotion.value} class="col-3">
                                     <div class="form-check">
                                       <input 
@@ -1742,7 +1737,7 @@ export default {
                                           calm: '😌 Calm',
                                           disgusted: '🤢 Disgusted',
                                           neutral: '😐 Neutral',
-                                          stress: '😰 Stress'
+                                          stressed: '😰 Stressed'
                                         }[config.emotion] || config.emotion}
                                       </span>
                                     </div>
@@ -2517,10 +2512,9 @@ export default {
                         <label class="form-label fw-semibold">Suitable Time</label>
                         <select class="form-select" v-model={editClipForm.value.suitableTime}>
                           <option value="">Select time</option>
-                          <option value="morning">Morning</option>
-                          <option value="afternoon">Afternoon</option>
-                          <option value="evening">Evening</option>
-                          <option value="night">Night</option>
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time.value} value={time.value}>{time.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2619,8 +2613,9 @@ export default {
                         <label class="form-label fw-semibold">Guide</label>
                         <select class="form-select" v-model={editClipForm.value.guided}>
                           <option value="">Select type</option>
-                          <option value="guided">Guided</option>
-                          <option value="unguided">Unguided</option>
+                          {GUIDE_OPTIONS.map(guide => (
+                            <option key={guide.value} value={guide.value}>{guide.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2677,10 +2672,9 @@ export default {
                         <label class="form-label fw-semibold">Suitable Time</label>
                         <select class="form-select" v-model={addClipForm.value.suitableTime}>
                           <option value="">Select time</option>
-                          <option value="morning">Morning</option>
-                          <option value="afternoon">Afternoon</option>
-                          <option value="evening">Evening</option>
-                          <option value="night">Night</option>
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time.value} value={time.value}>{time.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2779,8 +2773,9 @@ export default {
                         <label class="form-label fw-semibold">Guide</label>
                         <select class="form-select" v-model={addClipForm.value.guided}>
                           <option value="">Select type</option>
-                          <option value="guided">Guided</option>
-                          <option value="unguided">Unguided</option>
+                          {GUIDE_OPTIONS.map(guide => (
+                            <option key={guide.value} value={guide.value}>{guide.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2838,11 +2833,7 @@ export default {
                       <div class="mb-3">
                         <label class="form-label fw-semibold">Duration</label>
                         <div class="row g-2">
-                          {[
-                            '1 minute', '2 minutes', '3 minutes', '4 minutes', 
-                            '5 minutes', '6 minutes', '7 minutes', '8 minutes', 
-                            '9 minutes', '10 minutes'
-                          ].map(duration => (
+                          {DURATION_OPTIONS.map(duration => (
                             <div key={duration} class="col-4">
                               <div class="form-check">
                                 <input 
@@ -2881,16 +2872,11 @@ export default {
                         <label class="form-label fw-semibold">Emotion</label>
                         <select class="form-select" v-model={editForm.value.emotion}>
                           <option value="">Select emotion</option>
-                          <option value="happy">😊 Happy</option>
-                          <option value="sad">😢 Sad</option>
-                          <option value="angry">😠 Angry</option>
-                          <option value="afraid">😨 Afraid</option>
-                          <option value="loved">🥰 Loved</option>
-                          <option value="surprised">😲 Surprised</option>
-                          <option value="calm">😌 Calm</option>
-                          <option value="disgusted">🤢 Disgusted</option>
-                          <option value="neutral">😐 Neutral</option>
-                          <option value="stressed">😰 Stressed</option>
+                          {EMOTION_OPTIONS.map(emotion => (
+                            <option key={emotion.value} value={emotion.value}>
+                              {emotion.emoji} {emotion.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2899,10 +2885,9 @@ export default {
                         <label class="form-label fw-semibold">Suitable Time</label>
                         <select class="form-select" v-model={editForm.value.suitableTime}>
                           <option value="">Select time</option>
-                          <option value="morning">Morning</option>
-                          <option value="afternoon">Afternoon</option>
-                          <option value="evening">Evening</option>
-                          <option value="night">Night</option>
+                          {TIME_OPTIONS.map(time => (
+                            <option key={time.value} value={time.value}>{time.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2913,8 +2898,9 @@ export default {
                         <label class="form-label fw-semibold">Guided</label>
                         <select class="form-select" v-model={editForm.value.guided}>
                           <option value="">Select type</option>
-                          <option value="guided">Guided</option>
-                          <option value="unguided">Unguided</option>
+                          {GUIDE_OPTIONS.map(guide => (
+                            <option key={guide.value} value={guide.value}>{guide.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -3116,16 +3102,9 @@ export default {
                         <div class="mb-3">
                           <label class="form-label fw-semibold">Duration</label>
                           <select class="form-select" v-model={editConfigForm.value.duration}>
-                            <option value="1 minute">1 minute</option>
-                            <option value="2 minutes">2 minutes</option>
-                            <option value="3 minutes">3 minutes</option>
-                            <option value="4 minutes">4 minutes</option>
-                            <option value="5 minutes">5 minutes</option>
-                            <option value="6 minutes">6 minutes</option>
-                            <option value="7 minutes">7 minutes</option>
-                            <option value="8 minutes">8 minutes</option>
-                            <option value="9 minutes">9 minutes</option>
-                            <option value="10 minutes">10 minutes</option>
+                            {DURATION_OPTIONS.map(duration => (
+                              <option key={duration} value={duration}>{duration}</option>
+                            ))}
                           </select>
                         </div>
                       )}
@@ -3148,16 +3127,11 @@ export default {
                         <label class="form-label fw-semibold">Emotion</label>
                         <select class="form-select" v-model={editConfigForm.value.emotion}>
                           <option value="">Select emotion</option>
-                          <option value="happy">😊 Happy</option>
-                          <option value="sad">😢 Sad</option>
-                          <option value="angry">😠 Angry</option>
-                          <option value="afraid">😨 Afraid</option>
-                          <option value="loved">🥰 Loved</option>
-                          <option value="surprised">😲 Surprised</option>
-                          <option value="calm">😌 Calm</option>
-                          <option value="disgusted">🤢 Disgusted</option>
-                          <option value="neutral">😐 Neutral</option>
-                          <option value="stressed">😰 Stressed</option>
+                          {EMOTION_OPTIONS.map(emotion => (
+                            <option key={emotion.value} value={emotion.value}>
+                              {emotion.emoji} {emotion.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
