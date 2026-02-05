@@ -44,6 +44,7 @@ export default {
         return;
       }
       
+      
       console.log('🔌 Connecting to WebSocket...');
       
       socket.value = io(import.meta.env.VITE_WS_URL || 'https://stage.brahmakosh.com', {
