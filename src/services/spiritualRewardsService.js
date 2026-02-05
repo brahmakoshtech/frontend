@@ -94,6 +94,10 @@ const spiritualRewardsService = {
   // Get upload URL for images
   getUploadUrl: async (fileName, fileType, mediaType = 'image') => {
     try {
+      if (!fileName || !fileType) {
+        throw new Error('fileName and fileType are required');
+      }
+      
       const response = await api.post('/spiritual-rewards/upload-url', {
         fileName,
         fileType,
@@ -106,10 +110,7 @@ const spiritualRewardsService = {
       };
     } catch (error) {
       console.error('Get upload URL error:', error);
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to get upload URL'
-      };
+      throw error;
     }
   },
 

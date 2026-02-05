@@ -305,8 +305,8 @@ export default {
           greetings: newReward.value.greetings,
           photoUrl,
           bannerUrl,
-          photoKey: photoUrl ? photoUrl.split('/').pop() : null,
-          bannerKey: bannerUrl ? bannerUrl.split('/').pop() : null
+          photoKey: photoUrl ? photoUrl.split('.amazonaws.com/')[1]?.split('?')[0] : null,
+          bannerKey: bannerUrl ? bannerUrl.split('.amazonaws.com/')[1]?.split('?')[0] : null
         };
         
         const response = await spiritualRewardsService.createReward(rewardData);
@@ -341,7 +341,7 @@ export default {
         let bannerUrl = null;
         
         // Upload photo if new file provided
-        if (editForm.value.photo) {
+        if (editForm.value.photo && editForm.value.photo instanceof File) {
           try {
             editPhotoUploading.value = true;
             editPhotoUploadProgress.value = 0;
@@ -372,7 +372,7 @@ export default {
         }
         
         // Upload banner if new file provided
-        if (editForm.value.banner) {
+        if (editForm.value.banner && editForm.value.banner instanceof File) {
           try {
             editBannerUploading.value = true;
             editBannerUploadProgress.value = 0;
@@ -416,11 +416,11 @@ export default {
         // Add URLs if files were uploaded
         if (photoUrl) {
           updateData.photoUrl = photoUrl;
-          updateData.photoKey = photoUrl.split('/').pop();
+          updateData.photoKey = photoUrl.split('.amazonaws.com/')[1]?.split('?')[0];
         }
         if (bannerUrl) {
           updateData.bannerUrl = bannerUrl;
-          updateData.bannerKey = bannerUrl.split('/').pop();
+          updateData.bannerKey = bannerUrl.split('.amazonaws.com/')[1]?.split('?')[0];
         }
         
         const response = await spiritualRewardsService.updateReward(editingReward.value._id, updateData);
@@ -531,15 +531,15 @@ export default {
               <div class="row g-4">
                 {rewards.value.map(reward => (
                   <div key={reward._id} class="col-xl-4 col-lg-6 col-md-6">
-                    <div class={`reward-card card h-100 border-0 shadow-sm position-relative ${!reward.isActive ? 'opacity-50' : ''}`}>
+                    <div class={`card h-100 border-0 shadow-sm ${!reward.isActive ? 'opacity-50' : ''}`} style={{ borderRadius: '12px' }}>
                       {/* Banner Image */}
-                      {(reward.bannerPresignedUrl || reward.bannerUrl) && (
-                        <div class="position-relative" style={{ height: '160px', overflow: 'hidden' }}>
+                      {reward.banner && (
+                        <div class="position-relative" style={{ height: '200px', overflow: 'hidden' }}>
                           <img 
-                            src={reward.bannerPresignedUrl || cleanS3Url(reward.bannerUrl)} 
+                            src={reward.banner} 
                             alt={reward.title}
                             class="w-100 h-100"
-                            style={{ objectFit: 'cover', borderRadius: '16px 16px 0 0' }}
+                            style={{ objectFit: 'cover', borderRadius: '12px 12px 0 0' }}
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         </div>
@@ -548,7 +548,7 @@ export default {
                       {/* Status Badge */}
                       {!reward.isActive && (
                         <div class="position-absolute top-0 start-0 m-3" style={{ zIndex: 1 }}>
-                          <span class="badge bg-secondary px-2 py-1 rounded-pill">🔒 Disabled</span>
+                          <span class="badge bg-secondary px-2 py-1 rounded-pill">Disabled</span>
                         </div>
                       )}
                       
@@ -560,7 +560,7 @@ export default {
                             onClick={() => toggleDropdown(reward._id)}
                             style={{ width: '32px', height: '32px' }}
                           >
-                            <EllipsisVerticalIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                            <EllipsisVerticalIcon style={{ width: '1rem', height: '1rem' }} />
                           </button>
                           {activeDropdown.value === reward._id && (
                             <div class="dropdown-menu show position-absolute shadow-lg" style={{ right: '0', zIndex: 1000 }}>
@@ -596,56 +596,58 @@ export default {
                       </div>
 
                       <div class="card-body p-4">
-                        {/* Photo and Icon */}
-                        <div class="mb-3 d-flex align-items-center gap-3">
-                          {(reward.photoPresignedUrl || reward.photoUrl) ? (
-                            <div>
-                              <img 
-                                src={reward.photoPresignedUrl || cleanS3Url(reward.photoUrl)} 
-                                alt={reward.title}
-                                class="rounded-3"
-                                style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                                onError={(e) => { 
-                                  e.target.style.display = 'none';
-                                  e.target.nextElementSibling.style.display = 'inline-flex';
-                                }}
-                              />
-                              <div class="d-none d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10" style={{ width: '60px', height: '60px' }}>
-                                <GiftIcon style={{ width: '2rem', height: '2rem', color: '#8b5cf6' }} />
-                              </div>
-                            </div>
-                          ) : (
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10" style={{ width: '60px', height: '60px' }}>
-                              <GiftIcon style={{ width: '2rem', height: '2rem', color: '#8b5cf6' }} />
-                            </div>
+                        {/* Photo and Title Section */}
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                          {/* Photo */}
+                          {reward.image && (
+                            <img 
+                              src={reward.image} 
+                              alt={reward.title}
+                              class="rounded-3 flex-shrink-0"
+                              style={{ width: '60px', height: '60px', objectFit: 'cover' }}
+                            />
                           )}
-                          {/* Debug info */}
-                          <div class="small text-muted">
-                            Photo: {reward.photoUrl ? '✅' : '❌'} | Banner: {reward.bannerUrl ? '✅' : '❌'}
+                          
+                          {/* Title and Category */}
+                          <div class="flex-grow-1">
+                            <h5 class="card-title fw-bold mb-1">{reward.title}</h5>
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 small">
+                              {reward.category}
+                            </span>
                           </div>
                         </div>
-
-                        {/* Content */}
-                        <h5 class="card-title fw-bold mb-2">{reward.title}</h5>
+                        
+                        {/* Description */}
                         <p class="card-text text-muted mb-3" style={{ fontSize: '0.9rem' }}>
-                          {reward.description.length > 100 ? reward.description.substring(0, 100) + '...' : reward.description}
+                          {reward.description}
                         </p>
 
-                        {/* Category Badge */}
-                        <div class="mb-3">
-                          <span class="badge bg-info bg-opacity-10 text-info px-2 py-1">
-                            {reward.category}
-                          </span>
-                        </div>
-
-                        {/* Karma Points */}
-                        <div class="d-flex align-items-center justify-content-between mb-3">
+                        {/* Karma Points Required */}
+                        <div class="mb-2">
                           <div class="d-flex align-items-center">
                             <StarIcon style={{ width: '1rem', height: '1rem', color: '#ffc107' }} class="me-1" />
-                            <small class="fw-semibold">{reward.karmaPointsRequired} Karma Points</small>
+                            <small class="fw-semibold">{reward.karmaPointsRequired} Karma Points Required</small>
                           </div>
+                        </div>
+
+                        {/* Number of Devotees */}
+                        <div class="mb-3">
                           <small class="text-muted">{reward.numberOfDevotees} devotees</small>
                         </div>
+
+                        {/* Devotee Message */}
+                        {reward.devoteeMessage && (
+                          <div class="mb-2">
+                            <small class="text-muted d-block"><strong>Message:</strong> {reward.devoteeMessage}</small>
+                          </div>
+                        )}
+
+                        {/* Greetings */}
+                        {reward.greetings && (
+                          <div class="mb-2">
+                            <small class="text-success d-block"><strong>Greetings:</strong> {reward.greetings}</small>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
