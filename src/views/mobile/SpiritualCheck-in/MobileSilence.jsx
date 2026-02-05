@@ -37,7 +37,7 @@ export default {
       { emoji: '✨', label: 'Mindful', value: 'mindful' },
       { emoji: '🌙', label: 'Calm', value: 'calm' },
       { emoji: '😐', label: 'Neutral', value: 'neutral' },
-      { emoji: '😰', label: 'Stress', value: 'stress' }
+      { emoji: '😰', label: 'Stressed', value: 'stressed' }
     ];
     
     const goBack = () => {

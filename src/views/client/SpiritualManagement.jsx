@@ -1603,7 +1603,7 @@ export default {
                                   { value: 'calm', emoji: '😌', label: 'Calm' },
                                   { value: 'disgusted', emoji: '🤢', label: 'Disgusted' },
                                   { value: 'neutral', emoji: '😐', label: 'Neutral' },
-                                  { value: 'stress', emoji: '😰', label: 'Stress' }
+                                  { value: 'stressed', emoji: '😰', label: 'Stressed' }
                                 ].map(emotion => (
                                   <div key={emotion.value} class="col-3">
                                     <div class="form-check">
@@ -2890,7 +2890,7 @@ export default {
                           <option value="calm">😌 Calm</option>
                           <option value="disgusted">🤢 Disgusted</option>
                           <option value="neutral">😐 Neutral</option>
-                          <option value="stress">😰 Stress</option>
+                          <option value="stressed">😰 Stressed</option>
                         </select>
                       </div>
                     </div>
@@ -3055,7 +3055,7 @@ export default {
                             calm: '😌 Calm',
                             disgusted: '🤢 Disgusted',
                             neutral: '😐 Neutral',
-                            stress: '😰 Stress'
+                            stress: '😰 Stressed'
                           }[selectedConfig.value.emotion] || selectedConfig.value.emotion}
                         </span>
                       </div>
@@ -3157,7 +3157,7 @@ export default {
                           <option value="calm">😌 Calm</option>
                           <option value="disgusted">🤢 Disgusted</option>
                           <option value="neutral">😐 Neutral</option>
-                          <option value="stress">😰 Stress</option>
+                          <option value="stressed">😰 Stressed</option>
                         </select>
                       </div>
                     </div>
@@ -3365,7 +3365,7 @@ export default {
                               elevated: '✨ Elevated',
                               reverent: '🕉️ Reverent',
                               neutral: '😐 Neutral',
-                              stress: '😰 Stressed'
+                              stressed: '😰 Stressed'
                             }[selectedActivity.value.emotion] || selectedActivity.value.emotion}
                           </span>
                         </div>

@@ -38,7 +38,7 @@ export default {
       { emoji: '✨', label: 'Hopeful', value: 'hopeful' },
       { emoji: '🕊️', label: 'Serene', value: 'serene' },
       { emoji: '😐', label: 'Neutral', value: 'neutral' },
-      { emoji: '😰', label: 'Stress', value: 'stress' }
+      { emoji: '😰', label: 'Stressed', value: 'stressed' }
     ];
     
     const goBack = () => {
