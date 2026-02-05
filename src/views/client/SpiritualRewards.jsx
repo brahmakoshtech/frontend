@@ -31,6 +31,7 @@ export default {
       title: '',
       description: '',
       category: '',
+      subcategory: '',
       photo: null,
       banner: null,
       karmaPointsRequired: 0,
@@ -43,6 +44,7 @@ export default {
       title: '',
       description: '',
       category: '',
+      subcategory: '',
       photo: null,
       banner: null,
       karmaPointsRequired: 0,
@@ -51,15 +53,27 @@ export default {
       greetings: ''
     });
 
-    const categories = [
-      'Spiritual Books',
-      'Prayer Items',
-      'Meditation Tools',
-      'Sacred Jewelry',
-      'Temple Visits',
-      'Blessings',
-      'Other'
-    ];
+    const categories = ref({
+      'Seva': ['Community Service', 'Temple Service', 'Elderly Care', 'Food Distribution', 'Other'],
+      'Yatra': ['Pilgrimage Tours', 'Sacred Sites', 'Temple Visits', 'Spiritual Journeys', 'Other'],
+      'Dan': ['Charity Donations', 'Temple Donations', 'Food Donations', 'Education Support', 'Other'],
+      'Puja': ['Daily Puja', 'Special Ceremonies', 'Festival Celebrations', 'Personal Rituals', 'Other'],
+      'Article': ['Spiritual Books', 'Prayer Items', 'Sacred Jewelry', 'Meditation Tools', 'Other'],
+      'Other': ['Blessings', 'Spiritual Guidance', 'Miscellaneous', 'Other']
+    });
+
+    const selectedCategory = ref('');
+    const availableSubcategories = ref([]);
+
+    // Category management
+    const showCategoryModal = ref(false);
+    const newCategoryName = ref('');
+    const newSubcategories = ref(['']);
+    const editingCategoryName = ref('');
+    const showCustomCategory = ref(false);
+    const customCategoryName = ref('');
+    const showCustomSubcategory = ref(false);
+    const customSubcategoryName = ref('');
 
     const photoUploaded = ref(false);
     const photoFileName = ref('');
@@ -77,6 +91,87 @@ export default {
     const bannerUploading = ref(false);
     const editPhotoUploading = ref(false);
     const editBannerUploading = ref(false);
+
+    // Handle category change
+    const handleCategoryChange = (category, isEdit = false) => {
+      if (category === 'CREATE_NEW') {
+        showCustomCategory.value = true;
+        return;
+      }
+      
+      if (isEdit) {
+        editForm.value.category = category;
+        editForm.value.subcategory = '';
+      } else {
+        newReward.value.category = category;
+        newReward.value.subcategory = '';
+        selectedCategory.value = category;
+        availableSubcategories.value = categories.value[category] || [];
+      }
+    };
+
+    // Handle subcategory change
+    const handleSubcategoryChange = (subcategory, isEdit = false) => {
+      if (subcategory === 'CREATE_NEW') {
+        showCustomSubcategory.value = true;
+        return;
+      }
+      
+      if (isEdit) {
+        editForm.value.subcategory = subcategory;
+      } else {
+        newReward.value.subcategory = subcategory;
+      }
+    };
+
+    // Add new category
+    const addNewCategory = () => {
+      if (!customCategoryName.value.trim()) {
+        toast.error('Please enter category name');
+        return;
+      }
+      
+      if (categories.value[customCategoryName.value]) {
+        toast.error('Category already exists');
+        return;
+      }
+      
+      categories.value[customCategoryName.value] = ['Other'];
+      newReward.value.category = customCategoryName.value;
+      selectedCategory.value = customCategoryName.value;
+      availableSubcategories.value = ['Other'];
+      
+      customCategoryName.value = '';
+      showCustomCategory.value = false;
+      toast.success('Category added successfully!');
+    };
+
+    // Add new subcategory
+    const addNewSubcategory = () => {
+      if (!customSubcategoryName.value.trim()) {
+        toast.error('Please enter subcategory name');
+        return;
+      }
+      
+      const currentCategory = selectedCategory.value || newReward.value.category;
+      if (!currentCategory) {
+        toast.error('Please select a category first');
+        return;
+      }
+      
+      if (categories.value[currentCategory].includes(customSubcategoryName.value)) {
+        toast.error('Subcategory already exists');
+        return;
+      }
+      
+      categories.value[currentCategory].push(customSubcategoryName.value);
+      availableSubcategories.value = categories.value[currentCategory];
+      newReward.value.subcategory = customSubcategoryName.value;
+      
+      customSubcategoryName.value = '';
+      showCustomSubcategory.value = false;
+      toast.success('Subcategory added successfully!');
+    };
 
     const handlePhotoUpload = (event) => {
       const file = event.target.files[0];
@@ -187,6 +282,7 @@ export default {
         title: '',
         description: '',
         category: '',
+        subcategory: '',
         photo: null,
         banner: null,
         karmaPointsRequired: 0,
@@ -194,6 +290,12 @@ export default {
         devoteeMessage: '',
         greetings: ''
       };
+      selectedCategory.value = '';
+      availableSubcategories.value = [];
+      showCustomCategory.value = false;
+      showCustomSubcategory.value = false;
+      customCategoryName.value = '';
+      customSubcategoryName.value = '';
       photoUploaded.value = false;
       photoFileName.value = '';
       bannerUploaded.value = false;
@@ -207,6 +309,7 @@ export default {
         title: '',
         description: '',
         category: '',
+        subcategory: '',
         photo: null,
         banner: null,
         karmaPointsRequired: 0,
@@ -221,7 +324,7 @@ export default {
     };
 
     const addReward = async () => {
-      if (!newReward.value.title || !newReward.value.description || !newReward.value.category) {
+      if (!newReward.value.title || !newReward.value.description || !newReward.value.category || !newReward.value.subcategory) {
         toast.error('Please fill in all required fields');
         return;
       }
@@ -299,6 +402,7 @@ export default {
           title: newReward.value.title,
           description: newReward.value.description,
           category: newReward.value.category,
+          subcategory: newReward.value.subcategory,
           karmaPointsRequired: newReward.value.karmaPointsRequired,
           numberOfDevotees: newReward.value.numberOfDevotees,
           devoteeMessage: newReward.value.devoteeMessage,
@@ -329,7 +433,7 @@ export default {
     };
 
     const updateReward = async () => {
-      if (!editForm.value.title || !editForm.value.description || !editForm.value.category) {
+      if (!editForm.value.title || !editForm.value.description || !editForm.value.category || !editForm.value.subcategory) {
         toast.error('Please fill in all required fields');
         return;
       }
@@ -407,6 +511,7 @@ export default {
           title: editForm.value.title,
           description: editForm.value.description,
           category: editForm.value.category,
+          subcategory: editForm.value.subcategory,
           karmaPointsRequired: editForm.value.karmaPointsRequired,
           numberOfDevotees: editForm.value.numberOfDevotees,
           devoteeMessage: editForm.value.devoteeMessage,
@@ -611,9 +716,16 @@ export default {
                           {/* Title and Category */}
                           <div class="flex-grow-1">
                             <h5 class="card-title fw-bold mb-1">{reward.title}</h5>
-                            <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 small">
-                              {reward.category}
-                            </span>
+                            <div class="d-flex flex-wrap gap-1">
+                              <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 small">
+                                {reward.category}
+                              </span>
+                              {reward.subcategory && (
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1 small">
+                                  {reward.subcategory}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         
@@ -702,13 +814,66 @@ export default {
                           <select 
                             class="form-select"
                             value={newReward.value.category}
-                            onChange={(e) => newReward.value.category = e.target.value}
+                            onChange={(e) => handleCategoryChange(e.target.value)}
                           >
                             <option value="">Select Category</option>
-                            {categories.map(cat => (
+                            {Object.keys(categories.value).map(cat => (
                               <option key={cat} value={cat}>{cat}</option>
                             ))}
+                            <option value="CREATE_NEW" class="text-primary fw-bold">+ Create New Category</option>
                           </select>
+                          
+                          {/* Custom Category Input */}
+                          {showCustomCategory.value && (
+                            <div class="mt-2 p-2 border rounded bg-light">
+                              <div class="d-flex gap-2">
+                                <input 
+                                  type="text" 
+                                  class="form-control form-control-sm" 
+                                  placeholder="Enter new category name"
+                                  value={customCategoryName.value}
+                                  onInput={(e) => customCategoryName.value = e.target.value}
+                                />
+                                <button class="btn btn-primary btn-sm" onClick={addNewCategory}>Add</button>
+                                <button class="btn btn-secondary btn-sm" onClick={() => showCustomCategory.value = false}>Cancel</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Subcategory *</label>
+                          <select 
+                            class="form-select"
+                            value={newReward.value.subcategory}
+                            onChange={(e) => handleSubcategoryChange(e.target.value)}
+                            disabled={!selectedCategory.value}
+                          >
+                            <option value="">Select Subcategory</option>
+                            {availableSubcategories.value.map(subcat => (
+                              <option key={subcat} value={subcat}>{subcat}</option>
+                            ))}
+                            {selectedCategory.value && (
+                              <option value="CREATE_NEW" class="text-primary fw-bold">+ Create New Subcategory</option>
+                            )}
+                          </select>
+                          
+                          {/* Custom Subcategory Input */}
+                          {showCustomSubcategory.value && (
+                            <div class="mt-2 p-2 border rounded bg-light">
+                              <div class="d-flex gap-2">
+                                <input 
+                                  type="text" 
+                                  class="form-control form-control-sm" 
+                                  placeholder="Enter new subcategory name"
+                                  value={customSubcategoryName.value}
+                                  onInput={(e) => customSubcategoryName.value = e.target.value}
+                                />
+                                <button class="btn btn-primary btn-sm" onClick={addNewSubcategory}>Add</button>
+                                <button class="btn btn-secondary btn-sm" onClick={() => showCustomSubcategory.value = false}>Cancel</button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         <div class="col-md-6">
@@ -813,7 +978,7 @@ export default {
                       <button 
                         class="btn btn-primary" 
                         onClick={addReward}
-                        disabled={!newReward.value.title || !newReward.value.description || !newReward.value.category || loading.value || photoUploading.value || bannerUploading.value}
+                        disabled={!newReward.value.title || !newReward.value.description || !newReward.value.category || !newReward.value.subcategory || loading.value || photoUploading.value || bannerUploading.value}
                       >
                         {loading.value ? (
                           <>
@@ -868,12 +1033,31 @@ export default {
                           <select 
                             class="form-select"
                             value={editForm.value.category}
-                            onChange={(e) => editForm.value.category = e.target.value}
+                            onChange={(e) => handleCategoryChange(e.target.value, true)}
                           >
                             <option value="">Select Category</option>
-                            {categories.map(cat => (
+                            {Object.keys(categories.value).map(cat => (
                               <option key={cat} value={cat}>{cat}</option>
                             ))}
+                            <option value="CREATE_NEW" class="text-primary fw-bold">+ Create New Category</option>
+                          </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                          <label class="form-label fw-semibold">Subcategory *</label>
+                          <select 
+                            class="form-select"
+                            value={editForm.value.subcategory}
+                            onChange={(e) => handleSubcategoryChange(e.target.value, true)}
+                            disabled={!editForm.value.category}
+                          >
+                            <option value="">Select Subcategory</option>
+                            {editForm.value.category && categories.value[editForm.value.category] && categories.value[editForm.value.category].map(subcat => (
+                              <option key={subcat} value={subcat}>{subcat}</option>
+                            ))}
+                            {editForm.value.category && (
+                              <option value="CREATE_NEW" class="text-primary fw-bold">+ Create New Subcategory</option>
+                            )}
                           </select>
                         </div>
                         
