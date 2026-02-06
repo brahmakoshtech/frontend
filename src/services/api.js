@@ -142,7 +142,8 @@ class ApiService {
       } else if (endpoint.includes('/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
-        endpoint.includes('/spiritual-stats')) {
+        endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards') ||
+        endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points')) {
         // USER ENDPOINTS - Use user token
         token = getTokenForRole('user');
         tokenSource = 'user (authenticated endpoint)';

@@ -1,13 +1,36 @@
 import { ref, onMounted } from 'vue';
 import { useAuth } from '../../store/auth.js';
+import { useRouter } from 'vue-router';
+import rewardRedemptionService from '../../services/rewardRedemptionService.js';
 
 export default {
   name: 'MobileUserProfile',
   setup() {
     const { user, fetchCurrentUser } = useAuth();
+    const router = useRouter();
     const loading = ref(false);
     const error = ref('');
     const activeTab = ref('profile');
+    const history = ref([]);
+    const historyLoading = ref(false);
+
+    const fetchHistory = async () => {
+      historyLoading.value = true;
+      try {
+        const response = await rewardRedemptionService.getHistory();
+        if (response.success) {
+          history.value = response.data;
+        }
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      } finally {
+        historyLoading.value = false;
+      }
+    };
+
+    const goToRewards = () => {
+      router.push('/mobile/user/rewards');
+    };
 
     onMounted(async () => {
       loading.value = true;
@@ -47,7 +70,7 @@ export default {
               class={`tab ${activeTab.value === 'wallet' ? 'active' : ''}`}
               onClick={() => activeTab.value = 'wallet'}
             >
-              Wallet
+              Karma Wallet
             </button>
           </div>
 
@@ -151,10 +174,35 @@ export default {
                   <div class="section">
                     <h3>Wallet Actions</h3>
                     <div class="wallet-actions">
-                      <button class="action-btn">View History</button>
-                      <button class="action-btn">Redeem Points</button>
+                      <button class="action-btn" onClick={fetchHistory}>View History</button>
+                      <button class="action-btn" onClick={goToRewards}>Redeem Points</button>
                     </div>
                   </div>
+
+                  {historyLoading.value && (
+                    <div class="section">
+                      <p style="text-align: center; color: #666;">Loading history...</p>
+                    </div>
+                  )}
+
+                  {!historyLoading.value && history.value.length > 0 && (
+                    <div class="section">
+                      <h3>Redemption History</h3>
+                      {history.value.map(item => (
+                        <div key={item._id} class="history-item">
+                          {item.rewardId?.image && (
+                            <img src={item.rewardId.image} alt={item.rewardId.title} class="history-image" />
+                          )}
+                          <div class="history-details">
+                            <h4>{item.rewardId?.title || 'Reward'}</h4>
+                            <p class="history-category">{item.rewardId?.category} • {item.rewardId?.subcategory}</p>
+                            <p class="history-points">-{item.karmaPointsSpent} points</p>
+                            <p class="history-date">{new Date(item.redeemedAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -317,6 +365,54 @@ export default {
             
             .action-btn:hover {
               background: #f8f9fa;
+            }
+            
+            .history-item {
+              display: flex;
+              gap: 1rem;
+              padding: 1rem 0;
+              border-bottom: 1px solid #f5f5f5;
+            }
+            
+            .history-item:last-child {
+              border-bottom: none;
+            }
+            
+            .history-image {
+              width: 60px;
+              height: 60px;
+              border-radius: 8px;
+              object-fit: cover;
+              flex-shrink: 0;
+            }
+            
+            .history-details {
+              flex: 1;
+            }
+            
+            .history-details h4 {
+              margin: 0 0 0.25rem 0;
+              font-size: 1rem;
+              color: #333;
+            }
+            
+            .history-category {
+              margin: 0 0 0.25rem 0;
+              font-size: 0.85rem;
+              color: #666;
+            }
+            
+            .history-points {
+              margin: 0 0 0.25rem 0;
+              font-size: 0.9rem;
+              color: #e74c3c;
+              font-weight: 600;
+            }
+            
+            .history-date {
+              margin: 0;
+              font-size: 0.8rem;
+              color: #999;
             }
             
             /* Mobile Responsive Styles */

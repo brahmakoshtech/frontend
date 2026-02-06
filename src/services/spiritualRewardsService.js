@@ -20,6 +20,24 @@ const spiritualRewardsService = {
     }
   },
 
+  // Get single reward by ID
+  getRewardById: async (rewardId) => {
+    try {
+      const response = await api.get(`/spiritual-rewards/${rewardId}`);
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message
+      };
+    } catch (error) {
+      console.error('Get reward error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch reward'
+      };
+    }
+  },
+
   // Create new reward
   createReward: async (rewardData) => {
     try {
