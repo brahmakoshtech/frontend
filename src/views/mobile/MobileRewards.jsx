@@ -13,6 +13,9 @@ export default {
     const selectedCategory = ref('All');
     const userKarmaPoints = ref(0);
     const redeeming = ref(false);
+    const redeemedRewards = ref(new Set());
+    const showSuccessModal = ref(false);
+    const successData = ref(null);
 
     const categories = ['All', 'Seva', 'Yatra', 'Dan', 'Puja', 'Article', 'Other'];
 
@@ -24,6 +27,19 @@ export default {
         console.error('Failed to fetch karma points:', error);
       }
     };
+
+    const fetchRedeemedRewards = async () => {
+      try {
+        const response = await rewardRedemptionService.getHistory();
+        if (response.success) {
+          redeemedRewards.value = new Set(response.data.map(item => item.rewardId?._id));
+        }
+      } catch (error) {
+        console.error('Failed to fetch redeemed rewards:', error);
+      }
+    };
+
+    const isRedeemed = (rewardId) => redeemedRewards.value.has(rewardId);
 
     const filteredRewards = computed(() => {
       if (selectedCategory.value === 'All') {
@@ -49,8 +65,13 @@ export default {
     };
 
     const handleRedeem = async (reward) => {
+      if (isRedeemed(reward._id)) {
+        toast.info('🎁 You have already redeemed this reward!');
+        return;
+      }
+
       if (userKarmaPoints.value < reward.karmaPointsRequired) {
-        toast.warning('Not enough karma points!');
+        toast.warning('⚠️ Not enough karma points!');
         return;
       }
       
@@ -61,8 +82,17 @@ export default {
         const response = await rewardRedemptionService.redeemReward(reward._id);
         
         if (response.success) {
-          toast.success(response.data.reward.greetings || 'Reward redeemed successfully!');
+          redeemedRewards.value.add(reward._id);
           userKarmaPoints.value = response.data.remainingKarmaPoints;
+          
+          successData.value = {
+            title: reward.title,
+            greetings: response.data.reward.greetings,
+            pointsSpent: reward.karmaPointsRequired,
+            remainingPoints: response.data.remainingKarmaPoints,
+            image: reward.banner || reward.image
+          };
+          showSuccessModal.value = true;
         } else {
           toast.error(response.message);
         }
@@ -73,9 +103,15 @@ export default {
       }
     };
 
+    const closeSuccessModal = () => {
+      showSuccessModal.value = false;
+      successData.value = null;
+    };
+
     onMounted(() => {
       fetchRewards();
       fetchKarmaPoints();
+      fetchRedeemedRewards();
     });
 
     return () => (
@@ -189,7 +225,7 @@ export default {
                       {/* Redeem Button */}
                       <button
                         onClick={() => handleRedeem(reward)}
-                        disabled={userKarmaPoints.value < reward.karmaPointsRequired}
+                        disabled={isRedeemed(reward._id) || userKarmaPoints.value < reward.karmaPointsRequired}
                         class="btn w-100"
                         style={{
                           padding: '10px',
@@ -197,16 +233,24 @@ export default {
                           fontWeight: '600',
                           borderRadius: '10px',
                           border: 'none',
-                          background: userKarmaPoints.value >= reward.karmaPointsRequired
+                          background: isRedeemed(reward._id)
+                            ? 'linear-gradient(135deg, #27ae60 0%, #229954 100%)'
+                            : userKarmaPoints.value >= reward.karmaPointsRequired
                             ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                             : '#e9ecef',
-                          color: userKarmaPoints.value >= reward.karmaPointsRequired ? 'white' : '#6c757d',
-                          cursor: userKarmaPoints.value >= reward.karmaPointsRequired ? 'pointer' : 'not-allowed',
-                          boxShadow: userKarmaPoints.value >= reward.karmaPointsRequired ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
+                          color: isRedeemed(reward._id) || userKarmaPoints.value >= reward.karmaPointsRequired ? 'white' : '#6c757d',
+                          cursor: isRedeemed(reward._id) || userKarmaPoints.value < reward.karmaPointsRequired ? 'not-allowed' : 'pointer',
+                          boxShadow: isRedeemed(reward._id)
+                            ? '0 4px 12px rgba(39, 174, 96, 0.3)'
+                            : userKarmaPoints.value >= reward.karmaPointsRequired
+                            ? '0 4px 12px rgba(102, 126, 234, 0.3)'
+                            : 'none',
                           transition: 'all 0.2s'
                         }}
                       >
-                        {userKarmaPoints.value >= reward.karmaPointsRequired
+                        {isRedeemed(reward._id)
+                          ? '✅ Already Redeemed'
+                          : userKarmaPoints.value >= reward.karmaPointsRequired
                           ? '🎁 Redeem Now'
                           : '🔒 Locked'}
                       </button>
@@ -217,6 +261,115 @@ export default {
             </div>
           )}
         </div>
+
+        {/* Success Modal */}
+        {showSuccessModal.value && successData.value && (
+          <div 
+            class="modal-overlay"
+            onClick={closeSuccessModal}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '20px'
+            }}
+          >
+            <div 
+              class="modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: '16px',
+                maxWidth: '360px',
+                width: '100%',
+                padding: '24px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+              }}
+            >
+              {/* Success Icon */}
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#2c3e50'
+                }}>Reward Redeemed!</h3>
+              </div>
+
+              {/* Content */}
+              <div style={{
+                background: '#f8f9fa',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <h4 style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#2c3e50',
+                  marginBottom: '8px',
+                  margin: 0
+                }}>
+                  {successData.value.title}
+                </h4>
+                <p style={{
+                  fontSize: '13px',
+                  color: '#666',
+                  lineHeight: '1.5',
+                  margin: '8px 0 0 0'
+                }}>
+                  {successData.value.greetings}
+                </p>
+              </div>
+
+              {/* Points Info */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '12px 0',
+                borderTop: '1px solid #e9ecef',
+                borderBottom: '1px solid #e9ecef',
+                marginBottom: '16px'
+              }}>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>Spent</div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#e74c3c' }}>-{successData.value.pointsSpent}</div>
+                </div>
+                <div style={{ width: '1px', background: '#e9ecef' }}></div>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>Balance</div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#27ae60' }}>{successData.value.remainingPoints}</div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={closeSuccessModal}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

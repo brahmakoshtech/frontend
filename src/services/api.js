@@ -678,8 +678,8 @@ class ApiService {
     });
   }
 
-  async getAdminUsers() {
-    return this.request('/admin/users');
+  async getAdminUsers(queryString = '') {
+    return this.request(`/admin/users${queryString}`);
   }
 
   async getAdminDashboard() {
@@ -687,8 +687,8 @@ class ApiService {
   }
 
   // Client endpoints
-  async getClientUsers() {
-    return this.request('/client/users');
+  async getClientUsers(queryString = '') {
+    return this.request(`/client/users${queryString}`);
   }
 
   async createClientUser(email, password, profile) {
@@ -714,6 +714,14 @@ class ApiService {
   // Credits: add credits to a user (client/admin)
   async addUserCredits(userId, amount, description = null) {
     return this.request(`/client/users/${userId}/credits`, {
+      method: 'POST',
+      body: { amount, description },
+    });
+  }
+
+  // Karma Points: add karma points to a user (client/admin)
+  async addUserKarmaPoints(userId, amount, description = null) {
+    return this.request(`/client/users/${userId}/karma-points`, {
       method: 'POST',
       body: { amount, description },
     });
@@ -1010,6 +1018,7 @@ const api = {
   updateClientUser: apiService.updateClientUser.bind(apiService),
   deleteClientUser: apiService.deleteClientUser.bind(apiService),
   addUserCredits: apiService.addUserCredits.bind(apiService),
+  addUserKarmaPoints: apiService.addUserKarmaPoints.bind(apiService),
   submitConversationFeedback: apiService.submitConversationFeedback.bind(apiService),
   getClientDashboard: apiService.getClientDashboard.bind(apiService),
   getUserProfile: apiService.getUserProfile.bind(apiService),

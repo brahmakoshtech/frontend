@@ -365,6 +365,11 @@ const routes = [
         path: 'credits',
         name: 'AdminCredits',
         component: () => import('../views/admin/Credits.jsx')
+      },
+      {
+        path: 'karma-points',
+        name: 'AdminKarmaPoints',
+        component: () => import('../views/admin/KarmaPoints.jsx')
       }
     ]
   },
@@ -405,6 +410,11 @@ const routes = [
         path: 'spiritual-rewards',
         name: 'SpiritualRewards',
         component: () => import('../views/client/SpiritualRewards.jsx')
+      },
+      {
+        path: 'karma-points',
+        name: 'ClientKarmaPoints',
+        component: () => import('../views/client/KarmaPoints.jsx')
       },
       {
         path: 'users',
