@@ -2,6 +2,7 @@ import { ref, onMounted } from 'vue';
 import { useAuth } from '../../store/auth.js';
 import { useRouter } from 'vue-router';
 import rewardRedemptionService from '../../services/rewardRedemptionService.js';
+import api from '../../services/api.js';
 
 export default {
   name: 'MobileUserProfile',
@@ -13,6 +14,8 @@ export default {
     const activeTab = ref('profile');
     const history = ref([]);
     const historyLoading = ref(false);
+    const bonusHistory = ref([]);
+    const bonusHistoryLoading = ref(false);
 
     const fetchHistory = async () => {
       historyLoading.value = true;
@@ -25,6 +28,24 @@ export default {
         console.error('Failed to load history:', e);
       } finally {
         historyLoading.value = false;
+      }
+    };
+
+    const fetchBonusHistory = async () => {
+      if (!user.value?._id) return;
+      bonusHistoryLoading.value = true;
+      try {
+        const response = await api.getUserKarmaPointsHistory(user.value._id);
+        // response.data already has transactions directly (not response.data.data)
+        if (response.success || response.data?.transactions) {
+          const transactions = response.data?.transactions || response.transactions || [];
+          bonusHistory.value = [...transactions];
+          console.log('[Bonus History] Loaded:', bonusHistory.value.length, 'transactions');
+        }
+      } catch (e) {
+        console.error('[Bonus History] Error:', e);
+      } finally {
+        bonusHistoryLoading.value = false;
       }
     };
 
@@ -168,20 +189,55 @@ export default {
                     <div class="karma">
                       <span class="points">{user.value.karmaPoints || 0}</span>
                       <p class="karma-label">Total Points</p>
+                      {user.value.bonusKarmaPoints > 0 && (
+                        <p class="bonus-label">Includes {user.value.bonusKarmaPoints} bonus points</p>
+                      )}
                     </div>
                   </div>
                   
                   <div class="section">
                     <h3>Wallet Actions</h3>
                     <div class="wallet-actions">
-                      <button class="action-btn" onClick={fetchHistory}>View History</button>
+                      <button class="action-btn" onClick={fetchHistory}>View Redemptions</button>
+                      <button class="action-btn" onClick={fetchBonusHistory}>View Bonus History</button>
                       <button class="action-btn" onClick={goToRewards}>Redeem Points</button>
                     </div>
                   </div>
 
+                  {bonusHistoryLoading.value && (
+                    <div class="section">
+                      <p style="text-align: center; color: #666;">Loading bonus history...</p>
+                    </div>
+                  )}
+
+                  {!bonusHistoryLoading.value && bonusHistory.value && bonusHistory.value.length > 0 && (
+                    <div class="section">
+                      <h3>Bonus Points History ({bonusHistory.value.length})</h3>
+                      {bonusHistory.value.map(item => (
+                        <div key={item._id} class="bonus-item">
+                          <div class="bonus-details">
+                            <div class="bonus-header">
+                              <span class="bonus-amount">+{item.amount} points</span>
+                              <span class="bonus-date">{new Date(item.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p class="bonus-desc">{item.description || 'Bonus points added'}</p>
+                            <p class="bonus-by">Added by: {item.addedBy?.businessName || item.addedBy?.email || item.addedByRole}</p>
+                            <p class="bonus-balance">Balance: {item.previousBalance} → {item.newBalance}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!bonusHistoryLoading.value && (!bonusHistory.value || bonusHistory.value.length === 0) && (
+                    <div class="section">
+                      <p style="text-align: center; color: #999; padding: 2rem;">No bonus points history yet. Admin/Client will add bonus points to your account.</p>
+                    </div>
+                  )}
+
                   {historyLoading.value && (
                     <div class="section">
-                      <p style="text-align: center; color: #666;">Loading history...</p>
+                      <p style="text-align: center; color: #666;">Loading redemptions...</p>
                     </div>
                   )}
 
@@ -345,6 +401,13 @@ export default {
               font-size: 0.9rem;
             }
             
+            .bonus-label {
+              margin: 0.25rem 0 0 0;
+              color: #27ae60;
+              font-size: 0.85rem;
+              font-weight: 500;
+            }
+            
             .wallet-actions {
               display: flex;
               gap: 1rem;
@@ -410,6 +473,51 @@ export default {
             }
             
             .history-date {
+              margin: 0;
+              font-size: 0.8rem;
+              color: #999;
+            }
+            
+            .bonus-item {
+              padding: 1rem 0;
+              border-bottom: 1px solid #f5f5f5;
+            }
+            
+            .bonus-item:last-child {
+              border-bottom: none;
+            }
+            
+            .bonus-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 0.5rem;
+            }
+            
+            .bonus-amount {
+              font-size: 1.1rem;
+              font-weight: 600;
+              color: #27ae60;
+            }
+            
+            .bonus-date {
+              font-size: 0.8rem;
+              color: #999;
+            }
+            
+            .bonus-desc {
+              margin: 0 0 0.25rem 0;
+              font-size: 0.9rem;
+              color: #333;
+            }
+            
+            .bonus-by {
+              margin: 0 0 0.25rem 0;
+              font-size: 0.85rem;
+              color: #666;
+            }
+            
+            .bonus-balance {
               margin: 0;
               font-size: 0.8rem;
               color: #999;

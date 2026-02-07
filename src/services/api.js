@@ -727,6 +727,11 @@ class ApiService {
     });
   }
 
+  // Get karma points transaction history for a user
+  async getUserKarmaPointsHistory(userId) {
+    return this.request(`/client/users/${userId}/karma-points/history`);
+  }
+
   async getUserOwnCompleteDetails() {
     return this.request('/users/me/complete-details');
   }
@@ -1019,6 +1024,7 @@ const api = {
   deleteClientUser: apiService.deleteClientUser.bind(apiService),
   addUserCredits: apiService.addUserCredits.bind(apiService),
   addUserKarmaPoints: apiService.addUserKarmaPoints.bind(apiService),
+  getUserKarmaPointsHistory: apiService.getUserKarmaPointsHistory.bind(apiService),
   submitConversationFeedback: apiService.submitConversationFeedback.bind(apiService),
   getClientDashboard: apiService.getClientDashboard.bind(apiService),
   getUserProfile: apiService.getUserProfile.bind(apiService),
