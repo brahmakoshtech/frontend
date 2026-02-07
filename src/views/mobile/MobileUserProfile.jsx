@@ -36,11 +36,9 @@ export default {
       bonusHistoryLoading.value = true;
       try {
         const response = await api.getUserKarmaPointsHistory(user.value._id);
-        // response.data already has transactions directly (not response.data.data)
         if (response.success || response.data?.transactions) {
           const transactions = response.data?.transactions || response.transactions || [];
           bonusHistory.value = [...transactions];
-          console.log('[Bonus History] Loaded:', bonusHistory.value.length, 'transactions');
         }
       } catch (e) {
         console.error('[Bonus History] Error:', e);
@@ -56,10 +54,6 @@ export default {
     const refreshUserData = async () => {
       try {
         await fetchCurrentUser('user');
-        console.log('=== USER DATA REFRESHED ===');
-        console.log('karmaPoints:', user.value?.karmaPoints);
-        console.log('totalKarmaPoints:', user.value?.totalKarmaPoints);
-        console.log('========================');
       } catch (e) {
         console.error('[MobileUserProfile] Failed to refresh user data:', e);
       }
@@ -101,10 +95,7 @@ export default {
             </button>
             <button 
               class={`tab ${activeTab.value === 'wallet' ? 'active' : ''}`}
-              onClick={async () => {
-                activeTab.value = 'wallet';
-                await refreshUserData();
-              }}
+              onClick={() => activeTab.value = 'wallet'}
             >
               Karma Wallet
             </button>
@@ -202,11 +193,8 @@ export default {
                   <div class="section">
                     <h3>Karma Points</h3>
                     <div class="karma">
-                      <span class="points">{user.value.totalKarmaPoints || user.value.karmaPoints || 0}</span>
+                      <span class="points">{user.value.karmaPoints || 0}</span>
                       <p class="karma-label">Total Points</p>
-                      {user.value.bonusKarmaPoints > 0 && (
-                        <p class="bonus-label">Includes {user.value.bonusKarmaPoints} bonus points</p>
-                      )}
                     </div>
                   </div>
                   

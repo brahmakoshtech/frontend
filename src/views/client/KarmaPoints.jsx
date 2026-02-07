@@ -37,12 +37,24 @@ export default {
       }
     };
 
-    const handleAddKarmaPoints = (user) => {
-      selectedUser.value = user;
-      karmaForm.value = {
-        amount: '',
-        description: ''
-      };
+    const handleAddKarmaPoints = async (user) => {
+      try {
+        const response = await api.getClientUsers(`?search=${user.email}`);
+        const data = response.data || {};
+        const users = data.users || data.data?.users || [];
+        const freshUser = users.find(u => u._id === user._id) || user;
+        selectedUser.value = freshUser;
+        karmaForm.value = {
+          amount: '',
+          description: ''
+        };
+      } catch (e) {
+        selectedUser.value = user;
+        karmaForm.value = {
+          amount: '',
+          description: ''
+        };
+      }
     };
 
     const submitKarmaPoints = async () => {
@@ -58,14 +70,11 @@ export default {
           amount,
           karmaForm.value.description || undefined
         );
-        const newBalance =
-          res?.data?.newBalance ??
-          res?.data?.user?.karmaPoints ??
-          (selectedUser.value.karmaPoints || 0) + amount;
-        selectedUser.value.karmaPoints = newBalance;
+        const newBalance = res?.data?.newBalance ?? (selectedUser.value.karmaPoints || 0) + amount;
         alert(`Karma points added successfully. New balance: ${newBalance}`);
         selectedUser.value = null;
         karmaForm.value = { amount: '', description: '' };
+        await fetchUsers();
       } catch (e) {
         console.error('[ClientKarmaPoints] Failed to add karma points', e);
         alert(e?.message || 'Failed to add karma points');

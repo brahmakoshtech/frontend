@@ -27,10 +27,6 @@ export default {
         const response = await api.get('/karma-points');
         userKarmaPoints.value = response.data.karmaPoints || 0;
         karmaBreakdown.value = response.data.breakdown || null;
-        console.log('[MobileRewards] Karma Points:', {
-          available: userKarmaPoints.value,
-          breakdown: karmaBreakdown.value
-        });
       } catch (error) {
         console.error('Failed to fetch karma points:', error);
       }
@@ -40,11 +36,6 @@ export default {
       try {
         const response = await api.getCurrentUser();
         currentUser.value = response.data.user;
-        console.log('[MobileRewards] Current User:', {
-          email: currentUser.value?.email,
-          mobile: currentUser.value?.mobile,
-          id: currentUser.value?._id
-        });
       } catch (error) {
         console.error('Failed to fetch current user:', error);
       }
