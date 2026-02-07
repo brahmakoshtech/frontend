@@ -143,7 +143,8 @@ class ApiService {
       } else if (endpoint.includes('/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
-        endpoint.includes('/spiritual-stats')) {
+        endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards') ||
+        endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points')) {
         // USER ENDPOINTS - Use user token
         token = getTokenForRole('user');
         tokenSource = 'user (authenticated endpoint)';
@@ -709,8 +710,8 @@ class ApiService {
     });
   }
 
-  async getAdminUsers() {
-    return this.request('/admin/users');
+  async getAdminUsers(queryString = '') {
+    return this.request(`/admin/users${queryString}`);
   }
 
   async getAdminDashboard() {
@@ -718,8 +719,8 @@ class ApiService {
   }
 
   // Client endpoints
-  async getClientUsers() {
-    return this.request('/client/users');
+  async getClientUsers(queryString = '') {
+    return this.request(`/client/users${queryString}`);
   }
 
   async createClientUser(email, password, profile) {
@@ -748,6 +749,19 @@ class ApiService {
       method: 'POST',
       body: { amount, description },
     });
+  }
+
+  // Karma Points: add karma points to a user (client/admin)
+  async addUserKarmaPoints(userId, amount, description = null) {
+    return this.request(`/client/users/${userId}/karma-points`, {
+      method: 'POST',
+      body: { amount, description },
+    });
+  }
+
+  // Get karma points transaction history for a user
+  async getUserKarmaPointsHistory(userId) {
+    return this.request(`/client/users/${userId}/karma-points/history`);
   }
 
   async getUserOwnCompleteDetails() {
@@ -1045,6 +1059,8 @@ const api = {
   updateClientUser: apiService.updateClientUser.bind(apiService),
   deleteClientUser: apiService.deleteClientUser.bind(apiService),
   addUserCredits: apiService.addUserCredits.bind(apiService),
+  addUserKarmaPoints: apiService.addUserKarmaPoints.bind(apiService),
+  getUserKarmaPointsHistory: apiService.getUserKarmaPointsHistory.bind(apiService),
   submitConversationFeedback: apiService.submitConversationFeedback.bind(apiService),
   getClientDashboard: apiService.getClientDashboard.bind(apiService),
   getUserProfile: apiService.getUserProfile.bind(apiService),

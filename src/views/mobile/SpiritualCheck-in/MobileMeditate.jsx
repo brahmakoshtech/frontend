@@ -617,7 +617,7 @@ export default {
                 { emotion: 'sad', emoji: '😢' },
                 { emotion: 'peaceful', emoji: '🕊️' },
                 { emotion: 'neutral', emoji: '😐' },
-                { emotion: 'stress', emoji: '😰' }
+                
               ].map(item => (
                 <label key={item.emotion} style={{ 
                   display: 'flex', 
