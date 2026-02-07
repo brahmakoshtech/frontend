@@ -53,6 +53,18 @@ export default {
       router.push('/mobile/user/rewards');
     };
 
+    const refreshUserData = async () => {
+      try {
+        await fetchCurrentUser('user');
+        console.log('=== USER DATA REFRESHED ===');
+        console.log('karmaPoints:', user.value?.karmaPoints);
+        console.log('totalKarmaPoints:', user.value?.totalKarmaPoints);
+        console.log('========================');
+      } catch (e) {
+        console.error('[MobileUserProfile] Failed to refresh user data:', e);
+      }
+    };
+
     onMounted(async () => {
       loading.value = true;
       error.value = '';
@@ -89,7 +101,10 @@ export default {
             </button>
             <button 
               class={`tab ${activeTab.value === 'wallet' ? 'active' : ''}`}
-              onClick={() => activeTab.value = 'wallet'}
+              onClick={async () => {
+                activeTab.value = 'wallet';
+                await refreshUserData();
+              }}
             >
               Karma Wallet
             </button>
@@ -187,7 +202,7 @@ export default {
                   <div class="section">
                     <h3>Karma Points</h3>
                     <div class="karma">
-                      <span class="points">{user.value.karmaPoints || 0}</span>
+                      <span class="points">{user.value.totalKarmaPoints || user.value.karmaPoints || 0}</span>
                       <p class="karma-label">Total Points</p>
                       {user.value.bonusKarmaPoints > 0 && (
                         <p class="bonus-label">Includes {user.value.bonusKarmaPoints} bonus points</p>

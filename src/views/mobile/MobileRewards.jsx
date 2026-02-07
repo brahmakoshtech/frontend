@@ -19,12 +19,34 @@ export default {
 
     const categories = ['All', 'Seva', 'Yatra', 'Dan', 'Puja', 'Article', 'Other'];
 
+    const karmaBreakdown = ref(null);
+    const currentUser = ref(null);
+
     const fetchKarmaPoints = async () => {
       try {
         const response = await api.get('/karma-points');
         userKarmaPoints.value = response.data.karmaPoints || 0;
+        karmaBreakdown.value = response.data.breakdown || null;
+        console.log('[MobileRewards] Karma Points:', {
+          available: userKarmaPoints.value,
+          breakdown: karmaBreakdown.value
+        });
       } catch (error) {
         console.error('Failed to fetch karma points:', error);
+      }
+    };
+
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await api.getCurrentUser();
+        currentUser.value = response.data.user;
+        console.log('[MobileRewards] Current User:', {
+          email: currentUser.value?.email,
+          mobile: currentUser.value?.mobile,
+          id: currentUser.value?._id
+        });
+      } catch (error) {
+        console.error('Failed to fetch current user:', error);
       }
     };
 
@@ -112,6 +134,7 @@ export default {
       fetchRewards();
       fetchKarmaPoints();
       fetchRedeemedRewards();
+      fetchCurrentUser();
     });
 
     return () => (
@@ -128,6 +151,11 @@ export default {
                 <div class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 14px; font-size: 14px; font-weight: 600; border-radius: 20px;">
                   ✨ {userKarmaPoints.value}
                 </div>
+                {karmaBreakdown.value && (
+                  <div class="text-muted" style="font-size: 10px; margin-top: 4px;">
+                    Sessions: {karmaBreakdown.value.checkIn} | Bonus: {karmaBreakdown.value.bonus}
+                  </div>
+                )}
               </div>
             </div>
           </div>
