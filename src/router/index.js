@@ -38,6 +38,12 @@ const routes = [
     name: 'PartnerChat',
     component: () => import('../views/partner/PartnerChat.jsx')
   },
+  {
+    path: '/partner/earnings',
+    name: 'PartnerEarningsHistory',
+    component: () => import('../views/partner/PartnerEarningsHistory.jsx'),
+    meta: { requiresAuth: true, requiresRole: 'partner' }
+  },
   
   // Auth routes - Super Admin
   {
@@ -260,6 +266,11 @@ const routes = [
         path: 'remedies',
         name: 'MobileRemedies',
         component: () => import('../views/mobile/Navigation/Remedies.jsx')
+      },
+      {
+        path: 'credits-history',
+        name: 'MobileCreditsHistory',
+        component: () => import('../views/mobile/MobileCreditsHistory.jsx')
       },
       {
         path: 'user-chat',

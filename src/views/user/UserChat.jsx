@@ -160,7 +160,13 @@ export default {
       try {
         const response = await api.getConversations();
         if (response.data.success) {
-          conversations.value = response.data.data;
+          const list = response.data.data || [];
+          // Sort so the latest activity appears first
+          conversations.value = list.sort((a, b) => {
+            const getTime = (c) =>
+              new Date(c.lastMessageAt || c.updatedAt || c.createdAt || 0).getTime();
+            return getTime(b) - getTime(a);
+          });
         }
       } catch (error) {
         console.error('Error loading conversations:', error);
@@ -283,10 +289,27 @@ export default {
         content: newMessage.value.trim(),
         messageType: 'text'
       };
+
+      const updateConversationPreview = () => {
+        const now = new Date().toISOString();
+        const conv = conversations.value.find(
+          c => c.conversationId === selectedConversation.value.conversationId
+        );
+        if (conv) {
+          conv.lastMessage = {
+            ...(conv.lastMessage || {}),
+            content: messageData.content,
+            createdAt: now,
+            senderModel: 'User'
+          };
+          conv.lastMessageAt = now;
+        }
+      };
       
       socket.value.emit('message:send', messageData, (response) => {
         if (response.success) {
           console.log('✅ Message sent');
+          updateConversationPreview();
           newMessage.value = '';
           stopTyping();
         } else {
@@ -719,26 +742,34 @@ export default {
             <div style="flex: 1; display: flex; flex-direction: column;">
               {selectedConversation.value ? (
                 <>
-                  {/* Chat Header */}
-                  <div style="padding: 16px 24px; background-color: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                      <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
-                        {selectedConversation.value.partnerId?.name?.charAt(0) || 'P'}
+                  {/* Chat Header - Full partner details */}
+                  <div style={{ padding: '16px 24px', background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 18 }}>
+                          {selectedConversation.value.partnerId?.name?.charAt(0) || 'P'}
+                        </div>
+                        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: '50%', border: '2px solid white', backgroundColor: getStatusColor(selectedConversation.value.partnerId?.onlineStatus) }} />
                       </div>
                       <div>
-                        <p style="font-weight: 600; color: #111827; margin: 0;">
+                        <p style={{ fontWeight: 700, color: '#111827', margin: 0, fontSize: 16 }}>
                           {selectedConversation.value.partnerId?.name}
                         </p>
                         {selectedConversation.value.status === 'pending' ? (
-                          <p style="font-size: 12px; color: #f59e0b; margin: 0;">
-                            Waiting for acceptance...
-                          </p>
+                          <p style={{ fontSize: 12, color: '#f59e0b', margin: 0 }}>Waiting for acceptance...</p>
                         ) : isTyping.value ? (
-                          <p style="font-size: 12px; color: #10b981; margin: 0;">typing...</p>
+                          <p style={{ fontSize: 12, color: '#10b981', margin: 0 }}>typing...</p>
                         ) : (
-                          <p style="font-size: 12px; color: #6b7280; margin: 0;">
-                            {selectedConversation.value.partnerId?.specialization || 'Astrologer'}
-                          </p>
+                          <>
+                            <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+                              {Array.isArray(selectedConversation.value.partnerId?.specialization) ? selectedConversation.value.partnerId.specialization.join(', ') : (selectedConversation.value.partnerId?.specialization || 'Astrologer')}
+                            </p>
+                            <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12, color: '#9ca3af' }}>
+                              <span>⭐ {selectedConversation.value.partnerId?.rating?.toFixed?.(1) || '0.0'}</span>
+                              <span>📊 {selectedConversation.value.partnerId?.totalSessions || selectedConversation.value.partnerId?.completedSessions || 0} sessions</span>
+                              <span>📅 {selectedConversation.value.partnerId?.experience || 0}y exp</span>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -799,8 +830,11 @@ export default {
                                 }`}>
                                   <span>{formatTime(message.createdAt)}</span>
                                   {isUserMessage && (
-                                    <span>
-                                      {message.isRead ? '✓✓' : message.isDelivered ? '✓✓' : '✓'}
+                                    <span
+                                      style={message.isRead ? 'color:#22c55e;' : 'color:#e5e7eb;'}
+                                      title={message.isRead ? 'Read' : 'Sent'}
+                                    >
+                                      {message.isRead ? '✔✔' : '✔'}
                                     </span>
                                   )}
                                 </div>

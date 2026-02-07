@@ -20,6 +20,7 @@ export default {
     const newMessage = ref('');
     const typingUsers = ref(new Set());
     const showAstrologyForm = ref(false);
+    const showPartnerDetails = ref(false);
     const showEndModal = ref(false);
     const showFeedbackModal = ref(false); // For adding feedback when viewing ended conv
     const endFeedbackStars = ref(0);
@@ -27,6 +28,7 @@ export default {
     const endFeedbackSatisfaction = ref('');
     const endModalSubmitting = ref(false);
     const conversationDetails = ref({ sessionDetails: null, rating: null }); // From messages API when ended
+    const fullPartnerDetails = ref(null); // Fetched from API for complete DB fields
     
     // Astrology form data
     const astrologyData = ref({
@@ -284,7 +286,13 @@ export default {
         console.log('📦 Conversations response:', response);
         
         if (response && response.success) {
-          conversations.value = response.data || [];
+          const list = response.data || [];
+          // Sort so the latest activity appears first
+          conversations.value = list.sort((a, b) => {
+            const getTime = (c) =>
+              new Date(c.lastMessageAt || c.updatedAt || c.createdAt || 0).getTime();
+            return getTime(b) - getTime(a);
+          });
           console.log('✅ Loaded conversations:', conversations.value.length);
         }
       } catch (error) {
@@ -295,33 +303,53 @@ export default {
       }
     };
     
-    // Select partner to start conversation
-    const selectPartner = async (partner) => {
+    // Open partner details first (then allow request)
+    const openPartnerDetails = async (partner) => {
       console.log('👤 Selected partner:', partner);
       selectedPartner.value = partner;
-      
+      showPartnersList.value = true;
+      showPartnerDetails.value = true;
+      fullPartnerDetails.value = null;
+      try {
+        const res = await api.getPartnerById(partner._id);
+        if (res?.data) fullPartnerDetails.value = res.data;
+      } catch (e) {
+        fullPartnerDetails.value = partner;
+      }
+    };
+
+    // Start consultation flow after viewing partner details
+    const startConsultationForSelectedPartner = async () => {
+      if (!selectedPartner.value) return;
+      const partner = selectedPartner.value;
+
       const existingConv = conversations.value.find(
         c => c.otherUser?._id === partner._id
       );
       
-      // If only existing conversation is ended, allow starting a new one
+      // If active conversation exists, just open it
       if (existingConv && existingConv.status !== 'ended') {
-        console.log('ℹ️ Conversation already exists');
-        selectConversation(existingConv);
+        console.log('ℹ️ Conversation already exists, opening it');
+        showPartnerDetails.value = false;
         showPartnersList.value = false;
+        await selectConversation(existingConv);
+        return;
+      }
+
+      // No conversation or previous one ended → start new consultation
+      if (existingConv?.status === 'ended') {
+        console.log('ℹ️ Previous consultation ended - starting new one');
+      }
+
+      showPartnerDetails.value = false;
+      showPartnersList.value = false;
+
+      const hasCompleteDetails = fillAstrologyFromProfile();
+      if (hasCompleteDetails) {
+        console.log('✅ Birth details from profile - creating conversation directly');
+        await createConversationRequest();
       } else {
-        // No conversation or previous one ended → start new consultation
-        if (existingConv?.status === 'ended') {
-          console.log('ℹ️ Previous consultation ended - starting new one');
-        }
-        showPartnersList.value = false;
-        const hasCompleteDetails = fillAstrologyFromProfile();
-        if (hasCompleteDetails) {
-          console.log('✅ Birth details from profile - creating conversation directly');
-          await createConversationRequest();
-        } else {
-          showAstrologyForm.value = true;
-        }
+        showAstrologyForm.value = true;
       }
     };
     
@@ -403,6 +431,7 @@ export default {
       selectedConversation.value = conversation;
       messages.value = [];
       showPartnersList.value = false;
+      fullPartnerDetails.value = null;
       
       // Join conversation via WebSocket if connected
       if (socket.value && isConnected.value) {
@@ -475,10 +504,27 @@ export default {
         messageType: 'text'
       };
       
+      const updateConversationPreview = () => {
+        const now = new Date().toISOString();
+        const conv = conversations.value.find(
+          c => c.conversationId === selectedConversation.value.conversationId
+        );
+        if (conv) {
+          conv.lastMessage = {
+            ...(conv.lastMessage || {}),
+            content: messageData.content,
+            createdAt: now,
+            senderModel: 'User'
+          };
+          conv.lastMessageAt = now;
+        }
+      };
+
       if (socket.value && isConnected.value) {
         socket.value.emit('message:send', messageData, (response) => {
           if (response && response.success) {
             console.log('✅ Message sent');
+            updateConversationPreview();
             newMessage.value = '';
             stopTyping();
           } else {
@@ -491,6 +537,7 @@ export default {
         api.sendMessage(selectedConversation.value.conversationId, messageData)
           .then(() => {
             console.log('✅ Message sent via REST');
+            updateConversationPreview();
             newMessage.value = '';
             loadMessages(selectedConversation.value.conversationId);
           })
@@ -552,19 +599,16 @@ export default {
 
     // End conversation with feedback
     const endConversation = async () => {
-      if (!selectedConversation.value || endModalSubmitting.value) return;
+      if (!selectedConversation.value || endModalSubmitting.value || endFeedbackStars.value < 1) return;
       
       endModalSubmitting.value = true;
       try {
-        const endRes = await api.endConversation(selectedConversation.value.conversationId);
-        
-        if (endFeedbackStars.value > 0 || endFeedbackText.value.trim() || endFeedbackSatisfaction.value) {
-          await api.submitConversationFeedback(selectedConversation.value.conversationId, {
-            stars: endFeedbackStars.value || undefined,
-            feedback: endFeedbackText.value.trim() || undefined,
-            satisfaction: endFeedbackSatisfaction.value || undefined
-          });
-        }
+        const feedbackPayload = {
+          stars: endFeedbackStars.value,
+          feedback: endFeedbackText.value.trim() || undefined,
+          satisfaction: endFeedbackSatisfaction.value || undefined
+        };
+        const endRes = await api.endConversation(selectedConversation.value.conversationId, feedbackPayload);
         
         console.log('✅ Conversation ended');
         
@@ -629,6 +673,43 @@ export default {
       }
     };
 
+    // Render partner details in neat rows (no card)
+    const renderPartnerDetailsPanel = (p) => {
+      if (!p) return <p style={{ margin: 0, fontSize: 13, color: '#9ca3af' }}>Loading...</p>;
+      const items = [
+        ['Name', p.name || p.email],
+        ['Email', p.email],
+        ['Phone', p.phone],
+        ['Specialization', Array.isArray(p.specialization) ? p.specialization.join(', ') : p.specialization],
+        ['Expertise Category', p.expertiseCategory],
+        ['Expertise', p.expertise],
+        ['Experience', p.experience != null ? `${p.experience} years` : null],
+        ['Experience Range', p.experienceRange],
+        ['Bio', p.bio],
+        ['Languages', p.languages],
+        ['Qualifications', p.qualifications],
+        ['Skills', p.skills],
+        ['Consultation Modes', p.consultationModes],
+        ['Location', [p.location?.city, p.location?.country].filter(Boolean).join(', ') || null],
+        ['Rating', p.rating != null ? (typeof p.rating === 'number' ? p.rating.toFixed(1) : p.rating) : null],
+        ['Total Sessions', p.totalSessions ?? p.completedSessions],
+        ['Price/Session', p.pricePerSession > 0 ? `₹${p.pricePerSession} (${p.currency || 'INR'})` : null],
+        ['Availability', p.availabilityPreference],
+        ['Status', p.status || p.onlineStatus],
+        ['Verified', p.isVerified != null ? (p.isVerified ? 'Yes' : 'No') : null]
+      ].filter(([, v]) => v != null && v !== '');
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {items.map(([label, value]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '8px 0', borderBottom: '1px solid #f3f4f6', fontSize: 13 }}>
+              <span style={{ color: '#6b7280', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: '#111827', textAlign: 'right', wordBreak: 'break-word' }}>{Array.isArray(value) ? value.join(', ') : String(value)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
     // Session summary for end modal
     const sessionSummary = computed(() => {
       const conv = selectedConversation.value;
@@ -641,6 +722,9 @@ export default {
     // Back to partners list
     const backToPartnersList = () => {
       selectedConversation.value = null;
+      selectedPartner.value = null;
+      showPartnerDetails.value = false;
+      fullPartnerDetails.value = null;
       messages.value = [];
       showPartnersList.value = true;
       if (messagePollInterval) {
@@ -762,25 +846,37 @@ export default {
         <div style="width: 360px; background-color: white; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column;">
           {/* Header */}
           <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
               <h2 style="font-size: 20px; font-weight: 600; color: #111827; margin: 0;">
-                {showPartnersList.value ? 'Available Partners' : 'My Consultations'}
+                Chat
               </h2>
               <div style={`width: 12px; height: 12px; border-radius: 50%; ${
                 isConnected.value ? 'background-color: #10b981;' : 'background-color: #ef4444;'
               }`} title={isConnected.value ? 'Connected' : 'Disconnected'} />
             </div>
-            
-            {!showPartnersList.value && (
+            {/* Tabs: Partners / Conversations */}
+            <div style="margin-top: 16px; display: flex; gap: 8px; background-color: #f3f4f6; padding: 4px; border-radius: 9999px;">
               <button
-                onClick={() => showPartnersList.value = true}
-                style="width: 100%; padding: 10px; background-color: #6366f1; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s;"
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6366f1'}
+                onClick={() => { showPartnersList.value = true; }}
+                style={`flex: 1; padding: 6px 10px; border-radius: 9999px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; ${
+                  showPartnersList.value
+                    ? 'background-color: white; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.08);'
+                    : 'background-color: transparent; color: #6b7280;'
+                }`}
               >
-                + New Consultation
+                Partners
               </button>
-            )}
+              <button
+                onClick={() => { showPartnersList.value = false; showPartnerDetails.value = false; }}
+                style={`flex: 1; padding: 6px 10px; border-radius: 9999px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; ${
+                  !showPartnersList.value
+                    ? 'background-color: white; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.08);'
+                    : 'background-color: transparent; color: #6b7280;'
+                }`}
+              >
+                Conversations
+              </button>
+            </div>
           </div>
           
           {/* List */}
@@ -804,7 +900,7 @@ export default {
                   {partners.value.map(partner => (
                     <div
                       key={partner._id}
-                      onClick={() => selectPartner(partner)}
+                      onClick={() => openPartnerDetails(partner)}
                       style="padding: 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: background-color 0.2s;"
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
@@ -950,7 +1046,7 @@ export default {
         </div>
         
         {/* Main Area */}
-        <div style="flex: 1; display: flex; flex-direction: column; background-color: #f9fafb;">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', minWidth: 0, background: '#f9fafb' }}>
           {showAstrologyForm.value ? (
             // Astrology Form
             <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px;">
@@ -1116,36 +1212,60 @@ export default {
                 </div>
               </div>
             </div>
+          ) : (showPartnerDetails.value && selectedPartner.value && !selectedConversation.value) ? (
+            // Partner details only (before request) - full width panel
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'white', borderLeft: '1px solid #e5e7eb' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}>Partner Details</h3>
+                <button onClick={() => { showPartnerDetails.value = false; selectedPartner.value = null; fullPartnerDetails.value = null; }} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: 'white', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>Close</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+                {renderPartnerDetailsPanel(fullPartnerDetails.value || selectedPartner.value)}
+              </div>
+              <div style={{ padding: 16, borderTop: '1px solid #e5e7eb' }}>
+                <button onClick={startConsultationForSelectedPartner} style={{ width: '100%', padding: 12, background: '#6366f1', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Request Consultation</button>
+              </div>
+            </div>
           ) : selectedConversation.value ? (
-            // Chat Area
+            // Chat Area + Partner Details side panel
             <>
-              {/* Chat Header */}
-              <div style="padding: 16px 24px; background-color: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 12px;">
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              {/* Chat Header - Full partner details */}
+              <div style={{ padding: '16px 24px', background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
                   <button
                     onClick={backToPartnersList}
-                    style="padding: 8px; background-color: #f3f4f6; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;"
+                    style={{ padding: 8, background: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    <svg style={{ width: 20, height: 20 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  
-                  <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
-                    {selectedConversation.value.otherUser?.name?.charAt(0) || selectedConversation.value.otherUser?.email?.charAt(0) || 'P'}
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 18 }}>
+                      {selectedConversation.value.otherUser?.name?.charAt(0) || selectedConversation.value.otherUser?.email?.charAt(0) || 'P'}
+                    </div>
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: '50%', border: '2px solid white', backgroundColor: getStatusColor(selectedConversation.value.otherUser?.status || selectedConversation.value.otherUser?.onlineStatus) }} />
                   </div>
-                  <div>
-                    <p style="font-weight: 600; color: #111827; margin: 0;">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, color: '#111827', margin: 0, fontSize: 16 }}>
                       {selectedConversation.value.otherUser?.name || selectedConversation.value.otherUser?.email}
                     </p>
                     {selectedConversation.value.status === 'pending' ? (
-                      <p style="font-size: 12px; color: #f59e0b; margin: 0;">⏳ Waiting for acceptance</p>
+                      <p style={{ fontSize: 12, color: '#f59e0b', margin: 0 }}>⏳ Waiting for acceptance</p>
                     ) : isTyping.value ? (
-                      <p style="font-size: 12px; color: #10b981; margin: 0;">typing...</p>
+                      <p style={{ fontSize: 12, color: '#10b981', margin: 0 }}>typing...</p>
                     ) : (
-                      <p style="font-size: 12px; color: #6b7280; margin: 0;">
-                        {selectedConversation.value.otherUser?.specialization || 'Astrologer'}
-                      </p>
+                      <>
+                        <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+                          {Array.isArray(selectedConversation.value.otherUser?.specialization) ? selectedConversation.value.otherUser.specialization.join(', ') : (selectedConversation.value.otherUser?.specialization || 'Astrologer')}
+                        </p>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12, color: '#9ca3af' }}>
+                          <span>⭐ {selectedConversation.value.otherUser?.rating?.toFixed?.(1) || '0.0'}</span>
+                          <span>📊 {selectedConversation.value.otherUser?.totalSessions || selectedConversation.value.otherUser?.completedSessions || 0} sessions</span>
+                          <span>📅 {selectedConversation.value.otherUser?.experience || 0}y exp</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1216,8 +1336,11 @@ export default {
                             }`}>
                               <span>{formatTime(message.createdAt)}</span>
                               {isUserMessage && (
-                                <span>
-                                  {message.isRead ? '✓✓' : message.isDelivered ? '✓✓' : '✓'}
+                                <span
+                                  style={message.isRead ? 'color:#22c55e;' : 'color:#e5e7eb;'}
+                                  title={message.isRead ? 'Read' : 'Sent'}
+                                >
+                                  {message.isRead ? '✔✔' : '✔'}
                                 </span>
                               )}
                             </div>
@@ -1254,6 +1377,21 @@ export default {
                           <p style={{ margin: '4px 0 0', fontSize: 14, opacity: 0.95 }}>
                             {(conversationDetails.value.sessionDetails?.messagesCount ?? messages.value.length)} messages
                           </p>
+                          {conversationDetails.value.sessionDetails?.startTime && (
+                            <p style={{ margin: '8px 0 0', fontSize: 12, opacity: 0.9 }}>
+                              Started: {new Date(conversationDetails.value.sessionDetails.startTime).toLocaleString()}
+                            </p>
+                          )}
+                          {conversationDetails.value.sessionDetails?.endTime && (
+                            <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.9 }}>
+                              Ended: {new Date(conversationDetails.value.sessionDetails.endTime).toLocaleString()}
+                            </p>
+                          )}
+                          {conversationDetails.value.sessionDetails?.creditsUsed > 0 && (
+                            <p style={{ margin: '4px 0 0', fontSize: 12, opacity: 0.9 }}>
+                              Credits used: {conversationDetails.value.sessionDetails.creditsUsed}
+                            </p>
+                          )}
                         </div>
                         <div style={{ padding: 20 }}>
                           <p style={{ margin: '0 0 14px 0', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -1372,6 +1510,7 @@ export default {
                   </div>
                 )}
               </div>
+            </div>
             </>
           ) : (
             // Empty State
@@ -1456,7 +1595,7 @@ export default {
                 
                 <div style={{ marginBottom: 22 }}>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 12 }}>
-                    Rating (1–5 stars)
+                    Rating (1–5 stars) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -1585,32 +1724,32 @@ export default {
                   </button>
                   <button
                     onClick={endConversation}
-                    disabled={endModalSubmitting.value}
+                    disabled={endModalSubmitting.value || endFeedbackStars.value < 1}
                     style={{
                       flex: 1,
                       padding: 15,
-                      background: endModalSubmitting.value ? '#94a3b8' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
+                      background: (endModalSubmitting.value || endFeedbackStars.value < 1) ? '#94a3b8' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
                       color: 'white',
                       border: 'none',
                       borderRadius: 12,
                       fontWeight: 600,
-                      cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer',
+                      cursor: (endModalSubmitting.value || endFeedbackStars.value < 1) ? 'not-allowed' : 'pointer',
                       fontSize: 15,
-                      boxShadow: endModalSubmitting.value ? 'none' : '0 4px 16px rgba(239,68,68,0.4)',
+                      boxShadow: (endModalSubmitting.value || endFeedbackStars.value < 1) ? 'none' : '0 4px 16px rgba(239,68,68,0.4)',
                       transition: 'transform 0.15s, box-shadow 0.15s'
                     }}
                     onMouseEnter={(e) => {
-                      if (!endModalSubmitting.value) {
+                      if (!endModalSubmitting.value && endFeedbackStars.value >= 1) {
                         e.currentTarget.style.transform = 'translateY(-1px)';
                         e.currentTarget.style.boxShadow = '0 6px 20px rgba(239,68,68,0.45)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = endModalSubmitting.value ? 'none' : '0 4px 16px rgba(239,68,68,0.4)';
+                      e.currentTarget.style.boxShadow = (endModalSubmitting.value || endFeedbackStars.value < 1) ? 'none' : '0 4px 16px rgba(239,68,68,0.4)';
                     }}
                   >
-                    {endModalSubmitting.value ? 'Ending...' : 'End Consultation'}
+                    {endModalSubmitting.value ? 'Ending...' : (endFeedbackStars.value < 1 ? 'Give rating to end' : 'End Consultation')}
                   </button>
                 </div>
               </div>

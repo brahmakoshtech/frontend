@@ -113,7 +113,8 @@ class ApiService {
       } else if (endpoint.includes('/chat/conversations') || 
                  endpoint.includes('/chat/unread-count') || 
                  endpoint.includes('/chat/conversation/') ||
-                 endpoint.includes('/chat/partners')) {
+                 endpoint.includes('/chat/partners') ||
+                 endpoint.includes('/chat/credits')) {
         // ✅ FIXED: Chat endpoints - determine user vs partner based on current route
         const currentPath = window.location.pathname;
         
@@ -335,6 +336,11 @@ class ApiService {
     return this.request('/chat/partners');
   }
 
+  // Get full partner details by ID
+  async getPartnerById(partnerId) {
+    return this.request(`/chat/partners/${partnerId}`);
+  }
+
   // Create conversation request
   async createConversation(data) {
     return this.request('/chat/conversations', {
@@ -370,10 +376,11 @@ class ApiService {
     });
   }
 
-  // End conversation
-  async endConversation(conversationId) {
+  // End conversation (pass feedback for single-call flow)
+  async endConversation(conversationId, feedback = {}) {
     return this.request(`/chat/conversations/${conversationId}/end`, {
       method: 'PATCH',
+      body: feedback,
     });
   }
 
@@ -393,6 +400,31 @@ class ApiService {
   // Get user astrology data (for partners)
   async getUserAstrologyData(conversationId) {
     return this.request(`/chat/conversation/${conversationId}/astrology`);
+  }
+
+  // Get complete user details: astrology, numerology, doshas, remedies, panchang (for partners)
+  async getConversationUserCompleteDetails(conversationId) {
+    return this.request(`/chat/conversation/${conversationId}/complete-user-details`);
+  }
+
+  // Chat credits history - user (what they invested)
+  async getUserChatCreditHistory(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.append('page', params.page);
+    if (params.limit) searchParams.append('limit', params.limit);
+    const qs = searchParams.toString();
+    const url = `/chat/credits/history/user${qs ? `?${qs}` : ''}`;
+    return this.request(url);
+  }
+
+  // Chat credits history - partner (what they earned)
+  async getPartnerChatCreditHistory(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.append('page', params.page);
+    if (params.limit) searchParams.append('limit', params.limit);
+    const qs = searchParams.toString();
+    const url = `/chat/credits/history/partner${qs ? `?${qs}` : ''}`;
+    return this.request(url);
   }
 
   // ==================== EXISTING METHODS ====================
@@ -949,6 +981,7 @@ const api = {
   
   // Chat - User Methods
   getAvailablePartners: apiService.getAvailablePartners.bind(apiService),
+  getPartnerById: apiService.getPartnerById.bind(apiService),
   createConversation: apiService.createConversation.bind(apiService),
   
   // Chat - Common Methods
@@ -959,6 +992,9 @@ const api = {
   endConversation: apiService.endConversation.bind(apiService),
   getUnreadCount: apiService.getUnreadCount.bind(apiService),
   getUserAstrologyData: apiService.getUserAstrologyData.bind(apiService),
+  getConversationUserCompleteDetails: apiService.getConversationUserCompleteDetails.bind(apiService),
+  getUserChatCreditHistory: apiService.getUserChatCreditHistory.bind(apiService),
+  getPartnerChatCreditHistory: apiService.getPartnerChatCreditHistory.bind(apiService),
   
   // All existing methods
   superAdminLogin: apiService.superAdminLogin.bind(apiService),

@@ -57,6 +57,9 @@ export default {
 
     const expertForm = ref({
       name: '',
+      email: '',
+      password: '',
+      phone: '',
       experience: '',
       expertise: '',
       profileSummary: '',
@@ -73,6 +76,9 @@ export default {
 
     const editForm = ref({
       name: '',
+      email: '',
+      password: '', // optional: set to change password
+      phone: '',
       experience: '',
       expertise: '',
       profileSummary: '',
@@ -215,10 +221,13 @@ export default {
     const submitExpert = async () => {
       try {
         loading.value = true;
-        toast.info('Creating expert profile...');
+        toast.info('Creating partner profile...');
         
         const expertData = {
           name: expertForm.value.name,
+          email: expertForm.value.email,
+          password: expertForm.value.password,
+          phone: expertForm.value.phone,
           experience: expertForm.value.experience,
           expertise: expertForm.value.expertise,
           profileSummary: expertForm.value.profileSummary,
@@ -257,12 +266,15 @@ export default {
             }
           }
           
-          toast.success('✓ Expert profile created successfully!');
+          toast.success('✓ Partner profile created successfully!');
           showExpertModal.value = false;
           
           // Reset form
           expertForm.value = {
             name: '',
+            email: '',
+            password: '',
+            phone: '',
             experience: '',
             expertise: '',
             profileSummary: '',
@@ -313,6 +325,9 @@ export default {
       editingExpert.value = expert;
       editForm.value = {
         name: expert.name,
+        email: expert.email || '',
+        password: '',
+        phone: expert.phone || '',
         experience: expert.experience,
         expertise: expert.expertise,
         profileSummary: expert.profileSummary,
@@ -373,10 +388,13 @@ export default {
     const updateExpert = async () => {
       try {
         loading.value = true;
-        toast.info('Updating expert profile...');
+        toast.info('Updating partner profile...');
         
         const expertData = {
           name: editForm.value.name,
+          email: editForm.value.email,
+          password: editForm.value.password || undefined,
+          phone: editForm.value.phone,
           experience: editForm.value.experience,
           expertise: editForm.value.expertise,
           profileSummary: editForm.value.profileSummary,
@@ -410,7 +428,7 @@ export default {
             }
           }
           
-          toast.success('✓ Expert profile updated successfully!');
+          toast.success('✓ Partner profile updated successfully!');
           showEditModal.value = false;
           
           // Reload experts with current filter
@@ -894,7 +912,7 @@ export default {
                           <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold" for="expertName">
                               <UserIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
-                              Expert Name *
+                              Partner Name *
                             </label>
                             <input 
                               type="text" 
@@ -902,8 +920,55 @@ export default {
                               id="expertName"
                               name="expertName"
                               v-model={expertForm.value.name}
-                              placeholder="Enter expert name"
+                              placeholder="Enter partner name"
                               required 
+                            />
+                          </div>
+
+                          {/* Email */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="partnerEmail">
+                              Email *
+                            </label>
+                            <input
+                              type="email"
+                              class="form-control"
+                              id="partnerEmail"
+                              name="partnerEmail"
+                              v-model={expertForm.value.email}
+                              placeholder="Enter email"
+                              required
+                            />
+                          </div>
+
+                          {/* Password */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="partnerPassword">
+                              Password *
+                            </label>
+                            <input
+                              type="password"
+                              class="form-control"
+                              id="partnerPassword"
+                              name="partnerPassword"
+                              v-model={expertForm.value.password}
+                              placeholder="Set login password"
+                              required
+                            />
+                          </div>
+
+                          {/* Phone */}
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="partnerPhone">
+                              Phone (optional)
+                            </label>
+                            <input
+                              type="text"
+                              class="form-control"
+                              id="partnerPhone"
+                              name="partnerPhone"
+                              v-model={expertForm.value.phone}
+                              placeholder="Enter phone"
                             />
                           </div>
 
@@ -1179,7 +1244,7 @@ export default {
                           <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold" for="editExpertName">
                               <UserIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
-                              Expert Name *
+                              Partner Name *
                             </label>
                             <input 
                               type="text" 
@@ -1187,8 +1252,51 @@ export default {
                               id="editExpertName"
                               name="editExpertName"
                               v-model={editForm.value.name}
-                              placeholder="Enter expert name"
+                              placeholder="Enter partner name"
                               required 
+                            />
+                          </div>
+
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editPartnerEmail">
+                              Email *
+                            </label>
+                            <input
+                              type="email"
+                              class="form-control"
+                              id="editPartnerEmail"
+                              name="editPartnerEmail"
+                              v-model={editForm.value.email}
+                              placeholder="Enter email"
+                              required
+                            />
+                          </div>
+
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editPartnerPassword">
+                              Password (optional)
+                            </label>
+                            <input
+                              type="password"
+                              class="form-control"
+                              id="editPartnerPassword"
+                              name="editPartnerPassword"
+                              v-model={editForm.value.password}
+                              placeholder="Set new password (leave empty to keep)"
+                            />
+                          </div>
+
+                          <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold" for="editPartnerPhone">
+                              Phone (optional)
+                            </label>
+                            <input
+                              type="text"
+                              class="form-control"
+                              id="editPartnerPhone"
+                              name="editPartnerPhone"
+                              v-model={editForm.value.phone}
+                              placeholder="Enter phone"
                             />
                           </div>
                           <div class="col-12 col-md-6">

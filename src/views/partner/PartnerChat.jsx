@@ -21,6 +21,9 @@ export default {
     const onlineStatuses = ref(new Map());
     const showEndModal = ref(false);
     const showFeedbackModal = ref(false);
+    const showUserDetailsModal = ref(false);
+    const userCompleteDetails = ref(null);
+    const loadingUserDetails = ref(false);
     const endFeedbackStars = ref(0);
     const endFeedbackText = ref('');
     const endFeedbackSatisfaction = ref('');
@@ -194,7 +197,13 @@ export default {
         console.log('📦 Conversations response:', response);
         
         if (response && response.success) {
-          conversations.value = response.data || [];
+          const list = response.data || [];
+          // Sort so the latest activity appears first
+          conversations.value = list.sort((a, b) => {
+            const getTime = (c) =>
+              new Date(c.lastMessageAt || c.updatedAt || c.createdAt || 0).getTime();
+            return getTime(b) - getTime(a);
+          });
           console.log('✅ Loaded conversations:', conversations.value.length);
         }
       } catch (error) {
@@ -350,11 +359,28 @@ export default {
         content: newMessage.value.trim(),
         messageType: 'text'
       };
-      
+
+      const updateConversationPreview = () => {
+        const now = new Date().toISOString();
+        const conv = conversations.value.find(
+          c => c.conversationId === selectedConversation.value.conversationId
+        );
+        if (conv) {
+          conv.lastMessage = {
+            ...(conv.lastMessage || {}),
+            content: messageData.content,
+            createdAt: now,
+            senderModel: 'Partner'
+          };
+          conv.lastMessageAt = now;
+        }
+      };
+
       if (socket.value && isConnected.value) {
         socket.value.emit('message:send', messageData, (response) => {
           if (response && response.success) {
             console.log('✅ Message sent');
+            updateConversationPreview();
             newMessage.value = '';
             stopTyping();
           } else {
@@ -367,6 +393,7 @@ export default {
         api.sendMessage(selectedConversation.value.conversationId, messageData)
           .then(() => {
             console.log('✅ Message sent via REST');
+            updateConversationPreview();
             newMessage.value = '';
             loadMessages(selectedConversation.value.conversationId);
           })
@@ -424,6 +451,27 @@ export default {
       showEndModal.value = false;
     };
 
+    const openUserDetailsModal = async () => {
+      if (!selectedConversation.value?.conversationId) return;
+      showUserDetailsModal.value = true;
+      userCompleteDetails.value = null;
+      loadingUserDetails.value = true;
+      try {
+        const res = await api.getConversationUserCompleteDetails(selectedConversation.value.conversationId);
+        if (res?.data) userCompleteDetails.value = res.data;
+      } catch (e) {
+        console.error('Failed to load user details:', e);
+        userCompleteDetails.value = { errors: { fetch: e?.response?.data?.message || e.message } };
+      } finally {
+        loadingUserDetails.value = false;
+      }
+    };
+
+    const closeUserDetailsModal = () => {
+      showUserDetailsModal.value = false;
+      userCompleteDetails.value = null;
+    };
+
     const sessionSummary = computed(() => {
       const conv = selectedConversation.value;
       if (!conv) return { duration: 0, messagesCount: 0 };
@@ -433,19 +481,16 @@ export default {
     });
 
     const endConversation = async () => {
-      if (!selectedConversation.value || endModalSubmitting.value) return;
+      if (!selectedConversation.value || endModalSubmitting.value || endFeedbackStars.value < 1) return;
       
       endModalSubmitting.value = true;
       try {
-        const endRes = await api.endConversation(selectedConversation.value.conversationId);
-        
-        if (endFeedbackStars.value > 0 || endFeedbackText.value.trim() || endFeedbackSatisfaction.value) {
-          await api.submitConversationFeedback(selectedConversation.value.conversationId, {
-            stars: endFeedbackStars.value || undefined,
-            feedback: endFeedbackText.value.trim() || undefined,
-            satisfaction: endFeedbackSatisfaction.value || undefined
-          });
-        }
+        const feedbackPayload = {
+          stars: endFeedbackStars.value,
+          feedback: endFeedbackText.value.trim() || undefined,
+          satisfaction: endFeedbackSatisfaction.value || undefined
+        };
+        const endRes = await api.endConversation(selectedConversation.value.conversationId, feedbackPayload);
         
         console.log('✅ Conversation ended');
         
@@ -860,32 +905,62 @@ export default {
         <div style="flex: 1; display: flex; flex-direction: column; background-color: #f9fafb;">
           {selectedConversation.value ? (
             <>
-              {/* Chat Header */}
-              <div style="padding: 16px 24px; background-color: white; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+              {/* Chat Header - Full user details */}
+              <div style={{ padding: '16px 24px', background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+                  <div style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 18 }}>
                     {selectedConversation.value.otherUser?.profile?.name?.charAt(0) || selectedConversation.value.otherUser?.email?.charAt(0) || 'U'}
                   </div>
-                  <div>
-                    <p style="font-weight: 600; color: #111827; margin: 0;">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, color: '#111827', margin: 0, fontSize: 16 }}>
                       {selectedConversation.value.otherUser?.profile?.name || selectedConversation.value.otherUser?.email}
                     </p>
+                    <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+                      {selectedConversation.value.otherUser?.email}
+                    </p>
+                    {selectedConversation.value.userAstrologyData && (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
+                        {selectedConversation.value.userAstrologyData.dateOfBirth && (
+                          <span>📅 DOB: {formatFullDate(selectedConversation.value.userAstrologyData.dateOfBirth)}</span>
+                        )}
+                        {selectedConversation.value.userAstrologyData.placeOfBirth && (
+                          <span>📍 {selectedConversation.value.userAstrologyData.placeOfBirth}</span>
+                        )}
+                        {selectedConversation.value.userAstrologyData.zodiacSign && (
+                          <span>♈ {selectedConversation.value.userAstrologyData.zodiacSign}</span>
+                        )}
+                      </div>
+                    )}
                     {isTyping.value && (
-                      <p style="font-size: 12px; color: #10b981; margin: 0;">typing...</p>
+                      <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0', fontWeight: 500 }}>typing...</p>
                     )}
                   </div>
                 </div>
                 
-                {selectedConversation.value.status !== 'ended' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <button
-                    onClick={openEndModal}
-                    style="padding: 8px 16px; background-color: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s;"
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                    onClick={openUserDetailsModal}
+                    title="View user astrology, numerology & more"
+                    style={{ padding: 8, background: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#e5e7eb'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
                   >
-                    End Session
+                    <svg style={{ width: 20, height: 20, color: '#6366f1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
                   </button>
-                )}
+                  {selectedConversation.value.status !== 'ended' && (
+                    <button
+                      onClick={openEndModal}
+                      style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer', transition: 'background-color 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                    >
+                      End Session
+                    </button>
+                  )}
+                </div>
               </div>
               
               {/* Messages */}
@@ -930,8 +1005,11 @@ export default {
                             }`}>
                               <span>{formatTime(message.createdAt)}</span>
                               {isPartnerMessage && (
-                                <span>
-                                  {message.isRead ? '✓✓' : message.isDelivered ? '✓✓' : '✓'}
+                                <span
+                                  style={message.isRead ? 'color:#22c55e;' : 'color:#e5e7eb;'}
+                                  title={message.isRead ? 'Read' : 'Sent'}
+                                >
+                                  {message.isRead ? '✔✔' : '✔'}
                                 </span>
                               )}
                             </div>
@@ -958,6 +1036,11 @@ export default {
                           <p style={{ margin: 0, fontSize: 11, fontWeight: 600, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Session Summary</p>
                           <p style={{ margin: '10px 0 0', fontSize: 18, fontWeight: 600 }}>{(conversationDetails.value.sessionDetails?.duration ?? 0)} min</p>
                           <p style={{ margin: '4px 0 0', fontSize: 14, opacity: 0.95 }}>{(conversationDetails.value.sessionDetails?.messagesCount ?? messages.value.length)} messages</p>
+                          {conversationDetails.value.sessionDetails?.partnerCreditsEarned > 0 && (
+                            <p style={{ margin: '4px 0 0', fontSize: 12, opacity: 0.95 }}>
+                              Credits earned: {conversationDetails.value.sessionDetails.partnerCreditsEarned}
+                            </p>
+                          )}
                         </div>
                         <div style={{ padding: 20 }}>
                           <p style={{ margin: '0 0 14px 0', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Feedback</p>
@@ -1127,7 +1210,7 @@ export default {
                   </div>
                 </div>
                 <div style={{ marginBottom: 22 }}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 12 }}>Rating (1–5 stars)</label>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 12 }}>Rating (1–5 stars) <span style={{ color: '#ef4444' }}>*</span></label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} type="button" onClick={() => endFeedbackStars.value = n}
@@ -1167,14 +1250,14 @@ export default {
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e2e8f0'; e.currentTarget.style.color = '#334155'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
                   >Cancel</button>
-                  <button onClick={endConversation} disabled={endModalSubmitting.value}
+                  <button onClick={endConversation} disabled={endModalSubmitting.value || endFeedbackStars.value < 1}
                     style={{
                       flex: 1, padding: 15,
-                      background: endModalSubmitting.value ? '#94a3b8' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
-                      color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: endModalSubmitting.value ? 'not-allowed' : 'pointer', fontSize: 15,
-                      boxShadow: endModalSubmitting.value ? 'none' : '0 4px 16px rgba(239,68,68,0.4)'
+                      background: (endModalSubmitting.value || endFeedbackStars.value < 1) ? '#94a3b8' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
+                      color: 'white', border: 'none', borderRadius: 12, fontWeight: 600, cursor: (endModalSubmitting.value || endFeedbackStars.value < 1) ? 'not-allowed' : 'pointer', fontSize: 15,
+                      boxShadow: (endModalSubmitting.value || endFeedbackStars.value < 1) ? 'none' : '0 4px 16px rgba(239,68,68,0.4)'
                     }}
-                  >{endModalSubmitting.value ? 'Ending...' : 'End Consultation'}</button>
+                  >{endModalSubmitting.value ? 'Ending...' : (endFeedbackStars.value < 1 ? 'Give rating to end' : 'End Consultation')}</button>
                 </div>
               </div>
             </div>
@@ -1270,6 +1353,135 @@ export default {
                     }}
                   >{endModalSubmitting.value ? 'Submitting...' : 'Submit Feedback'}</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Complete Details Modal - Astrology, Numerology, Doshas, Remedies, Panchang */}
+        {showUserDetailsModal.value && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15,23,42,0.6)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: 24
+            }}
+            onClick={closeUserDetailsModal}
+          >
+            <div
+              style={{
+                background: 'white',
+                borderRadius: 16,
+                maxWidth: 720,
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 24px 48px rgba(0,0,0,0.2)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>User Details - Astrology, Numerology & More</h3>
+                <button onClick={closeUserDetailsModal} style={{ padding: 8, background: '#f3f4f6', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>Close</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                {loadingUserDetails.value ? (
+                  <div style={{ textAlign: 'center', padding: 40 }}>
+                    <div style={{ width: 40, height: 40, border: '3px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite' }} />
+                    <p style={{ margin: '16px 0 0', color: '#6b7280' }}>Loading user details...</p>
+                  </div>
+                ) : userCompleteDetails.value ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {userCompleteDetails.value.errors?.fetch && (
+                      <div style={{ padding: 16, background: '#fef2f2', borderRadius: 8, color: '#dc2626' }}>{userCompleteDetails.value.errors.fetch}</div>
+                    )}
+                    {userCompleteDetails.value.user && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>User</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 14 }}>
+                          <p style={{ margin: 0 }}><strong>Name:</strong> {userCompleteDetails.value.user.profile?.name || userCompleteDetails.value.user.email}</p>
+                          <p style={{ margin: '8px 0 0' }}><strong>Email:</strong> {userCompleteDetails.value.user.email}</p>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.birthDetails && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Birth Details</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 14 }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.birthDetails, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.astrology && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Astrology</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 13, maxHeight: 300, overflowY: 'auto' }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.astrology, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.numerology && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Numerology</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 13, maxHeight: 300, overflowY: 'auto' }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.numerology, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.doshas && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Doshas</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 13, maxHeight: 250, overflowY: 'auto' }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.doshas, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.dashas && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Dashas</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 13, maxHeight: 250, overflowY: 'auto' }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.dashas, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.remedies && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Remedies</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 13, maxHeight: 250, overflowY: 'auto' }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.remedies, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {userCompleteDetails.value.panchang && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase' }}>Panchang</h4>
+                        <div style={{ padding: 16, background: '#f8fafc', borderRadius: 8, fontSize: 13, maxHeight: 300, overflowY: 'auto' }}>
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{JSON.stringify(userCompleteDetails.value.panchang, null, 2)}</pre>
+                        </div>
+                      </section>
+                    )}
+                    {Object.keys(userCompleteDetails.value.errors || {}).filter(k => k !== 'fetch').length > 0 && (
+                      <section>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#dc2626', textTransform: 'uppercase' }}>Errors</h4>
+                        <div style={{ padding: 16, background: '#fef2f2', borderRadius: 8, fontSize: 13 }}>
+                          {Object.entries(userCompleteDetails.value.errors).filter(([k]) => k !== 'fetch').map(([k, v]) => (
+                            <p key={k} style={{ margin: 0 }}><strong>{k}:</strong> {v}</p>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ color: '#6b7280', textAlign: 'center' }}>No data available</p>
+                )}
               </div>
             </div>
           </div>

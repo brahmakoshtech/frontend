@@ -133,7 +133,13 @@ export default {
         case 'video':
           return renderPlaceholder('Video Sessions');
         case 'payments':
-          return renderPlaceholder('Payments');
+          return (
+            <iframe
+              src="/partner/earnings"
+              style="border: none; width: 100%; height: calc(100vh - 140px);"
+              title="Earnings History"
+            />
+          );
         case 'profile':
           return renderPlaceholder('Profile Settings');
         default:
