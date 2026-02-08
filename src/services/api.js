@@ -55,6 +55,7 @@ class ApiService {
     if (!token) {
       // PUBLIC ENDPOINTS - No token required
       const publicEndpoints = [
+        '/sankalp/',  // Sankalp list and detail pages are public
         '/mobile/user/register/',
         '/mobile/user/login',
         '/mobile/user/check-email',
@@ -144,7 +145,8 @@ class ApiService {
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
         endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards') ||
-        endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points')) {
+        endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points') ||
+        endpoint.includes('/user-sankalp')) {
         // USER ENDPOINTS - Use user token
         token = getTokenForRole('user');
         tokenSource = 'user (authenticated endpoint)';

@@ -6,7 +6,8 @@ import {
   MicrophoneIcon, 
   UserIcon, 
   FilmIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  SparklesIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -18,6 +19,22 @@ export default {
     const tools = [
       {
         id: 1,
+        name: '🙏 संकल्प (Sankalpas)',
+        icon: SparklesIcon,
+        description: 'Take spiritual resolutions and track your daily progress',
+        route: '/mobile/user/sankalpas',
+        color: '#9333ea'
+      },
+      {
+        id: 2,
+        name: '📊 My Sankalpas',
+        icon: SparklesIcon,
+        description: 'View your active sankalpas and daily progress',
+        route: '/mobile/user/my-sankalpas',
+        color: '#f59e0b'
+      },
+      {
+        id: 3,
         name: 'Text Chat',
         icon: ChatBubbleLeftRightIcon,
         description: 'Start a conversation with AI using text messages',
@@ -25,7 +42,7 @@ export default {
         color: '#10b981'
       },
       {
-        id: 2,
+        id: 4,
         name: 'Voice Chat',
         icon: MicrophoneIcon,
         description: 'Have a voice-to-voice conversation with AI',
@@ -33,7 +50,7 @@ export default {
         color: '#8b5cf6'
       },
       {
-        id: 3,
+        id: 5,
         name: 'My Profile',
         icon: UserIcon,
         description: 'View and manage your profile information',
@@ -41,7 +58,7 @@ export default {
         color: '#3b82f6'
       },
       {
-        id: 4,
+        id: 6,
         name: 'BrahmAvatar Reels',
         icon: FilmIcon,
         description: 'Watch spiritual reels and divine content',

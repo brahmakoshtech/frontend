@@ -276,6 +276,26 @@ const routes = [
         path: 'user-chat',
         name: 'MobileUserChat',
         component: () => import('../views/mobile/UserChat.jsx')
+      },
+      {
+        path: 'sankalpas',
+        name: 'MobileSankalpas',
+        component: () => import('../views/mobile/MobileSankalpas.jsx')
+      },
+      {
+        path: 'sankalpas/:id',
+        name: 'MobileSankalpDetail',
+        component: () => import('../views/mobile/MobileSankalpDetail.jsx')
+      },
+      {
+        path: 'my-sankalpas',
+        name: 'MobileMySankalpas',
+        component: () => import('../views/mobile/MobileMySankalpas.jsx')
+      },
+      {
+        path: 'sankalpas/progress/:id',
+        name: 'MobileSankalpProgress',
+        component: () => import('../views/mobile/MobileSankalpProgress.jsx')
       }
     ]
   },
@@ -597,6 +617,11 @@ const routes = [
         path: 'tools/geeta-shlokas/:chapterId',
         name: 'GeetaShlokaManagement',
         component: () => import('../views/client/tools/geeta/GeetaShlokaManagement.jsx')
+      },
+      {
+        path: 'sankalp',
+        name: 'ClientSankalp',
+        component: () => import('../views/client/Sankalp.jsx')
       },
 
       // Client Services

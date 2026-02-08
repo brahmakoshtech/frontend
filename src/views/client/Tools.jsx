@@ -149,6 +149,15 @@ export default {
         route: '/client/tools/geeta-chapters',
         color: '#ff6b35',
         category: 'Spiritual'
+      },
+      { 
+        id: 15, 
+        name: 'संकल्प (Sankalp)', 
+        icon: StarIcon, 
+        description: 'Manage spiritual resolutions and commitments for users', 
+        route: '/client/sankalp',
+        color: '#9333ea',
+        category: 'Spiritual'
       }
     ];
 
