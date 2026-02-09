@@ -55,7 +55,7 @@ class ApiService {
     if (!token) {
       // PUBLIC ENDPOINTS - No token required
       const publicEndpoints = [
-        '/sankalp/',  // Sankalp list and detail pages are public
+        '/sankalp/',  // Only GET sankalp list is public, not upload
         '/mobile/user/register/',
         '/mobile/user/login',
         '/mobile/user/check-email',
@@ -76,7 +76,10 @@ class ApiService {
         '/partners/register'
       ];
   
-      const isPublicEndpoint = publicEndpoints.some(pub => endpoint.includes(pub));
+      const isPublicEndpoint = publicEndpoints.some(pub => endpoint.includes(pub)) && 
+        !endpoint.includes('/upload-url') && 
+        !endpoint.includes('/toggle-status') &&
+        (endpoint.includes('/sankalp') ? options.method === 'GET' : true);
   
       if (isPublicEndpoint) {
         token = null;

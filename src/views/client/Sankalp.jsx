@@ -56,8 +56,8 @@ export default {
     const fetchSankalpList = async () => {
       loading.value = true;
       try {
-        const data = await sankalpService.getAll();
-        sankalpList.value = data;
+        const response = await sankalpService.getAll();
+        sankalpList.value = response.data || [];
       } catch (error) {
         console.error('Error loading sankalpas:', error);
         toast.error('Error loading sankalpas');
@@ -168,6 +168,10 @@ export default {
       isEdit.value = true;
       selectedSankalp.value = sankalp;
       formData.value = { ...sankalp };
+      selectedCategory.value = sankalp.category;
+      availableSubcategories.value = categories.value[sankalp.category] || [];
+      bannerUploaded.value = false;
+      bannerFileName.value = '';
       showModal.value = true;
     };
 
@@ -236,6 +240,8 @@ export default {
         
         if (bannerImageUrl) {
           data.bannerImage = bannerImageUrl;
+        } else if (isEdit.value && formData.value.bannerImage) {
+          data.bannerImage = formData.value.bannerImage;
         }
         
         if (isEdit.value) {
@@ -356,7 +362,7 @@ export default {
               {!loading.value && sankalpList.value.length > 0 && (
                 <small class="text-dark d-block mt-1" style={{ opacity: 0.8 }}>
                   <ChartBarIcon style={{ width: '16px', height: '16px' }} class="me-1" />
-                  {sankalpList.value.length} total sankalpas • {sankalpList.value.filter(s => s.isActive).length} active
+                  {sankalpList.value.length} total sankalpas • {sankalpList.value.filter(s => s.status === 'Active').length} active
                 </small>
               )}
             </div>
@@ -419,7 +425,7 @@ export default {
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
-                    <p class="mb-1 text-muted" style="font-size: 0.875rem;">Total Karma Points</p>
+                    <p class="mb-1 text-muted" style="font-size: 0.875rem;">Potential Karma Rewards</p>
                     <h3 class="mb-0 fw-bold text-dark">{sankalpList.value.reduce((sum, s) => sum + ((s.karmaPointsPerDay || 0) * (s.totalDays || 0) + (s.completionBonusKarma || 0)), 0)}</h3>
                   </div>
                   <SparklesIcon style="width: 2.5rem; height: 2.5rem; color: #3b82f6;" />
