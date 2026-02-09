@@ -53,11 +53,23 @@ export default {
       slug: ''
     });
 
+    // Helper function to decode HTML entities
+    const decodeHtmlEntities = (str) => {
+      if (!str) return str;
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = str;
+      return textarea.value;
+    };
+
     const fetchSankalpList = async () => {
       loading.value = true;
       try {
         const response = await sankalpService.getAll();
-        sankalpList.value = response.data || [];
+        const decodedList = (response.data || []).map(sankalp => ({
+          ...sankalp,
+          bannerImage: sankalp.bannerImage ? decodeHtmlEntities(sankalp.bannerImage) : null
+        }));
+        sankalpList.value = decodedList;
       } catch (error) {
         console.error('Error loading sankalpas:', error);
         toast.error('Error loading sankalpas');
@@ -167,7 +179,10 @@ export default {
     const openEditModal = (sankalp) => {
       isEdit.value = true;
       selectedSankalp.value = sankalp;
+      
+      // Copy entire object like SpiritualRewards.jsx does
       formData.value = { ...sankalp };
+      
       selectedCategory.value = sankalp.category;
       availableSubcategories.value = categories.value[sankalp.category] || [];
       bannerUploaded.value = false;
@@ -206,7 +221,8 @@ export default {
       try {
         let bannerImageUrl = null;
         
-        if (formData.value.bannerImage && typeof formData.value.bannerImage === 'object') {
+        // Only upload if new file is selected (File object)
+        if (formData.value.bannerImage && formData.value.bannerImage instanceof File) {
           const { uploadUrl, fileUrl } = await sankalpService.getUploadUrl(
             formData.value.bannerImage.name,
             formData.value.bannerImage.type
@@ -214,8 +230,7 @@ export default {
           
           await sankalpService.uploadToS3(
             uploadUrl,
-            formData.value.bannerImage,
-            (progress) => console.log('Upload progress:', progress)
+            formData.value.bannerImage
           );
           
           bannerImageUrl = fileUrl;
@@ -238,10 +253,9 @@ export default {
           slug: formData.value.slug
         };
         
+        // Only add bannerImage if new file was uploaded
         if (bannerImageUrl) {
           data.bannerImage = bannerImageUrl;
-        } else if (isEdit.value && formData.value.bannerImage) {
-          data.bannerImage = formData.value.bannerImage;
         }
         
         if (isEdit.value) {
@@ -652,21 +666,34 @@ export default {
                         <option value="Fixed">Fixed</option>
                         <option value="Custom">Custom</option>
                       </select>
+                      <small class="text-muted">{formData.value.durationType === 'Fixed' ? 'Predefined spiritual durations' : 'Enter any number of days'}</small>
                     </div>
                     <div class="col-md-6 mb-3">
                       <label class="form-label fw-semibold">6. Total Days *</label>
-                      <select class="form-select" v-model={formData.value.totalDays} style="border-radius: 8px;">
-                        <option value={1}>1 day</option>
-                        <option value={2}>2 days</option>
-                        <option value={3}>3 days</option>
-                        <option value={4}>4 days</option>
-                        <option value={5}>5 days</option>
-                        <option value={6}>6 days</option>
-                        <option value={7}>7 days</option>
-                        <option value={21}>21 days</option>
-                        <option value={40}>40 days</option>
-                        <option value={108}>108 days</option>
-                      </select>
+                      {formData.value.durationType === 'Custom' ? (
+                        <input 
+                          type="number" 
+                          class="form-control" 
+                          v-model={formData.value.totalDays} 
+                          min="1" 
+                          max="365" 
+                          placeholder="Enter number of days" 
+                          style="border-radius: 8px;" 
+                        />
+                      ) : (
+                        <select class="form-select" v-model={formData.value.totalDays} style="border-radius: 8px;">
+                          <option value={1}>1 day</option>
+                          <option value={2}>2 days</option>
+                          <option value={3}>3 days</option>
+                          <option value={4}>4 days</option>
+                          <option value={5}>5 days</option>
+                          <option value={6}>6 days</option>
+                          <option value={7}>7 days</option>
+                          <option value={21}>21 days</option>
+                          <option value={40}>40 days</option>
+                          <option value={108}>108 days</option>
+                        </select>
+                      )}
                     </div>
                   </div>
 
@@ -693,9 +720,15 @@ export default {
                   {/* Media Section */}
                   <div class="mb-3">
                     <label class="form-label fw-semibold">10. Banner Image</label>
+                    {isEdit.value && formData.value.bannerImage && typeof formData.value.bannerImage === 'string' && (
+                      <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
+                        <img src={formData.value.bannerImage} alt="Current banner" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
+                        <small class="text-muted">Current banner (upload new to replace)</small>
+                      </div>
+                    )}
                     <input type="file" class="form-control" accept="image/*" onChange={handleBannerUpload} style="border-radius: 8px;" />
                     {bannerUploaded.value && (
-                      <small class="text-success mt-1 d-block">✓ {bannerFileName.value} uploaded successfully</small>
+                      <small class="text-success mt-1 d-block">✓ {bannerFileName.value} will replace current banner</small>
                     )}
                     <small class="text-muted">Max 5MB (JPG, PNG)</small>
                   </div>

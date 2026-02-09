@@ -1,7 +1,8 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ArrowLeftIcon, SparklesIcon, CalendarIcon, UsersIcon, FireIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, SparklesIcon, CalendarIcon, UsersIcon, FireIcon, BellIcon } from '@heroicons/vue/24/outline';
 import sankalpService from '../../services/sankalpService';
+import notificationService from '../../services/notificationService';
 
 export default {
   name: 'MobileSankalpas',
@@ -9,9 +10,19 @@ export default {
     const router = useRouter();
     const loading = ref(false);
     const sankalpas = ref([]);
+    const unreadCount = ref(0);
 
     const goBack = () => {
       router.back();
+    };
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await notificationService.getUnreadCount();
+        unreadCount.value = response.data || 0;
+      } catch (error) {
+        // Silent fail
+      }
     };
 
     const fetchSankalpas = async () => {
@@ -34,6 +45,7 @@ export default {
 
     onMounted(() => {
       fetchSankalpas();
+      fetchUnreadCount();
     });
 
     return () => (
@@ -72,6 +84,38 @@ export default {
             cursor: pointer;
             position: absolute;
             left: 0;
+          }
+
+          .notification-bell {
+            background: transparent;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            position: absolute;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .bell-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            color: #1f2937;
+          }
+
+          .notification-badge {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            background: #ef4444;
+            color: white;
+            font-size: 0.625rem;
+            font-weight: 700;
+            padding: 0.125rem 0.375rem;
+            border-radius: 10px;
+            min-width: 16px;
+            text-align: center;
           }
           
           .back-icon {
@@ -351,6 +395,12 @@ export default {
               <SparklesIcon class="title-icon" />
               Sankalp
             </h1>
+            <button class="notification-bell" onClick={() => router.push('/mobile/user/notifications')}>
+              <BellIcon class="bell-icon" />
+              {unreadCount.value > 0 && (
+                <span class="notification-badge">{unreadCount.value > 99 ? '99+' : unreadCount.value}</span>
+              )}
+            </button>
           </div>
         </div>
         

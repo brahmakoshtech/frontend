@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useAuth } from '../../store/auth.js';
 import { useRouter } from 'vue-router';
 import { 

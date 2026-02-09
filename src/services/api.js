@@ -149,7 +149,7 @@ class ApiService {
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
         endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards') ||
         endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points') ||
-        endpoint.includes('/user-sankalp')) {
+        endpoint.includes('/user-sankalp') || endpoint.includes('/notifications')) {
         // USER ENDPOINTS - Use user token
         token = getTokenForRole('user');
         tokenSource = 'user (authenticated endpoint)';

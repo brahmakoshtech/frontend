@@ -296,6 +296,11 @@ const routes = [
         path: 'sankalpas/progress/:id',
         name: 'MobileSankalpProgress',
         component: () => import('../views/mobile/MobileSankalpProgress.jsx')
+      },
+      {
+        path: 'notifications',
+        name: 'MobileNotifications',
+        component: () => import('../views/mobile/MobileNotifications.jsx')
       }
     ]
   },
