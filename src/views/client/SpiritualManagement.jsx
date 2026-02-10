@@ -282,26 +282,33 @@ export default {
     );
 
     // Watch for category changes and update form types
-    watch(currentCategory, (newCategory) => {
+    watch(currentCategory, async (newCategory) => {
       configForm.value.type = newCategory;
       addClipForm.value.type = newCategory;
       editClipForm.value.type = newCategory;
       editConfigForm.value.type = newCategory;
       showCustomInput.value = false;
       configForm.value.customChantingType = '';
-      fetchUserStats();
-      fetchConfigurations();
-      fetchClips();
+      
+      // Fetch data sequentially to avoid race conditions
+      try {
+        await fetchUserStats();
+        await fetchConfigurations();
+        await fetchClips();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
     });
     
     // Handle dropdown change for category options
     const handleCategoryOptionChange = (value) => {
-      configForm.value.chantingType = value;
       if (value === 'Other') {
         showCustomInput.value = true;
+        configForm.value.chantingType = '';
         configForm.value.customChantingType = '';
       } else {
         showCustomInput.value = false;
+        configForm.value.chantingType = value;
         configForm.value.customChantingType = '';
       }
     };
@@ -349,7 +356,9 @@ export default {
       description: '',
       emotion: '',
       karmaPoints: 10,
-      type: currentCategory.value
+      type: currentCategory.value,
+      chantingType: '',
+      customChantingType: ''
     });
 
     const newActivity = ref({
@@ -419,6 +428,7 @@ export default {
         guided: clip.guided || '',
         transcript: clip.transcript || '',
         suitableConfiguration: clip.suitableConfiguration?._id || '',
+        type: clip.type || currentCategory.value,
         video: null,
         audio: null
       };
@@ -531,7 +541,8 @@ export default {
           suitableTime: editClipForm.value.suitableTime,
           guided: editClipForm.value.guided,
           transcript: editClipForm.value.transcript,
-          suitableConfiguration: editClipForm.value.suitableConfiguration
+          suitableConfiguration: editClipForm.value.suitableConfiguration,
+          type: editClipForm.value.type || currentCategory.value
         };
         
         // Add URLs if files were uploaded
@@ -680,34 +691,6 @@ export default {
       }
     };
 
-    // Test function to manually save a silence session
-    const testSaveSilenceSession = async () => {
-      try {
-        const testSessionData = {
-          type: 'silence',
-          title: 'Test Silence Session',
-          targetDuration: 5,
-          actualDuration: 5,
-          karmaPoints: 15,
-          emotion: 'calm',
-          status: 'completed',
-          completionPercentage: 100
-        };
-        
-        const response = await spiritualStatsService.saveSession(testSessionData);
-        
-        if (response.success) {
-          toast.success('Test silence session saved!');
-          await fetchUserStats(); // Refresh stats
-        } else {
-          toast.error('Failed to save test session: ' + response.message);
-        }
-      } catch (error) {
-        console.error('Test save error:', error);
-        toast.error('Error saving test session: ' + error.message);
-      }
-    };
-
     const fetchConfigurations = async () => {
       try {
         loading.value = true;
@@ -742,7 +725,36 @@ export default {
 
       try {
         loading.value = true;
-        const response = await spiritualConfigurationService.createConfiguration(configForm.value);
+        
+        const submitData = {
+          title: configForm.value.title,
+          description: configForm.value.description,
+          emotion: configForm.value.emotion,
+          karmaPoints: configForm.value.karmaPoints,
+          type: configForm.value.type
+        };
+        
+        // Add duration only for non-chanting categories
+        if (configForm.value.type !== 'chanting') {
+          submitData.duration = configForm.value.duration;
+        }
+        
+        // Add category-specific type field
+        const typeValue = showCustomInput.value && configForm.value.customChantingType 
+          ? configForm.value.customChantingType 
+          : configForm.value.chantingType;
+        
+        if (typeValue) {
+          if (configForm.value.type === 'chanting') {
+            submitData.chantingType = typeValue;
+          } else if (configForm.value.type === 'meditation') {
+            submitData.meditationType = typeValue;
+          } else if (configForm.value.type === 'prayer') {
+            submitData.prayerType = typeValue;
+          }
+        }
+        
+        const response = await spiritualConfigurationService.createConfiguration(submitData);
         if (response.success) {
           configurations.value.unshift(response.data);
           configForm.value = {
@@ -751,8 +763,11 @@ export default {
             description: '',
             emotion: '',
             karmaPoints: 10,
-            type: currentCategory.value
+            type: currentCategory.value,
+            chantingType: '',
+            customChantingType: ''
           };
+          showCustomInput.value = false;
           toast.success('Configuration saved successfully!');
         } else {
           toast.error(response.message || 'Failed to save configuration');
@@ -777,13 +792,30 @@ export default {
 
     const editConfig = (config) => {
       editingConfig.value = config;
+      
+      const predefinedOptions = currentCategoryOptions.value;
+      
+      // Get the correct type field based on category
+      let categoryTypeValue = '';
+      if (config.type === 'chanting') {
+        categoryTypeValue = config.chantingType || '';
+      } else if (config.type === 'meditation') {
+        categoryTypeValue = config.meditationType || '';
+      } else if (config.type === 'prayer') {
+        categoryTypeValue = config.prayerType || '';
+      }
+      
+      const isCustom = categoryTypeValue && predefinedOptions.length > 0 && !predefinedOptions.includes(categoryTypeValue);
+      
       editConfigForm.value = {
         title: config.title || '',
-        duration: config.duration || '15 minutes',
+        duration: config.duration || '5 minutes',
         description: config.description || '',
         emotion: config.emotion || '',
         karmaPoints: config.karmaPoints || 10,
-        type: config.type || ''
+        type: config.type || '',
+        chantingType: isCustom ? 'Other' : (categoryTypeValue || ''),
+        customChantingType: isCustom ? categoryTypeValue : ''
       };
       showEditConfigModal.value = true;
       activeConfigDropdown.value = null;
@@ -807,7 +839,36 @@ export default {
 
       try {
         loading.value = true;
-        const response = await spiritualConfigurationService.updateConfiguration(editingConfig.value._id, editConfigForm.value);
+        
+        const submitData = {
+          title: editConfigForm.value.title,
+          description: editConfigForm.value.description,
+          emotion: editConfigForm.value.emotion,
+          karmaPoints: editConfigForm.value.karmaPoints,
+          type: editConfigForm.value.type
+        };
+        
+        // Add duration only for non-chanting categories
+        if (editConfigForm.value.type !== 'chanting') {
+          submitData.duration = editConfigForm.value.duration;
+        }
+        
+        // Add category-specific type field
+        const typeValue = editConfigForm.value.chantingType === 'Other' && editConfigForm.value.customChantingType
+          ? editConfigForm.value.customChantingType
+          : editConfigForm.value.chantingType;
+        
+        if (typeValue) {
+          if (editConfigForm.value.type === 'chanting') {
+            submitData.chantingType = typeValue;
+          } else if (editConfigForm.value.type === 'meditation') {
+            submitData.meditationType = typeValue;
+          } else if (editConfigForm.value.type === 'prayer') {
+            submitData.prayerType = typeValue;
+          }
+        }
+        
+        const response = await spiritualConfigurationService.updateConfiguration(editingConfig.value._id, submitData);
         if (response.success) {
           const index = configurations.value.findIndex(c => c._id === editingConfig.value._id);
           if (index !== -1) {
@@ -1709,7 +1770,7 @@ export default {
                                     </div>
                                   </div>
                                   <p class="text-muted small mb-2 lh-sm">
-                                    {config.description.length > 80 ? config.description.substring(0, 80) + '...' : config.description}
+                                    {config.description}
                                   </p>
                                   <div class="row g-2 mb-2">
                                     {config.duration && currentCategory.value !== 'chanting' && (
@@ -1723,6 +1784,16 @@ export default {
                                       <span class="badge bg-secondary-subtle text-secondary px-2 py-1">{config.type || 'General'}</span>
                                     </div>
                                   </div>
+                                  {(config.chantingType || config.meditationType || config.prayerType) && (
+                                    <div class="mb-2">
+                                      <small class="text-muted d-block">
+                                        {config.type === 'chanting' ? 'Chanting' : config.type === 'meditation' ? 'Meditation' : 'Prayer'} Type:
+                                      </small>
+                                      <span class="badge bg-info-subtle text-info px-2 py-1">
+                                        {config.chantingType || config.meditationType || config.prayerType}
+                                      </span>
+                                    </div>
+                                  )}
                                   {config.emotion && (
                                     <div class="mb-2">
                                       <small class="text-muted d-block">Emotion:</small>
@@ -1739,6 +1810,14 @@ export default {
                                           neutral: '😐 Neutral',
                                           stressed: '😰 Stressed'
                                         }[config.emotion] || config.emotion}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {config.karmaPoints && (
+                                    <div class="mb-2">
+                                      <small class="text-muted d-block">Karma Points:</small>
+                                      <span class="badge bg-success-subtle text-success px-2 py-1">
+                                        {config.karmaPoints} points
                                       </span>
                                     </div>
                                   )}
@@ -2413,6 +2492,10 @@ export default {
                 </div>
                 <div class="modal-body pt-2" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                   <div class="mb-3">
+                    <h6 class="fw-semibold mb-2 small text-muted">Title</h6>
+                    <p class="mb-0 fw-bold">{selectedClip.value.title}</p>
+                  </div>
+                  <div class="mb-3">
                     <h6 class="fw-semibold mb-2 small text-muted">Description</h6>
                     <p class="mb-0">{selectedClip.value.description}</p>
                   </div>
@@ -3008,32 +3091,55 @@ export default {
         {/* View Configuration Modal */}
         {showViewConfigModal.value && selectedConfig.value && (
           <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-dialog modal-dialog-centered" style={{ maxWidth: '500px' }}>
               <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                  <h5 class="modal-title fw-bold">Configuration Details</h5>
+                <div class="modal-header bg-info text-white py-2">
+                  <h6 class="modal-title fw-bold mb-0">Configuration Details</h6>
                   <button class="btn-close btn-close-white" onClick={() => showViewConfigModal.value = false}></button>
                 </div>
-                <div class="modal-body p-4">
-                  <h4 class="mb-3 fw-bold text-center">{selectedConfig.value.title}</h4>
-                  <div class="row g-3">
+                <div class="modal-body p-3">
+                  <div class="row g-2">
+                    <div class="col-6">
+                      <small class="text-muted d-block">Title</small>
+                      <p class="mb-0 fw-bold small">{selectedConfig.value.title}</p>
+                    </div>
                     {selectedConfig.value.duration && currentCategory.value !== 'chanting' && (
-                      <div class="col-md-6">
-                        <strong>Duration:</strong>
-                        <span class="badge bg-primary ms-2">{selectedConfig.value.duration}</span>
+                      <div class="col-6">
+                        <small class="text-muted d-block">Duration</small>
+                        <span class="badge bg-primary">{selectedConfig.value.duration}</span>
                       </div>
                     )}
-                    <div class={selectedConfig.value.duration && currentCategory.value !== 'chanting' ? "col-md-6" : "col-md-12"}>
-                      <strong>Type:</strong>
-                      <span class="badge bg-secondary ms-2">{selectedConfig.value.type || 'General'}</span>
+                  </div>
+                  <div class="row g-2 mt-2">
+                    <div class="col-12">
+                      <small class="text-muted d-block">Description</small>
+                      <p class="mb-0 small">{selectedConfig.value.description}</p>
                     </div>
-                    {selectedConfig.value.emotion && (
-                      <div class="col-12">
-                        <strong>Emotion:</strong>
-                        <span class="badge bg-warning ms-2">
+                  </div>
+                  <div class="row g-2 mt-2">
+                    <div class="col-6">
+                      <small class="text-muted d-block">Category</small>
+                      <span class="badge bg-secondary">{selectedConfig.value.type || 'General'}</span>
+                    </div>
+                    {(selectedConfig.value.chantingType || selectedConfig.value.meditationType || selectedConfig.value.prayerType) && (
+                      <div class="col-6">
+                        <small class="text-muted d-block">
+                          {selectedConfig.value.type === 'chanting' ? 'Chanting' : selectedConfig.value.type === 'meditation' ? 'Meditation' : 'Prayer'} Type
+                        </small>
+                        <span class="badge bg-info">
+                          {selectedConfig.value.chantingType || selectedConfig.value.meditationType || selectedConfig.value.prayerType}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {selectedConfig.value.emotion && (
+                    <div class="row g-2 mt-2">
+                      <div class="col-6">
+                        <small class="text-muted d-block">Emotion</small>
+                        <span class="badge bg-warning">
                           {{
                             happy: '😊 Happy',
-                            sad: '😢 Sad', 
+                            sad: '😢 Sad',
                             angry: '😠 Angry',
                             afraid: '😨 Afraid',
                             loved: '🥰 Loved',
@@ -3041,30 +3147,40 @@ export default {
                             calm: '😌 Calm',
                             disgusted: '🤢 Disgusted',
                             neutral: '😐 Neutral',
-                            stress: '😰 Stressed'
+                            stressed: '😰 Stressed'
                           }[selectedConfig.value.emotion] || selectedConfig.value.emotion}
                         </span>
                       </div>
-                    )}
-                    <div class="mb-3">
-                      <strong>Description:</strong>
-                      <p class="mt-2 p-3 bg-light rounded">{selectedConfig.value.description}</p>
+                      {selectedConfig.value.karmaPoints && (
+                        <div class="col-6">
+                          <small class="text-muted d-block">Karma Points</small>
+                          <span class="badge bg-success">{selectedConfig.value.karmaPoints} points</span>
+                        </div>
+                      )}
                     </div>
-                    {selectedConfig.value.karmaPoints && (
-                      <div class="col-12">
-                        <strong>Karma Points:</strong>
-                        <span class="badge bg-success ms-2">{selectedConfig.value.karmaPoints} points</span>
+                  )}
+                  {!selectedConfig.value.emotion && selectedConfig.value.karmaPoints && (
+                    <div class="row g-2 mt-2">
+                      <div class="col-6">
+                        <small class="text-muted d-block">Karma Points</small>
+                        <span class="badge bg-success">{selectedConfig.value.karmaPoints} points</span>
                       </div>
-                    )}
-                    <div class="col-md-6">
-                      <strong>Status:</strong>
-                      <span class={`badge ms-2 ${selectedConfig.value.isActive ? 'bg-success' : 'bg-secondary'}`}>
+                    </div>
+                  )}
+                  <div class="row g-2 mt-2">
+                    <div class="col-6">
+                      <small class="text-muted d-block">Status</small>
+                      <span class={`badge ${selectedConfig.value.isActive ? 'bg-success' : 'bg-secondary'}`}>
                         {selectedConfig.value.isActive ? '✅ Active' : '❌ Inactive'}
                       </span>
                     </div>
-                    <div class="col-md-6">
-                      <strong>Created:</strong>
-                      <span class="ms-2">{new Date(selectedConfig.value.createdAt).toLocaleDateString()}</span>
+                    <div class="col-6">
+                      <small class="text-muted d-block">Created</small>
+                      <small>{new Date(selectedConfig.value.createdAt).toLocaleDateString('en-US', { 
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}</small>
                     </div>
                   </div>
                 </div>
@@ -3076,13 +3192,13 @@ export default {
         {/* Edit Configuration Modal */}
         {showEditConfigModal.value && editingConfig.value && (
           <div class="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-dialog modal-dialog-centered" style={{ maxWidth: '600px' }}>
               <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                  <h5 class="modal-title fw-bold">Edit Configuration</h5>
+                <div class="modal-header bg-primary text-white py-2">
+                  <h6 class="modal-title fw-bold mb-0">Edit Configuration</h6>
                   <button class="btn-close btn-close-white" onClick={() => showEditConfigModal.value = false}></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body p-3" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                   <div class="row">
                     <div class="col-md-6">
                       <div class="mb-3">
@@ -3098,7 +3214,43 @@ export default {
                       </div>
                     </div>
                     <div class="col-md-6">
-                      {currentCategory.value !== 'chanting' && (
+                      {currentCategoryOptions.value.length > 0 ? (
+                        <div class="mb-3">
+                          <label class="form-label fw-semibold">{currentCategoryInfo.value.name} Type</label>
+                          <select 
+                            class="form-select" 
+                            value={editConfigForm.value.chantingType}
+                            onChange={(e) => {
+                              editConfigForm.value.chantingType = e.target.value;
+                              if (e.target.value === 'Other') {
+                                editConfigForm.value.customChantingType = editingConfig.value?.customChantingType || '';
+                              } else {
+                                editConfigForm.value.customChantingType = '';
+                              }
+                            }}
+                          >
+                            <option value="">Select {currentCategoryInfo.value.name.toLowerCase()} type</option>
+                            {currentCategoryOptions.value.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                          {editConfigForm.value.chantingType === 'Other' && (
+                            <div class="mt-2">
+                              <input 
+                                type="text" 
+                                class="form-control" 
+                                placeholder={`Enter custom ${currentCategoryInfo.value.name.toLowerCase()} type`}
+                                v-model={editConfigForm.value.customChantingType}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  {currentCategory.value !== 'chanting' && (
+                    <div class="row">
+                      <div class="col-md-12">
                         <div class="mb-3">
                           <label class="form-label fw-semibold">Duration</label>
                           <select class="form-select" v-model={editConfigForm.value.duration}>
@@ -3107,9 +3259,9 @@ export default {
                             ))}
                           </select>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Description *</label>
                     <textarea 
