@@ -190,6 +190,7 @@ const spiritualClipService = {
       if (clipData.guided !== undefined) formData.append('guided', clipData.guided);
       if (clipData.transcript !== undefined) formData.append('transcript', clipData.transcript);
       if (clipData.suitableConfiguration !== undefined) formData.append('suitableConfiguration', clipData.suitableConfiguration);
+      if (clipData.type !== undefined) formData.append('type', clipData.type);
       
       // Add video file if exists
       if (clipData.video) {
