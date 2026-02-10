@@ -1394,6 +1394,16 @@ export default {
                           )}
                         </div>
                         <div style={{ padding: 20 }}>
+                          {conversationDetails.value.sessionDetails?.summary && (
+                            <div style={{ marginBottom: 20 }}>
+                              <p style={{ margin: '0 0 8px 0', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Topics discussed
+                              </p>
+                              <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: 1.5 }}>
+                                {conversationDetails.value.sessionDetails.summary}
+                              </p>
+                            </div>
+                          )}
                           <p style={{ margin: '0 0 14px 0', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Feedback
                           </p>

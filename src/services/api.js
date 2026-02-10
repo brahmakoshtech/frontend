@@ -723,6 +723,18 @@ class ApiService {
     return this.request('/admin/dashboard/overview');
   }
 
+  async getGeminiApiKey(clientId = null) {
+    const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
+    return this.request(`/admin/settings/gemini-api-key${qs}`);
+  }
+
+  async updateGeminiApiKey(apiKey, clientId = null) {
+    return this.request('/admin/settings/gemini-api-key', {
+      method: 'PUT',
+      body: { apiKey: apiKey || '', ...(clientId ? { clientId } : {}) },
+    });
+  }
+
   // Client endpoints
   async getClientUsers(queryString = '') {
     return this.request(`/client/users${queryString}`);
@@ -1059,6 +1071,8 @@ const api = {
   deleteClient: apiService.deleteClient.bind(apiService),
   getAdminUsers: apiService.getAdminUsers.bind(apiService),
   getAdminDashboard: apiService.getAdminDashboard.bind(apiService),
+  getGeminiApiKey: apiService.getGeminiApiKey.bind(apiService),
+  updateGeminiApiKey: apiService.updateGeminiApiKey.bind(apiService),
   getClientUsers: apiService.getClientUsers.bind(apiService),
   createClientUser: apiService.createClientUser.bind(apiService),
   updateClientUser: apiService.updateClientUser.bind(apiService),
