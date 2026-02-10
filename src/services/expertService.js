@@ -71,9 +71,8 @@ const expertService = {
       const formData = new FormData();
       formData.append('profilePhoto', file);
       
-      const response = await api.post(`/experts/${id}/upload-profile-photo`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // IMPORTANT: do NOT set Content-Type for FormData; browser adds boundary automatically
+      const response = await api.post(`/experts/${id}/upload-profile-photo`, formData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -86,13 +85,17 @@ const expertService = {
       const formData = new FormData();
       formData.append('backgroundBanner', file);
       
-      const response = await api.post(`/experts/${id}/upload-banner`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // IMPORTANT: do NOT set Content-Type for FormData; browser adds boundary automatically
+      const response = await api.post(`/experts/${id}/upload-banner`, formData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
+  },
+
+  // Backward-compatible alias used by some UI code
+  uploadBanner: async (id, file) => {
+    return expertService.uploadBackgroundBanner(id, file);
   }
 };
 

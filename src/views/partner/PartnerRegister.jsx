@@ -8,6 +8,8 @@ export default {
     const router = useRouter();
     const toast = useToast();
 
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://stage.brahmakosh.com/api';
+
     const loading = ref(false);
     const registerForm = ref({
       name: '',
@@ -16,6 +18,7 @@ export default {
       phone: '',
       specialization: ''
     });
+    const profileImageFile = ref(null);
 
     const register = async () => {
       if (!registerForm.value.name || !registerForm.value.email || !registerForm.value.password) {
@@ -25,7 +28,7 @@ export default {
 
       loading.value = true;
       try {
-        const response = await fetch('https://stage.brahmakosh.com/api/partners/register', {
+        const response = await fetch(`${API_BASE_URL}/partners/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(registerForm.value)
@@ -34,8 +37,31 @@ export default {
         const data = await response.json();
 
         if (data.success) {
-          localStorage.setItem('partner_token', data.data.token);
+          const token = data.data.token;
+          localStorage.setItem('partner_token', token);
           localStorage.setItem('partner_data', JSON.stringify(data.data.partner));
+
+          // Optional: upload profile picture right after registration (S3 + save in DB)
+          if (profileImageFile.value) {
+            try {
+              const formData = new FormData();
+              formData.append('image', profileImageFile.value);
+              const uploadRes = await fetch(`${API_BASE_URL}/mobile/partner/profile/picture`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData
+              });
+              const uploadData = await uploadRes.json();
+              if (uploadRes.ok && uploadData?.success) {
+                localStorage.setItem('partner_data', JSON.stringify(uploadData.data.partner));
+              } else {
+                console.warn('Partner profile picture upload failed:', uploadData?.message);
+              }
+            } catch (uploadErr) {
+              console.warn('Partner profile picture upload error:', uploadErr);
+            }
+          }
+
           toast.success('Registration successful!');
           router.push('/partner/dashboard');
         } else {
@@ -132,6 +158,17 @@ export default {
                         <option value="Vastu">Vastu</option>
                         <option value="Spiritual Counseling">Spiritual Counseling</option>
                       </select>
+                    </div>
+
+                    <div class="mb-4">
+                      <label class="form-label fw-semibold">Profile Picture (optional)</label>
+                      <input
+                        type="file"
+                        class="form-control form-control-lg rounded-3"
+                        accept="image/*"
+                        onChange={(e) => { profileImageFile.value = e.target.files?.[0] || null; }}
+                      />
+                      <small class="text-muted">This will be saved to S3 and stored in your profile.</small>
                     </div>
 
                     <button
