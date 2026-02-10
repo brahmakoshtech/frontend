@@ -6,7 +6,7 @@ export default {
   setup() {
     const clients = ref([]);
     const selectedClientId = ref(''); // '' = app-level, or client _id
-    const geminiMasked = ref('');
+    const geminiMasked = ref(''); // kept for backward compatibility, but now used for OpenAI
     const geminiConfigured = ref(false);
     const geminiNewKey = ref('');
     const geminiSaving = ref(false);
@@ -31,7 +31,8 @@ export default {
       geminiLoadError.value = '';
       try {
         const clientId = selectedClientId.value || null;
-        const res = await api.getGeminiApiKey(clientId);
+        // Use OpenAI key endpoint (per client or app-level)
+        const res = await api.getOpenAIApiKey(clientId);
         if (res?.success && res?.data) {
           geminiConfigured.value = res.data.configured;
           geminiMasked.value = res.data.masked || '';
@@ -46,9 +47,10 @@ export default {
       geminiSaving.value = true;
       try {
         const clientId = selectedClientId.value || null;
-        const res = await api.updateGeminiApiKey(geminiNewKey.value, clientId);
+        // Use OpenAI key endpoint (per client or app-level)
+        const res = await api.updateOpenAIApiKey(geminiNewKey.value, clientId);
         if (res?.success) {
-          geminiSaveMessage.value = res.message || 'Gemini API key updated successfully.';
+          geminiSaveMessage.value = res.message || 'OpenAI API key updated successfully.';
           geminiConfigured.value = res.data?.configured ?? !!geminiNewKey.value;
           geminiMasked.value = res.data?.masked || '';
           geminiNewKey.value = '';
@@ -78,9 +80,9 @@ export default {
           <h1 class="card-title">Settings</h1>
 
           <div class="mt-4" style="max-width: 560px;">
-            <h5 class="mb-3">Conversation summary (Gemini API)</h5>
+            <h5 class="mb-3">Conversation summary (OpenAI API)</h5>
             <p class="text-muted small mb-3">
-              Set a Gemini API key per client or one default for the app. The key is used to generate a short summary of topics discussed after each conversation ends. For a selected client, only that client&apos;s users will use that client&apos;s key.
+              Set an OpenAI API key per client or one default for the app. The key is used to generate a short summary of topics discussed after each conversation ends. For a selected client, only that client&apos;s users will use that client&apos;s key.
             </p>
 
             {clientsLoadError && (

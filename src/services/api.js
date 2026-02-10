@@ -723,6 +723,18 @@ class ApiService {
     return this.request('/admin/dashboard/overview');
   }
 
+  async getOpenAIApiKey(clientId = null) {
+    const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
+    return this.request(`/admin/settings/openai-api-key${qs}`);
+  }
+
+  async updateOpenAIApiKey(apiKey, clientId = null) {
+    return this.request('/admin/settings/openai-api-key', {
+      method: 'PUT',
+      body: { apiKey: apiKey || '', ...(clientId ? { clientId } : {}) },
+    });
+  }
+
   async getGeminiApiKey(clientId = null) {
     const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
     return this.request(`/admin/settings/gemini-api-key${qs}`);
@@ -1073,6 +1085,8 @@ const api = {
   getAdminDashboard: apiService.getAdminDashboard.bind(apiService),
   getGeminiApiKey: apiService.getGeminiApiKey.bind(apiService),
   updateGeminiApiKey: apiService.updateGeminiApiKey.bind(apiService),
+  getOpenAIApiKey: apiService.getOpenAIApiKey.bind(apiService),
+  updateOpenAIApiKey: apiService.updateOpenAIApiKey.bind(apiService),
   getClientUsers: apiService.getClientUsers.bind(apiService),
   createClientUser: apiService.createClientUser.bind(apiService),
   updateClientUser: apiService.updateClientUser.bind(apiService),
