@@ -18,8 +18,9 @@ export default {
       clientsLoadError.value = '';
       try {
         const res = await api.getClients();
-        if (res?.data?.success && res?.data?.data?.clients) {
-          clients.value = res.data.data.clients;
+        // API returns body directly: { success, data: { clients } }
+        if (res?.success && res?.data?.clients) {
+          clients.value = res.data.clients;
         }
       } catch (e) {
         clientsLoadError.value = e?.message || 'Failed to load clients';
@@ -31,9 +32,9 @@ export default {
       try {
         const clientId = selectedClientId.value || null;
         const res = await api.getGeminiApiKey(clientId);
-        if (res?.data?.success && res?.data?.data) {
-          geminiConfigured.value = res.data.data.configured;
-          geminiMasked.value = res.data.data.masked || '';
+        if (res?.success && res?.data) {
+          geminiConfigured.value = res.data.configured;
+          geminiMasked.value = res.data.masked || '';
         }
       } catch (e) {
         geminiLoadError.value = e?.message || 'Failed to load Gemini API key status';
@@ -46,10 +47,10 @@ export default {
       try {
         const clientId = selectedClientId.value || null;
         const res = await api.updateGeminiApiKey(geminiNewKey.value, clientId);
-        if (res?.data?.success) {
-          geminiSaveMessage.value = res.data.message || 'Gemini API key updated successfully.';
-          geminiConfigured.value = res.data.data?.configured ?? !!geminiNewKey.value;
-          geminiMasked.value = res.data.data?.masked || '';
+        if (res?.success) {
+          geminiSaveMessage.value = res.message || 'Gemini API key updated successfully.';
+          geminiConfigured.value = res.data?.configured ?? !!geminiNewKey.value;
+          geminiMasked.value = res.data?.masked || '';
           geminiNewKey.value = '';
           await loadGeminiKey();
         } else {
