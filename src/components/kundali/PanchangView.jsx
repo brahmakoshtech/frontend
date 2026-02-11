@@ -394,6 +394,14 @@ export default {
                 <div class="row g-4">
                   <div class="col-12">
                     <h6 class="text-primary mb-3">Daily Nakshatra Prediction</h6>
+                    {props.data?.dailyNakshatraPrediction?.missingFields?.length ? (
+                      <div class="alert alert-warning mb-0">
+                        <h6 class="alert-heading">Personalization data required</h6>
+                        <p class="mb-2">{props.data.dailyNakshatraPrediction.message}</p>
+                        <p class="mb-0"><strong>These fields are missing:</strong> {props.data.dailyNakshatraPrediction.missingFields.join(', ')}</p>
+                      </div>
+                    ) : (
+                    <>
                     <div class="row g-3 mb-4">
                       <div class="col-md-6 col-lg-3">
                         <div class="p-3 rounded-3 border bg-light">
@@ -473,6 +481,8 @@ export default {
                           </div>
                         ))}
                       </div>
+                    )}
+                    </>
                     )}
                   </div>
                 </div>

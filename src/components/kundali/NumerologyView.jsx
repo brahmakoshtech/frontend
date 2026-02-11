@@ -236,7 +236,13 @@ export default {
               {/* Daily Prediction Tab */}
               {activeTab.value === 'prediction' && (
                 <div>
-                  {props.data?.dailyPrediction ? (
+                  {props.data?.dailyPrediction?.missingFields?.length ? (
+                    <div class="alert alert-warning mb-0">
+                      <h6 class="alert-heading">Personalization data required</h6>
+                      <p class="mb-2">{props.data.dailyPrediction.message}</p>
+                      <p class="mb-0"><strong>These fields are missing:</strong> {props.data.dailyPrediction.missingFields.join(', ')}</p>
+                    </div>
+                  ) : props.data?.dailyPrediction ? (
                     <>
                       {/* Prediction Highlights */}
                       <div class="row g-4 mb-4">

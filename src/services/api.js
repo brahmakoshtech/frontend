@@ -735,6 +735,17 @@ class ApiService {
     });
   }
 
+  async getAdminPrompts() {
+    return this.request('/admin/prompts');
+  }
+
+  async updateAdminPrompt(key, payload) {
+    return this.request(`/admin/prompts/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: payload
+    });
+  }
+
   async getGeminiApiKey(clientId = null) {
     const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
     return this.request(`/admin/settings/gemini-api-key${qs}`);
@@ -1087,6 +1098,8 @@ const api = {
   updateGeminiApiKey: apiService.updateGeminiApiKey.bind(apiService),
   getOpenAIApiKey: apiService.getOpenAIApiKey.bind(apiService),
   updateOpenAIApiKey: apiService.updateOpenAIApiKey.bind(apiService),
+  getAdminPrompts: apiService.getAdminPrompts.bind(apiService),
+  updateAdminPrompt: apiService.updateAdminPrompt.bind(apiService),
   getClientUsers: apiService.getClientUsers.bind(apiService),
   createClientUser: apiService.createClientUser.bind(apiService),
   updateClientUser: apiService.updateClientUser.bind(apiService),

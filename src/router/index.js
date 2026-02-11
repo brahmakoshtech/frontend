@@ -373,6 +373,11 @@ const routes = [
         component: () => import('../views/admin/Settings.jsx')
       },
       {
+        path: 'prompts',
+        name: 'AdminPrompts',
+        component: () => import('../views/admin/Prompts.jsx')
+      },
+      {
         path: 'payments',
         name: 'AdminPayments',
         component: () => import('../views/admin/Payments.jsx')
