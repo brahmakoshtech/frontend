@@ -183,7 +183,7 @@ export default {
         clip: ['title', 'description', 'video', 'audio', 'suitableTime', 'guided', 'transcript']
       },
       prayer: {
-        config: ['title', 'duration', 'description'],
+        config: ['title', 'description'],
         clip: ['title', 'description', 'audio', 'transcript']
       },
       chanting: {
@@ -794,8 +794,8 @@ export default {
           type: configForm.value.type
         };
         
-        // Add duration only for non-chanting categories
-        if (configForm.value.type !== 'chanting') {
+        // Add duration only for categories that need it
+        if (configForm.value.type !== 'chanting' && configForm.value.type !== 'prayer') {
           submitData.duration = configForm.value.duration;
         }
         
@@ -912,8 +912,8 @@ export default {
           type: editConfigForm.value.type
         };
         
-        // Add duration only for non-chanting categories
-        if (editConfigForm.value.type !== 'chanting') {
+        // Add duration only for categories that need it
+        if (editConfigForm.value.type !== 'chanting' && editConfigForm.value.type !== 'prayer') {
           submitData.duration = editConfigForm.value.duration;
         }
         
@@ -1700,7 +1700,7 @@ export default {
                         </div>
                         <div class="row">
                           <div class="col-md-12">
-                            {currentCategory.value !== 'chanting' && (
+                            {currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' && (
                               <div class="mb-3">
                                 <label class="form-label fw-semibold">Duration</label>
                                 <div class="row g-2">
@@ -1847,13 +1847,13 @@ export default {
                                     {config.description}
                                   </p>
                                   <div class="row g-2 mb-2">
-                                    {config.duration && currentCategory.value !== 'chanting' && (
+                                    {config.duration && currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' && (
                                       <div class="col-6">
                                         <small class="text-muted d-block">Duration:</small>
                                         <span class="badge bg-primary-subtle text-primary px-2 py-1">{config.duration}</span>
                                       </div>
                                     )}
-                                    <div class={config.duration && currentCategory.value !== 'chanting' ? "col-6" : "col-12"}>
+                                    <div class={config.duration && currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' ? "col-6" : "col-12"}>
                                       <small class="text-muted d-block">Type:</small>
                                       <span class="badge bg-secondary-subtle text-secondary px-2 py-1">{config.type || 'General'}</span>
                                     </div>
@@ -3381,7 +3381,7 @@ export default {
                       ) : null}
                     </div>
                   </div>
-                  {currentCategory.value !== 'chanting' && (
+                  {currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' && (
                     <div class="row">
                       <div class="col-md-12">
                         <div class="mb-3">
