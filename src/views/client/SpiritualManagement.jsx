@@ -3236,7 +3236,7 @@ export default {
                       <small class="text-muted d-block">Title</small>
                       <p class="mb-0 fw-bold small">{selectedConfig.value.title}</p>
                     </div>
-                    {selectedConfig.value.duration && currentCategory.value !== 'chanting' && (
+                    {selectedConfig.value.duration && currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' && (
                       <div class="col-6">
                         <small class="text-muted d-block">Duration</small>
                         <span class="badge bg-primary">{selectedConfig.value.duration}</span>
