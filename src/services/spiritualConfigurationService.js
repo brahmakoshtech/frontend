@@ -53,6 +53,16 @@ const spiritualConfigurationService = {
     } catch (error) {
       throw error.response?.data || error;
     }
+  },
+
+  // Get custom types for dropdowns
+  getCustomTypes: async () => {
+    try {
+      const response = await api.get('/spiritual-configurations/custom-types');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
   }
 };
 

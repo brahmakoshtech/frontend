@@ -120,6 +120,12 @@ export default {
 
     const activeTab = ref('configuration');
     
+    // Stats pagination and search
+    const statsSearch = ref('');
+    const statsPage = ref(1);
+    const statsLimit = ref(25);
+    const statsTotal = ref(0);
+    
     // Dynamic category detection from activity titles
     const detectCategoryFromTitle = (title) => {
       const titleLower = title.toLowerCase();
@@ -210,8 +216,8 @@ export default {
       }
     };
     
-    // Category-specific options
-    const categoryOptions = {
+    // Predefined options - these are always available
+    const PREDEFINED_OPTIONS = {
       chanting: [
         'Gayatri Mantra',
         'Hanuman Chalisa',
@@ -224,8 +230,7 @@ export default {
         'Saraswati Vandana',
         'Shanti Path',
         'Om Namah Shivaya',
-        'Hare Krishna Mantra',
-        'Other'
+        'Hare Krishna Mantra'
       ],
       prayer: [
         'Morning Prayer',
@@ -233,17 +238,45 @@ export default {
         'Gratitude Prayer',
         'Peace Prayer',
         'Healing Prayer',
-        'Protection Prayer',
-        'Other'
+        'Protection Prayer'
       ],
       meditation: [
         'Mindfulness Meditation',
         'Breathing Meditation',
         'Body Scan Meditation',
         'Loving Kindness Meditation',
-        'Walking Meditation',
-        'Other'
+        'Walking Meditation'
       ]
+    };
+    
+    // Category-specific options with ref for dynamic updates
+    const categoryOptions = ref({
+      chanting: [...PREDEFINED_OPTIONS.chanting, 'Other'],
+      prayer: [...PREDEFINED_OPTIONS.prayer, 'Other'],
+      meditation: [...PREDEFINED_OPTIONS.meditation, 'Other']
+    });
+    
+    // Load custom types from database via configurations
+    const loadCustomTypesFromConfigs = async () => {
+      try {
+        const response = await spiritualConfigurationService.getCustomTypes();
+        if (response.success && response.data) {
+          const customTypes = response.data;
+          
+          // Update categoryOptions with custom types from backend
+          Object.keys(customTypes).forEach(category => {
+            if (customTypes[category] && customTypes[category].length > 0) {
+              categoryOptions.value[category] = [
+                ...PREDEFINED_OPTIONS[category],
+                ...customTypes[category],
+                'Other'
+              ];
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading custom types:', error);
+      }
     };
     
     // Memoized computed values for better performance
@@ -252,7 +285,7 @@ export default {
     );
     
     const currentCategoryOptions = computed(() => 
-      categoryOptions[currentCategory.value] || []
+      categoryOptions.value[currentCategory.value] || []
     );
     
     const currentCategoryInfo = computed(() => 
@@ -268,10 +301,30 @@ export default {
     
     const filteredRecentActivities = computed(() => {
       const activities = userStats.value.recentActivities || [];
-      const filtered = activities.filter(activity => {
+      let filtered = activities.filter(activity => {
         return activity.type === currentCategory.value;
       });
-      return filtered;
+      
+      // Apply search filter
+      if (statsSearch.value) {
+        const searchLower = statsSearch.value.toLowerCase();
+        filtered = filtered.filter(activity => {
+          const userName = formatUserName(activity.userDetails).toLowerCase();
+          const userEmail = (activity.userDetails?.email || '').toLowerCase();
+          const title = (activity.title || '').toLowerCase();
+          const type = (activity.type || '').toLowerCase();
+          return userName.includes(searchLower) || userEmail.includes(searchLower) || 
+                 title.includes(searchLower) || type.includes(searchLower);
+        });
+      }
+      
+      // Update total
+      statsTotal.value = filtered.length;
+      
+      // Apply pagination
+      const start = (statsPage.value - 1) * statsLimit.value;
+      const end = start + statsLimit.value;
+      return filtered.slice(start, end);
     });
     
     const filteredClips = computed(() => 
@@ -289,6 +342,10 @@ export default {
       editConfigForm.value.type = newCategory;
       showCustomInput.value = false;
       configForm.value.customChantingType = '';
+      
+      // Reset stats pagination
+      statsPage.value = 1;
+      statsSearch.value = '';
       
       // Fetch data sequentially to avoid race conditions
       try {
@@ -684,6 +741,7 @@ export default {
         const response = await spiritualStatsService.getAllUsersStats(currentCategory.value);
         if (response.success) {
           userStats.value = response.data;
+          statsTotal.value = (response.data.recentActivities || []).filter(a => a.type === currentCategory.value).length;
         }
       } catch (error) {
         console.error('Fetch all users stats error:', error);
@@ -698,6 +756,8 @@ export default {
         const response = await spiritualConfigurationService.getAllConfigurations({ type: currentCategory.value });
         if (response.success) {
           configurations.value = response.data || [];
+          // Load custom types from fetched configurations
+          loadCustomTypesFromConfigs();
         }
       } catch (error) {
         console.error('Fetch configurations error:', error);
@@ -757,6 +817,10 @@ export default {
         const response = await spiritualConfigurationService.createConfiguration(submitData);
         if (response.success) {
           configurations.value.unshift(response.data);
+          
+          // Reload custom types from all configurations
+          loadCustomTypesFromConfigs();
+          
           configForm.value = {
             title: '',
             duration: '5 minutes',
@@ -874,6 +938,10 @@ export default {
           if (index !== -1) {
             configurations.value[index] = response.data;
           }
+          
+          // Reload custom types from all configurations
+          loadCustomTypesFromConfigs();
+          
           showEditConfigModal.value = false;
           editingConfig.value = null;
           toast.success('Configuration updated successfully!');
@@ -890,9 +958,14 @@ export default {
       if (confirm('Are you sure you want to delete this configuration?')) {
         try {
           loading.value = true;
+          
           const response = await spiritualConfigurationService.deleteConfiguration(configId);
           if (response.success) {
             configurations.value = configurations.value.filter(c => c._id !== configId);
+            
+            // Reload custom types from remaining configurations
+            loadCustomTypesFromConfigs();
+            
             toast.success('Configuration deleted successfully!');
           }
         } catch (error) {
@@ -1590,11 +1663,12 @@ export default {
                               <div class="mb-3">
                                 <label class="form-label fw-semibold">{currentCategoryInfo.value.name} Type</label>
                                 <select 
-                                  class="form-select" 
+                                  class="form-select form-select-sm" 
+                                  style={{ fontSize: '0.85rem' }}
                                   value={configForm.value.chantingType}
                                   onChange={(e) => handleCategoryOptionChange(e.target.value)}
                                 >
-                                  <option value="">Select {currentCategoryInfo.value.name.toLowerCase()} type</option>
+                                  <option value="">Select type</option>
                                   {currentCategoryOptions.value.map(option => (
                                     <option key={option} value={option}>{option}</option>
                                   ))}
@@ -2084,69 +2158,72 @@ export default {
                 ) : (
                   <div>
                     {/* User Activity History */}
-                    <div class="row g-4">
+                    <div class="row g-2 mb-4">
                       {/* Total Minutes - Hide for chanting */}
                       {currentCategory.value !== 'chanting' && (
-                        <div class="col-md-3">
-                          <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center">
-                              <div class="mb-3">
-                                <ClockIcon style={{ width: '2.5rem', height: '2.5rem', color: '#06b6d4' }} />
+                        <div class="col">
+                          <div class="card border-0 shadow-sm" style={{ minHeight: '180px' }}>
+                            <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+                              <div class="mb-2">
+                                <ClockIcon style={{ width: '2rem', height: '2rem', color: '#06b6d4' }} />
                               </div>
-                              <h4 class="fw-bold mb-1">{userStats.value.categoryStats[currentCategory.value]?.minutes || 0}</h4>
-                              <p class="text-muted mb-0">Total Minutes</p>
+                              <h3 class="fw-bold mb-1">{userStats.value.categoryStats[currentCategory.value]?.minutes || 0}</h3>
+                              <p class="text-muted mb-0 small text-center">Total Minutes</p>
                             </div>
                           </div>
                         </div>
                       )}
 
                       {/* Total Karma Points */}
-                      <div class={currentCategory.value === 'chanting' ? "col-md-4" : "col-md-3"}>
-                        <div class="card border-0 shadow-sm h-100">
-                          <div class="card-body text-center">
-                            <div class="mb-3">
-                              <SparklesIcon style={{ width: '2.5rem', height: '2.5rem', color: '#f59e0b' }} />
+                      <div class="col">
+                        <div class="card border-0 shadow-sm" style={{ minHeight: '180px' }}>
+                          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+                            <div class="mb-2">
+                              <SparklesIcon style={{ width: '2rem', height: '2rem', color: '#f59e0b' }} />
                             </div>
-                            <h4 class="fw-bold mb-1">{userStats.value.categoryStats[currentCategory.value]?.karmaPoints || 0}</h4>
-                            <p class="text-muted mb-0">Karma Points</p>
+                            <h3 class="fw-bold mb-1">{userStats.value.categoryStats[currentCategory.value]?.karmaPoints || 0}</h3>
+                            <p class="text-muted mb-0 small text-center">Karma Points</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Total Sessions */}
-                      <div class={currentCategory.value === 'chanting' ? "col-md-4" : "col-md-3"}>
-                        <div class="card border-0 shadow-sm h-100">
-                          <div class="card-body text-center">
-                            <div class="mb-3">
-                              <ChartBarIcon style={{ width: '2.5rem', height: '2.5rem', color: '#8b5cf6' }} />
+                      <div class="col">
+                        <div class="card border-0 shadow-sm" style={{ minHeight: '180px' }}>
+                          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+                            <div class="mb-2">
+                              <ChartBarIcon style={{ width: '2rem', height: '2rem', color: '#8b5cf6' }} />
                             </div>
-                            <h4 class="fw-bold mb-1">{userStats.value.categoryStats[currentCategory.value]?.sessions || 0}</h4>
-                            <p class="text-muted mb-0">Total Sessions</p>
-                            <div class="mt-2">
-                              <small class="text-success">✅ {userStats.value.categoryStats[currentCategory.value]?.completed || 0} Completed</small>
-                              <br />
-                              <small class="text-warning">⚠️ {userStats.value.categoryStats[currentCategory.value]?.incomplete || 0} Incomplete</small>
+                            <h3 class="fw-bold mb-1">{userStats.value.categoryStats[currentCategory.value]?.sessions || 0}</h3>
+                            <p class="text-muted mb-2 small text-center">Total Sessions</p>
+                            <div class="d-flex flex-column gap-1">
+                              <small class="text-success d-flex align-items-center gap-1">
+                                <CheckCircleIcon style={{ width: '14px', height: '14px' }} />
+                                {userStats.value.categoryStats[currentCategory.value]?.completed || 0}
+                              </small>
+                              <small class="text-warning d-flex align-items-center gap-1">
+                                <XCircleIcon style={{ width: '14px', height: '14px' }} />
+                                {userStats.value.categoryStats[currentCategory.value]?.incomplete || 0}
+                              </small>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Average Completion */}
-                      <div class={currentCategory.value === 'chanting' ? "col-md-4" : "col-md-3"}>
-                        <div class="card border-0 shadow-sm h-100">
-                          <div class="card-body text-center">
-                            <div class="mb-3">
-                              <FireIcon style={{ width: '2.5rem', height: '2.5rem', color: '#ef4444' }} />
+                      <div class="col">
+                        <div class="card border-0 shadow-sm" style={{ minHeight: '180px' }}>
+                          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+                            <div class="mb-2">
+                              <FireIcon style={{ width: '2rem', height: '2rem', color: '#ef4444' }} />
                             </div>
-                            <h4 class="fw-bold mb-1">{Math.round(userStats.value.categoryStats[currentCategory.value]?.averageCompletion || 0)}%</h4>
-                            <p class="text-muted mb-0">Avg Completion</p>
+                            <h3 class="fw-bold mb-1">{Math.round(userStats.value.categoryStats[currentCategory.value]?.averageCompletion || 0)}%</h3>
+                            <p class="text-muted mb-0 small text-center">Avg Completion</p>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Category Stats */}
-                    <div class="row g-4 mt-2">
+                      {/* Sessions Card - Conditionally shown */}
                       {Object.entries(userStats.value.categoryStats).filter(([category]) => category === currentCategory.value).map(([category, stats]) => {
                         const categoryEmojis = {
                           meditation: '🧘',
@@ -2171,23 +2248,29 @@ export default {
                           reflection: 'bg-warning'
                         };
                         return (
-                          <div key={category} class="col-md-3">
-                            <div class="card border-0 shadow-sm h-100">
-                              <div class="card-body text-center">
-                                <div class="mb-3">
-                                  <span style={{ fontSize: '2rem' }}>{categoryEmojis[category] || '🧘'}</span>
+                          <div key={category} class="col">
+                            <div class="card border-0 shadow-sm" style={{ minHeight: '180px' }}>
+                              <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+                                <div class="mb-2">
+                                  <span style={{ fontSize: '1.8rem' }}>{categoryEmojis[category] || '🧘'}</span>
                                 </div>
-                                <h5 class="fw-bold mb-1">{stats.sessions} Sessions</h5>
+                                <h5 class="fw-bold mb-1 text-center">{stats.sessions} Sessions</h5>
                                 {category !== 'chanting' && (
-                                  <p class="text-muted mb-1">{stats.minutes} minutes</p>
+                                  <p class="text-muted mb-2 small">{stats.minutes} min</p>
                                 )}
-                                <div class="d-flex justify-content-center gap-2 mb-2">
-                                  <small class="text-success">✅ {stats.completed || 0}</small>
-                                  <small class="text-warning">⚠️ {stats.incomplete || 0}</small>
+                                <div class="d-flex gap-2 mb-2">
+                                  <small class="text-success d-flex align-items-center gap-1">
+                                    <CheckCircleIcon style={{ width: '14px', height: '14px' }} />
+                                    {stats.completed || 0}
+                                  </small>
+                                  <small class="text-warning d-flex align-items-center gap-1">
+                                    <XCircleIcon style={{ width: '14px', height: '14px' }} />
+                                    {stats.incomplete || 0}
+                                  </small>
                                 </div>
-                                <span class={`badge ${badgeColors[category] || 'bg-primary'}`}>{stats.karmaPoints} points</span>
+                                <span class={`badge ${badgeColors[category] || 'bg-primary'} px-2 py-1`}>{stats.karmaPoints} pts</span>
                                 <div class="mt-1">
-                                  <small class="text-muted">{Math.round(stats.averageCompletion || 100)}% avg completion</small>
+                                  <small class="text-muted" style={{ fontSize: '0.7rem' }}>{Math.round(stats.averageCompletion || 100)}% avg</small>
                                 </div>
                               </div>
                             </div>
@@ -2195,7 +2278,7 @@ export default {
                         );
                       })}
                     </div>
-                    <div class="card border-0 shadow-sm">
+                    <div class="card border-0 shadow-sm mt-4">
                       <div class="card-header bg-light">
                         <div class="d-flex justify-content-between align-items-center">
                           <div>
@@ -2204,12 +2287,34 @@ export default {
                             </h5>
                             <small class="text-muted">Showing {currentCategoryInfo.value.name.toLowerCase()} activities from all users</small>
                           </div>
-                          <div class="text-end">
+                          <div class="d-flex gap-2 align-items-center">
+                            <input
+                              type="text"
+                              class="form-control"
+                              placeholder="Search by user, email, title..."
+                              value={statsSearch.value}
+                              onInput={(e) => {
+                                statsSearch.value = e.target.value;
+                                statsPage.value = 1;
+                              }}
+                              onKeydown={(e) => {
+                                if (e.key === 'Enter') {
+                                  statsPage.value = 1;
+                                }
+                              }}
+                              style={{ maxWidth: '300px' }}
+                            />
+                            <button 
+                              class="btn btn-outline-primary" 
+                              onClick={() => statsPage.value = 1}
+                            >
+                              Search
+                            </button>
                             <div class="badge bg-primary px-3 py-2">
-                              <strong>{filteredRecentActivities.value.length}</strong> Activities
+                              <strong>{statsTotal.value}</strong> Activities
                             </div>
-                            <div class="badge bg-success px-3 py-2 ms-2">
-                              <strong>{[...new Set(filteredRecentActivities.value.map(a => a.userDetails?.email))].length}</strong> Users
+                            <div class="badge bg-success px-3 py-2">
+                              <strong>{[...new Set((userStats.value.recentActivities || []).filter(a => a.type === currentCategory.value).map(a => a.userDetails?.email))].length}</strong> Users
                             </div>
                           </div>
                         </div>
@@ -2468,6 +2573,36 @@ export default {
                           </div>
                         )}
                       </div>
+                      {/* Pagination */}
+                      {statsTotal.value > 0 && (
+                        <div class="card-footer bg-light border-0">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                              Page {statsPage.value} of {Math.max(Math.ceil(statsTotal.value / statsLimit.value), 1)} ({statsTotal.value} activities)
+                            </div>
+                            <div class="btn-group">
+                              <button
+                                class="btn btn-outline-secondary btn-sm"
+                                disabled={statsPage.value <= 1}
+                                onClick={() => {
+                                  if (statsPage.value > 1) statsPage.value--;
+                                }}
+                              >
+                                Previous
+                              </button>
+                              <button
+                                class="btn btn-outline-secondary btn-sm"
+                                disabled={statsPage.value >= Math.ceil(statsTotal.value / statsLimit.value)}
+                                onClick={() => {
+                                  if (statsPage.value < Math.ceil(statsTotal.value / statsLimit.value)) statsPage.value++;
+                                }}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2475,8 +2610,6 @@ export default {
             )}
           </div>
         </div>
-
-
 
         {/* View Clip Modal */}
         {showViewClipModal.value && selectedClip.value && (
