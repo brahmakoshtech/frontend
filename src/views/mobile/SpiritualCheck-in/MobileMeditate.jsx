@@ -16,6 +16,8 @@ export default {
     const selectedDuration = ref(5);
     const selectedVideoUrl = ref('');
     const selectedAudioUrl = ref('');
+    const selectedVideoKey = ref('');
+    const selectedAudioKey = ref('');
     const enableVideo = ref(false);
     const enableAudio = ref(false);
     const tempVideoUrl = ref('');
@@ -124,7 +126,7 @@ export default {
       beginMeditation();
     };
 
-    const saveSession = async (targetDuration, actualDuration, emotion, karmaPoints, videoUrl = '', audioUrl = '') => {
+    const saveSession = async (targetDuration, actualDuration, emotion, karmaPoints) => {
       try {
         const token = localStorage.getItem('token_user');
         if (!token) {
@@ -140,8 +142,8 @@ export default {
           actualDuration: actualDuration,
           karmaPoints: karmaPoints,
           emotion: emotion,
-          videoUrl: videoUrl,
-          audioUrl: audioUrl
+          videoKey: selectedVideoKey.value || '',
+          audioKey: selectedAudioKey.value || ''
         };
         
         const response = await spiritualStatsService.saveSession(sessionData);
@@ -195,7 +197,7 @@ export default {
           sessionTimer.value = 0;
           earnedPoints.value = selectedDuration.value * 3;
           // Save completed session to database
-          saveSession(selectedDuration.value, selectedDuration.value, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
+          saveSession(selectedDuration.value, selectedDuration.value, selectedEmotion.value, earnedPoints.value);
           showRewardModal.value = true;
         }
       }, 1000);
@@ -761,15 +763,19 @@ export default {
                     if (selectedClip) {
                       const videoUrl = selectedClip.videoUrl || selectedClip.videoPresignedUrl || '';
                       const audioUrl = selectedClip.audioUrl || selectedClip.audioPresignedUrl || '';
+                      const videoKey = selectedClip.videoKey || '';
+                      const audioKey = selectedClip.audioKey || '';
                       
                       if (videoUrl) {
                         enableVideo.value = true;
                         selectedVideoUrl.value = videoUrl;
+                        selectedVideoKey.value = videoKey;
                         tempVideoUrl.value = videoUrl;
                       }
                       if (audioUrl) {
                         enableAudio.value = true;
                         selectedAudioUrl.value = audioUrl;
+                        selectedAudioKey.value = audioKey;
                         tempAudioUrl.value = audioUrl;
                       }
                     } else {
@@ -777,6 +783,8 @@ export default {
                       enableAudio.value = false;
                       selectedVideoUrl.value = '';
                       selectedAudioUrl.value = '';
+                      selectedVideoKey.value = '';
+                      selectedAudioKey.value = '';
                     }
                   }}
                 >
