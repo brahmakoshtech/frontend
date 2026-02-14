@@ -2,9 +2,13 @@ import api from './api';
 
 const userSankalpService = {
   // Join a sankalp
-  join: async (sankalpId) => {
+  join: async (sankalpId, customDays = null, reminderTime = null) => {
     try {
-      const response = await api.post('/user-sankalp/join', { sankalpId });
+      const payload = { sankalpId };
+      if (customDays) payload.customDays = customDays;
+      if (reminderTime) payload.reminderTime = reminderTime;
+      
+      const response = await api.post('/user-sankalp/join', payload);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

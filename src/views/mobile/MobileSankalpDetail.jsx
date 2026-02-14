@@ -16,6 +16,9 @@ export default {
     const sankalp = ref(null);
     const isJoined = ref(false);
     const userSankalpId = ref(null);
+    const showJoinModal = ref(false);
+    const customDays = ref(null);
+    const reminderTime = ref('09:00');
 
     const goBack = () => router.back();
 
@@ -40,9 +43,10 @@ export default {
     const joinSankalp = async () => {
       joining.value = true;
       try {
-        await userSankalpService.join(route.params.id);
+        await userSankalpService.join(route.params.id, customDays.value, reminderTime.value);
         toast.success('Successfully joined sankalp!');
         isJoined.value = true;
+        showJoinModal.value = false;
         fetchSankalp();
       } catch (error) {
         console.error('Error:', error);
@@ -50,6 +54,11 @@ export default {
       } finally {
         joining.value = false;
       }
+    };
+
+    const openJoinModal = () => {
+      customDays.value = sankalp.value.totalDays;
+      showJoinModal.value = true;
     };
 
     const goToProgress = () => {
@@ -265,6 +274,90 @@ export default {
           @keyframes spin {
             to { transform: rotate(360deg); }
           }
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+          }
+          .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          }
+          .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+          }
+          .form-group {
+            margin-bottom: 1.25rem;
+          }
+          .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+          }
+          .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+          }
+          .form-input:focus {
+            outline: none;
+            border-color: #9333ea;
+          }
+          .form-hint {
+            display: block;
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+          }
+          .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+          }
+          .btn-cancel {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            background: white;
+            color: #374151;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+          .btn-confirm {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+          .btn-confirm:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
         `}</style>
 
         <div class="header">
@@ -363,25 +456,54 @@ export default {
               ) : (
                 <button 
                   class="join-button" 
-                  onClick={joinSankalp}
+                  onClick={openJoinModal}
                   disabled={joining.value}
                 >
-                  {joining.value ? (
-                    <>
-                      <div class="loading-spinner" style="width: 1.5rem; height: 1.5rem; border-width: 2px;"></div>
-                      Joining...
-                    </>
-                  ) : (
-                    <>
-                      <SparklesIcon style="width: 1.5rem; height: 1.5rem;" />
-                      Join Sankalp
-                    </>
-                  )}
+                  <SparklesIcon style="width: 1.5rem; height: 1.5rem;" />
+                  Join Sankalp
                 </button>
               )}
             </div>
           </>
         ) : null}
+
+        {/* Join Modal */}
+        {showJoinModal.value && (
+          <div class="modal-overlay" onClick={() => showJoinModal.value = false}>
+            <div class="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3 class="modal-title">Join Sankalp</h3>
+              
+              <div class="form-group">
+                <label class="form-label">Duration (Days)</label>
+                <input 
+                  type="number" 
+                  class="form-input" 
+                  v-model={customDays.value}
+                  min="1"
+                  placeholder={`Default: ${sankalp.value?.totalDays} days`}
+                />
+                <small class="form-hint">How many days do you want to commit?</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Daily Reminder Time</label>
+                <input 
+                  type="time" 
+                  class="form-input" 
+                  v-model={reminderTime.value}
+                />
+                <small class="form-hint">When should we remind you daily?</small>
+              </div>
+
+              <div class="modal-actions">
+                <button class="btn-cancel" onClick={() => showJoinModal.value = false}>Cancel</button>
+                <button class="btn-confirm" onClick={joinSankalp} disabled={joining.value}>
+                  {joining.value ? 'Joining...' : 'Confirm & Join'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

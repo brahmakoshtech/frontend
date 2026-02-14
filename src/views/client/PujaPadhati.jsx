@@ -20,6 +20,12 @@ export default {
     const thumbnailUploaded = ref(false);
     const thumbnailFileName = ref('');
     const uploadProgress = ref(0);
+    const audioUploaded = ref(false);
+    const audioFileName = ref('');
+    const videoUploaded = ref(false);
+    const videoFileName = ref('');
+    const audioUploadProgress = ref(0);
+    const videoUploadProgress = ref(0);
     const selectedCategory = ref('');
     const availableSubcategories = ref([]);
     const showCustomCategory = ref(false);
@@ -37,13 +43,13 @@ export default {
       duration: '',
       language: 'Hindi',
       thumbnailImage: null,
+      audioFile: null,
+      videoFile: null,
       pujaVidhi: [{ stepNumber: 1, title: '', description: '' }],
       samagriList: [{ itemName: '', quantity: '', isOptional: false }],
       mantras: [{ mantraText: '', meaning: '' }],
       specialInstructions: '',
       muhurat: '',
-      audioUrl: '',
-      videoUrl: '',
       status: 'Active',
       sortOrder: 0
     });
@@ -75,6 +81,12 @@ export default {
 
     const openAddModal = () => {
       isEdit.value = false;
+      
+      // Calculate next sort order
+      const maxSort = pujaList.value.length > 0 
+        ? Math.max(...pujaList.value.map(p => p.sortOrder || 0))
+        : 0;
+      
       formData.value = {
         pujaName: '',
         category: 'Daily Puja',
@@ -93,12 +105,16 @@ export default {
         audioUrl: '',
         videoUrl: '',
         status: 'Active',
-        sortOrder: 0
+        sortOrder: maxSort + 1
       };
       selectedCategory.value = '';
       availableSubcategories.value = [];
       thumbnailUploaded.value = false;
       thumbnailFileName.value = '';
+      audioUploaded.value = false;
+      audioFileName.value = '';
+      videoUploaded.value = false;
+      videoFileName.value = '';
       showCustomCategory.value = false;
       showCustomSubcategory.value = false;
       customCategoryName.value = '';
@@ -182,6 +198,40 @@ export default {
       }
     };
 
+    const handleAudioUpload = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error('Audio file size must be less than 50MB');
+          return;
+        }
+        if (!file.type.startsWith('audio/')) {
+          toast.error('Please upload an audio file');
+          return;
+        }
+        formData.value.audioFile = file;
+        audioUploaded.value = true;
+        audioFileName.value = file.name;
+      }
+    };
+
+    const handleVideoUpload = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        if (file.size > 100 * 1024 * 1024) {
+          toast.error('Video file size must be less than 100MB');
+          return;
+        }
+        if (!file.type.startsWith('video/')) {
+          toast.error('Please upload a video file');
+          return;
+        }
+        formData.value.videoFile = file;
+        videoUploaded.value = true;
+        videoFileName.value = file.name;
+      }
+    };
+
     const openEditModal = (puja) => {
       isEdit.value = true;
       selectedPuja.value = puja;
@@ -196,6 +246,10 @@ export default {
       availableSubcategories.value = categories.value[puja.category] || [];
       thumbnailUploaded.value = false;
       thumbnailFileName.value = '';
+      audioUploaded.value = false;
+      audioFileName.value = '';
+      videoUploaded.value = false;
+      videoFileName.value = '';
       showModal.value = true;
     };
 
@@ -272,6 +326,10 @@ export default {
       try {
         let thumbnailUrl = formData.value.thumbnailUrl;
         let thumbnailKey = formData.value.thumbnailKey;
+        let audioUrl = formData.value.audioUrl;
+        let audioKey = formData.value.audioKey;
+        let videoUrl = formData.value.videoUrl;
+        let videoKey = formData.value.videoKey;
         
         // Upload new thumbnail if selected
         if (formData.value.thumbnailImage) {
@@ -295,6 +353,52 @@ export default {
             return;
           }
         }
+
+        // Upload audio if selected
+        if (formData.value.audioFile) {
+          try {
+            const file = formData.value.audioFile;
+            const { uploadUrl, fileUrl, key } = await pujaPadhatiService.getUploadUrl(
+              file.name,
+              file.type
+            );
+            
+            await pujaPadhatiService.uploadToS3(uploadUrl, file, (progress) => {
+              audioUploadProgress.value = progress;
+            });
+            
+            audioUrl = fileUrl;
+            audioKey = key;
+          } catch (uploadError) {
+            console.error('Error uploading audio:', uploadError);
+            toast.error('Failed to upload audio');
+            loading.value = false;
+            return;
+          }
+        }
+
+        // Upload video if selected
+        if (formData.value.videoFile) {
+          try {
+            const file = formData.value.videoFile;
+            const { uploadUrl, fileUrl, key } = await pujaPadhatiService.getUploadUrl(
+              file.name,
+              file.type
+            );
+            
+            await pujaPadhatiService.uploadToS3(uploadUrl, file, (progress) => {
+              videoUploadProgress.value = progress;
+            });
+            
+            videoUrl = fileUrl;
+            videoKey = key;
+          } catch (uploadError) {
+            console.error('Error uploading video:', uploadError);
+            toast.error('Failed to upload video');
+            loading.value = false;
+            return;
+          }
+        }
         
         const data = {
           pujaName: formData.value.pujaName,
@@ -307,15 +411,17 @@ export default {
           language: formData.value.language,
           thumbnailUrl,
           thumbnailKey,
+          audioUrl,
+          audioKey,
+          videoUrl,
+          videoKey,
           pujaVidhi: formData.value.pujaVidhi.filter(step => step.title.trim() && step.description.trim()),
           samagriList: formData.value.samagriList.filter(item => item.itemName.trim()),
           mantras: formData.value.mantras.filter(mantra => mantra.mantraText.trim()),
           specialInstructions: formData.value.specialInstructions,
           muhurat: formData.value.muhurat,
-          audioUrl: formData.value.audioUrl,
-          videoUrl: formData.value.videoUrl,
           status: formData.value.status,
-          sortOrder: formData.value.sortOrder ? Number(formData.value.sortOrder) : 0,
+          sortOrder: formData.value.sortOrder ? Number(formData.value.sortOrder) : undefined,
           clientId: clientId
         };
         
@@ -903,15 +1009,48 @@ export default {
                       <textarea class="form-control" rows="2" v-model={formData.value.muhurat} placeholder="Best time to perform..." style="border-radius: 8px;"></textarea>
                     </div>
 
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <label class="form-label fw-semibold">Audio URL</label>
-                        <input type="url" class="form-control" v-model={formData.value.audioUrl} placeholder="https://..." style="border-radius: 8px;" />
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <label class="form-label fw-semibold">Video URL</label>
-                        <input type="url" class="form-control" v-model={formData.value.videoUrl} placeholder="https://..." style="border-radius: 8px;" />
-                      </div>
+                    {/* Audio Upload */}
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Audio File</label>
+                      {isEdit.value && formData.value.audioUrl && typeof formData.value.audioUrl === 'string' && (
+                        <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
+                          <span>🎧</span>
+                          <small class="text-muted">Current audio exists (upload new to replace)</small>
+                          <a href={formData.value.audioUrl} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">Play</a>
+                        </div>
+                      )}
+                      <input type="file" class="form-control" accept="audio/*" onChange={handleAudioUpload} style="border-radius: 8px;" />
+                      {audioUploaded.value && (
+                        <small class="text-success mt-1 d-block">✓ {audioFileName.value} selected</small>
+                      )}
+                      {audioUploadProgress.value > 0 && audioUploadProgress.value < 100 && (
+                        <div class="progress mt-2" style="height: 4px;">
+                          <div class="progress-bar bg-info" style={`width: ${audioUploadProgress.value}%`}></div>
+                        </div>
+                      )}
+                      <small class="text-muted">Max 50MB (MP3, WAV, etc.)</small>
+                    </div>
+
+                    {/* Video Upload */}
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Video File</label>
+                      {isEdit.value && formData.value.videoUrl && typeof formData.value.videoUrl === 'string' && (
+                        <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
+                          <span>🎥</span>
+                          <small class="text-muted">Current video exists (upload new to replace)</small>
+                          <a href={formData.value.videoUrl} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-danger">Watch</a>
+                        </div>
+                      )}
+                      <input type="file" class="form-control" accept="video/*" onChange={handleVideoUpload} style="border-radius: 8px;" />
+                      {videoUploaded.value && (
+                        <small class="text-success mt-1 d-block">✓ {videoFileName.value} selected</small>
+                      )}
+                      {videoUploadProgress.value > 0 && videoUploadProgress.value < 100 && (
+                        <div class="progress mt-2" style="height: 4px;">
+                          <div class="progress-bar bg-danger" style={`width: ${videoUploadProgress.value}%`}></div>
+                        </div>
+                      )}
+                      <small class="text-muted">Max 100MB (MP4, AVI, etc.)</small>
                     </div>
 
                     <div class="row">
@@ -924,8 +1063,9 @@ export default {
                         </select>
                       </div>
                       <div class="col-md-6 mb-3">
-                        <label class="form-label fw-semibold">Sort Order</label>
-                        <input type="number" class="form-control" v-model={formData.value.sortOrder} placeholder="0" style="border-radius: 8px;" />
+                        <label class="form-label fw-semibold">Sort Order {!isEdit.value && <span class="badge bg-success ms-1" style="font-size: 0.7rem;">Auto</span>}</label>
+                        <input type="number" class="form-control" v-model={formData.value.sortOrder} placeholder="Auto-generated" style="border-radius: 8px;" readonly={!isEdit.value} />
+                        {!isEdit.value && <small class="text-muted">Auto-generated based on existing pujas</small>}
                       </div>
                     </div>
                   </form>
