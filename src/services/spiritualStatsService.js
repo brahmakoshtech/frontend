@@ -4,7 +4,7 @@ const spiritualStatsService = {
   // Get user spiritual statistics
   getUserStats: async () => {
     try {
-      const response = await api.get('/spiritual-stats/');
+      const response = await api.get('/spiritual-stats/?limit=500');
       return response.data;
     } catch (error) {
       console.error('Get user stats error:', error);

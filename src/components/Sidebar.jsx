@@ -122,7 +122,10 @@ export default {
     });
 
     const isActive = (itemPath) => {
-      return route.path.startsWith(itemPath) || route.path === itemPath;
+      if (itemPath === '/') {
+        return route.path === '/';
+      }
+      return route.path === itemPath || route.path.startsWith(itemPath + '/');
     };
 
     // Convert to computed for reactivity

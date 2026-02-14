@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import spiritualClipService from '../../../services/spiritualClipService.js';
 import spiritualStatsService from '../../../services/spiritualStatsService.js';
@@ -12,7 +12,8 @@ export default {
     const clips = ref([]);
     const configurations = ref([]);
     const loading = ref(true);
-    const selectedEmotion = ref('calm');
+    const selectedConfigId = ref(null);
+    const selectedEmotion = ref('happy');
     const selectedDuration = ref(5);
     const selectedVideoUrl = ref('');
     const selectedAudioUrl = ref('');
@@ -30,6 +31,11 @@ export default {
     const isUserLoggedIn = ref(false);
     const backgroundVideo = ref(null);
     const backgroundAudio = ref(null);
+    const selectedClip = ref(null);
+    const selectedConfig = ref(null);
+    const availableClips = ref([]);
+    const showClipPreview = ref(false);
+    const previewClip = ref(null);
     const isVideoPlaying = ref(false);
     const isAudioPlaying = ref(false);
     
@@ -126,6 +132,93 @@ export default {
       beginMeditation();
     };
 
+    // Computed filtered configurations based on selected emotion
+    const filteredConfigurations = computed(() => {
+      console.log('Filtering configurations for emotion:', selectedEmotion.value);
+      console.log('All configurations:', configurations.value);
+      if (!selectedEmotion.value) return configurations.value;
+      const filtered = configurations.value.filter(config => {
+        console.log('Config emotion:', config.emotion, 'Selected:', selectedEmotion.value);
+        return config.emotion?.toLowerCase() === selectedEmotion.value.toLowerCase();
+      });
+      console.log('Filtered configurations:', filtered);
+      return filtered.length > 0 ? filtered : configurations.value;
+    });
+
+    // Computed filtered clips based on selected emotion
+    const filteredClips = computed(() => {
+      console.log('Filtering clips for emotion:', selectedEmotion.value);
+      console.log('All clips:', clips.value);
+      if (!selectedEmotion.value) return clips.value;
+      const filtered = clips.value.filter(clip => {
+        console.log('Clip emotion:', clip.emotion, 'Selected:', selectedEmotion.value);
+        return clip.emotion?.toLowerCase() === selectedEmotion.value.toLowerCase();
+      });
+      console.log('Filtered clips:', filtered);
+      return filtered.length > 0 ? filtered : clips.value;
+    });
+
+    // Auto-select clip based on emotion
+    const autoSelectClipForEmotion = async () => {
+      const configs = filteredConfigurations.value;
+      console.log('Found configurations:', configs.length);
+      
+      if (configs.length > 0) {
+        try {
+          const allClipsPromises = configs.map(config => 
+            spiritualClipService.getSingleConfigurationAllClips(config._id)
+              .then(response => ({ config, response }))
+          );
+          
+          const results = await Promise.all(allClipsPromises);
+          const allClips = [];
+          results.forEach(({ config, response }) => {
+            if (response.success && response.data && response.data.length > 0) {
+              response.data.forEach(clip => {
+                allClips.push({ ...clip, configId: config._id, karmaPoints: config.karmaPoints });
+              });
+            }
+          });
+          
+          if (allClips.length > 0) {
+            availableClips.value = allClips;
+            const clip = allClips[0];
+            const config = configs.find(c => c._id === clip.configId);
+            selectedClip.value = clip;
+            selectedConfig.value = config;
+            selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
+            selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
+            selectedVideoKey.value = clip.videoKey || '';
+            selectedAudioKey.value = clip.audioKey || '';
+          } else {
+            selectedClip.value = null;
+            selectedConfig.value = null;
+            availableClips.value = [];
+          }
+        } catch (error) {
+          console.error('Error auto-selecting clip:', error);
+          selectedClip.value = null;
+          selectedConfig.value = null;
+          availableClips.value = [];
+        }
+      } else {
+        selectedClip.value = null;
+        selectedConfig.value = null;
+        availableClips.value = [];
+      }
+    };
+
+    const selectClip = (clip) => {
+      const configs = filteredConfigurations.value;
+      const config = configs.find(c => c._id === clip.configId);
+      selectedClip.value = clip;
+      selectedConfig.value = config;
+      selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
+      selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
+      selectedVideoKey.value = clip.videoKey || '';
+      selectedAudioKey.value = clip.audioKey || '';
+    };
+
     const saveSession = async (targetDuration, actualDuration, emotion, karmaPoints) => {
       try {
         const token = localStorage.getItem('token_user');
@@ -163,20 +256,33 @@ export default {
     };
 
     const beginMeditation = () => {
+      if (!selectedClip.value) {
+        alert('⚠️ Please select a meditation clip before starting the session.');
+        return;
+      }
+      
       isSessionActive.value = true;
-      sessionTimer.value = selectedDuration.value * 60; // Convert to seconds
+      sessionTimer.value = selectedDuration.value * 60;
       
       // Start background media playback after a short delay to ensure elements are mounted
       setTimeout(() => {
         if (selectedVideoUrl.value && backgroundVideo.value) {
           console.log('Starting video:', selectedVideoUrl.value);
-          backgroundVideo.value.play().catch(e => console.log('Video autoplay prevented:', e));
+          isVideoPlaying.value = true;
+          backgroundVideo.value.play().catch(e => {
+            console.log('Video autoplay prevented:', e);
+            isVideoPlaying.value = false;
+          });
         }
         if (selectedAudioUrl.value && backgroundAudio.value) {
           console.log('Starting audio:', selectedAudioUrl.value);
-          backgroundAudio.value.play().catch(e => console.log('Audio autoplay prevented:', e));
+          isAudioPlaying.value = true;
+          backgroundAudio.value.play().catch(e => {
+            console.log('Audio autoplay prevented:', e);
+            isAudioPlaying.value = false;
+          });
         }
-      }, 100);
+      }, 500);
       
       timerInterval.value = setInterval(() => {
         sessionTimer.value--;
@@ -188,15 +294,16 @@ export default {
           if (backgroundVideo.value) {
             backgroundVideo.value.pause();
             backgroundVideo.value.currentTime = 0;
+            isVideoPlaying.value = false;
           }
           if (backgroundAudio.value) {
             backgroundAudio.value.pause();
             backgroundAudio.value.currentTime = 0;
+            isAudioPlaying.value = false;
           }
           
           sessionTimer.value = 0;
-          earnedPoints.value = selectedDuration.value * 3;
-          // Save completed session to database
+          earnedPoints.value = selectedConfig.value?.karmaPoints || (selectedDuration.value * 3);
           saveSession(selectedDuration.value, selectedDuration.value, selectedEmotion.value, earnedPoints.value);
           showRewardModal.value = true;
         }
@@ -219,12 +326,19 @@ export default {
     const closeReward = () => {
       showRewardModal.value = false;
       earnedPoints.value = 0;
+      selectedClip.value = null;
+      selectedConfig.value = null;
+      selectedVideoUrl.value = '';
+      selectedAudioUrl.value = '';
+      isVideoPlaying.value = false;
+      isAudioPlaying.value = false;
     };
 
-    onMounted(() => {
+    onMounted(async () => {
       checkUserAuth();
-      fetchMeditationClips();
-      fetchMeditationConfigurations();
+      await fetchMeditationConfigurations();
+      await fetchMeditationClips();
+      await autoSelectClipForEmotion();
     });
 
     return () => (
@@ -612,14 +726,16 @@ export default {
             <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>How are you feeling?</h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
               {[
-                { emotion: 'calm', emoji: '😌' },
-                { emotion: 'stressed', emoji: '😰' },
-                { emotion: 'anxious', emoji: '😟' },
                 { emotion: 'happy', emoji: '😊' },
                 { emotion: 'sad', emoji: '😢' },
-                { emotion: 'peaceful', emoji: '🕊️' },
+                { emotion: 'angry', emoji: '😠' },
+                { emotion: 'afraid', emoji: '😨' },
+                { emotion: 'loved', emoji: '🥰' },
+                { emotion: 'surprised', emoji: '😲' },
+                { emotion: 'calm', emoji: '😌' },
+                { emotion: 'disgusted', emoji: '🤢' },
                 { emotion: 'neutral', emoji: '😐' },
-                
+                { emotion: 'stressed', emoji: '😰' },
               ].map(item => (
                 <label key={item.emotion} style={{ 
                   display: 'flex', 
@@ -635,7 +751,10 @@ export default {
                     name="emotion"
                     value={item.emotion}
                     checked={selectedEmotion.value === item.emotion}
-                    onChange={() => selectedEmotion.value = item.emotion}
+                    onChange={() => {
+                      selectedEmotion.value = item.emotion;
+                      autoSelectClipForEmotion();
+                    }}
                     style={{ marginRight: '0.5rem', accentColor: '#667eea' }}
                   />
                   <span style={{ fontSize: '0.85rem', color: '#1e293b' }}>{item.emoji} {item.emotion} {selectedEmotion.value === item.emotion ? '(Default)' : ''}</span>
@@ -669,6 +788,116 @@ export default {
                   <span>😌 {selectedEmotion.value}</span>
                   <span>✨ Recommended</span>
                 </div>
+                
+                {availableClips.value.length > 0 && (
+                  <div style={{ 
+                    marginTop: '0.75rem', 
+                    padding: '0.75rem', 
+                    background: '#f0f9ff', 
+                    borderRadius: '6px',
+                    border: '1px solid #0ea5e9'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '1rem' }}>🎬</span>
+                      <h6 style={{ color: '#0369a1', margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>Available Clips ({availableClips.value.length})</h6>
+                    </div>
+                    
+                    {availableClips.value.map((clip, index) => (
+                      <div 
+                        key={clip._id}
+                        onClick={() => selectClip(clip)}
+                        style={{ 
+                          padding: '0.75rem',
+                          background: selectedClip.value?._id === clip._id ? '#0ea5e9' : 'white',
+                          borderRadius: '6px',
+                          marginBottom: index < availableClips.value.length - 1 ? '0.5rem' : '0',
+                          cursor: 'pointer',
+                          border: selectedClip.value?._id === clip._id ? '2px solid #0369a1' : '1px solid #e2e8f0',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ 
+                          color: selectedClip.value?._id === clip._id ? 'white' : '#0284c7', 
+                          fontSize: '0.8rem', 
+                          fontWeight: '600', 
+                          marginBottom: '0.3rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <span>{clip.title}</span>
+                          {selectedClip.value?._id === clip._id && (
+                            <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>✓ Selected</span>
+                          )}
+                        </div>
+                        {clip.description && (
+                          <div style={{ 
+                            color: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.9)' : '#0369a1', 
+                            fontSize: '0.7rem', 
+                            lineHeight: '1.3',
+                            marginBottom: '0.4rem'
+                          }}>
+                            {clip.description}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem' }}>
+                          {(clip.videoUrl || clip.videoPresignedUrl) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                previewClip.value = clip;
+                                showClipPreview.value = true;
+                              }}
+                              style={{ 
+                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#0ea5e9', 
+                                color: selectedClip.value?._id === clip._id ? 'white' : 'white', 
+                                padding: '0.3rem 0.5rem', 
+                                borderRadius: '3px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              📹 Preview Video
+                            </button>
+                          )}
+                          {(clip.audioUrl || clip.audioPresignedUrl) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                previewClip.value = clip;
+                                showClipPreview.value = true;
+                              }}
+                              style={{ 
+                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#8b5cf6', 
+                                color: 'white', 
+                                padding: '0.3rem 0.5rem', 
+                                borderRadius: '3px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              🎵 Preview Audio
+                            </button>
+                          )}
+                          <span style={{ 
+                            background: '#10b981', 
+                            color: 'white', 
+                            padding: '0.3rem 0.5rem', 
+                            borderRadius: '3px',
+                            fontSize: '0.7rem',
+                            fontWeight: '500'
+                          }}>
+                            💎 {clip.karmaPoints} pts
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -720,7 +949,7 @@ export default {
                     fontSize: '0.7rem',
                     fontWeight: '500'
                   }}>
-                    {selectedDuration.value * 3} pts
+                    {selectedConfig.value?.karmaPoints || (selectedDuration.value * 3)} pts
                   </span>
                 </div>
                 <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Ideal duration for daily meditation practice</p>
@@ -736,297 +965,20 @@ export default {
                   border: '1px solid #0ea5e9'
                 }}>
                   <div style={{ fontSize: '0.8rem', color: '#0369a1', fontWeight: '500' }}>💎 Karma Points Preview</div>
-                  <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '0.2rem' }}>You will earn {selectedDuration.value * 3} karma points for completing this {selectedDuration.value}-minute meditation session</div>
+                  <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '0.2rem' }}>You will earn {selectedConfig.value?.karmaPoints || (selectedDuration.value * 3)} karma points for completing this meditation session</div>
                 </div>
               </div>
             )}
           </div>
           
-          {/* Media Selection */}
-          <div class="media-selector" style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '1rem', fontWeight: '500' }}>Select Media (Optional)</h4>
-            
-            {/* Available Clips Dropdown */}
-            {clips.value.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <select 
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    marginBottom: '0.5rem'
-                  }}
-                  onChange={(e) => {
-                    const selectedClip = clips.value.find(clip => clip._id === e.target.value);
-                    if (selectedClip) {
-                      const videoUrl = selectedClip.videoUrl || selectedClip.videoPresignedUrl || '';
-                      const audioUrl = selectedClip.audioUrl || selectedClip.audioPresignedUrl || '';
-                      const videoKey = selectedClip.videoKey || '';
-                      const audioKey = selectedClip.audioKey || '';
-                      
-                      if (videoUrl) {
-                        enableVideo.value = true;
-                        selectedVideoUrl.value = videoUrl;
-                        selectedVideoKey.value = videoKey;
-                        tempVideoUrl.value = videoUrl;
-                      }
-                      if (audioUrl) {
-                        enableAudio.value = true;
-                        selectedAudioUrl.value = audioUrl;
-                        selectedAudioKey.value = audioKey;
-                        tempAudioUrl.value = audioUrl;
-                      }
-                    } else {
-                      enableVideo.value = false;
-                      enableAudio.value = false;
-                      selectedVideoUrl.value = '';
-                      selectedAudioUrl.value = '';
-                      selectedVideoKey.value = '';
-                      selectedAudioKey.value = '';
-                    }
-                  }}
-                >
-                  <option value="">Select a clip...</option>
-                  {clips.value.map(clip => (
-                    <option key={clip._id} value={clip._id}>
-                      {clip.title} {clip.videoUrl || clip.videoPresignedUrl ? '📹' : ''} {clip.audioUrl || clip.audioPresignedUrl ? '🎵' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            
-            {/* Selected Clip Preview */}
-            {(selectedVideoUrl.value && selectedVideoUrl.value !== '' && selectedVideoUrl.value !== 'https://') || (selectedAudioUrl.value && selectedAudioUrl.value !== '' && selectedAudioUrl.value !== 'https://') ? (
-              <div style={{ 
-                marginBottom: '1rem',
-                padding: '0.75rem', 
-                background: 'white', 
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <h5 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Selected Media Preview</h5>
-                
-                {selectedVideoUrl.value && selectedVideoUrl.value !== '' && selectedVideoUrl.value !== 'https://' && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <video 
-                      style={{
-                        width: '100%',
-                        maxHeight: '120px',
-                        borderRadius: '6px',
-                        objectFit: 'cover'
-                      }}
-                      controls
-                      preload="metadata"
-                    >
-                      <source src={selectedVideoUrl.value} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                  </div>
-                )}
-                
-                {selectedAudioUrl.value && selectedAudioUrl.value !== '' && selectedAudioUrl.value !== 'https://' && (
-                  <div>
-                    <audio 
-                      style={{
-                        width: '100%',
-                        height: '32px'
-                      }}
-                      controls
-                      preload="metadata"
-                    >
-                      <source src={selectedAudioUrl.value} type="audio/mpeg" />
-                      Your browser does not support the audio tag.
-                    </audio>
-                  </div>
-                )}
-              </div>
-            ) : null}
-            
-            {/* Manual URL Inputs */}
-            <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>Or enter custom URLs:</div>
-            
-            {/* Video Selection */}
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={enableVideo.value}
-                  onChange={(e) => {
-                    enableVideo.value = e.target.checked;
-                    if (!e.target.checked) {
-                      tempVideoUrl.value = selectedVideoUrl.value;
-                      selectedVideoUrl.value = '';
-                    } else {
-                      selectedVideoUrl.value = tempVideoUrl.value || '';
-                    }
-                  }}
-                  style={{ marginRight: '0.5rem', accentColor: '#667eea' }}
-                />
-                <span style={{ fontSize: '0.85rem', color: '#374151', fontWeight: '500' }}>📹 Include Video</span>
-              </label>
-              {enableVideo.value && (
-                <input 
-                  type="url" 
-                  placeholder="Video URL"
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box'
-                  }}
-                  value={selectedVideoUrl.value}
-                  onInput={(e) => selectedVideoUrl.value = e.target.value}
-                />
-              )}
-            </div>
-            
-            {/* Audio Selection */}
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={enableAudio.value}
-                  onChange={(e) => {
-                    enableAudio.value = e.target.checked;
-                    if (!e.target.checked) {
-                      tempAudioUrl.value = selectedAudioUrl.value;
-                      selectedAudioUrl.value = '';
-                    } else {
-                      selectedAudioUrl.value = tempAudioUrl.value || '';
-                    }
-                  }}
-                  style={{ marginRight: '0.5rem', accentColor: '#667eea' }}
-                />
-                <span style={{ fontSize: '0.85rem', color: '#374151', fontWeight: '500' }}>🎵 Include Audio</span>
-              </label>
-              {enableAudio.value && (
-                <input 
-                  type="url" 
-                  placeholder="Audio URL"
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box'
-                  }}
-                  value={selectedAudioUrl.value}
-                  onInput={(e) => selectedAudioUrl.value = e.target.value}
-                />
-              )}
-            </div>
-          </div>
+
           
           <button class="start-btn" onClick={startSession}>
             🧘♀️ Begin Meditation
           </button>
         </div>
         
-        {loading.value ? (
-          <div class="loading">Loading meditation clips...</div>
-        ) : (
-          <>
-            {configurations.value.length > 0 && (
-              <div class="configurations-section">
-                <h4 style={{ marginBottom: '0.75rem', color: '#1e293b', fontSize: '0.95rem', fontWeight: '600' }}>Available Configurations</h4>
-                <div class="configurations-list">
-                  {configurations.value.map(config => (
-                    <div 
-                      key={config._id}
-                      class="config-item"
-                      style={{
-                        background: 'white',
-                        borderRadius: '8px',
-                        padding: '0.75rem',
-                        marginBottom: '0.75rem',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                        border: '1px solid #e2e8f0'
-                      }}
-                    >
-                      <div class="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                        <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>{config.title}</h5>
-                        <span style={{ 
-                          background: '#8b5cf6', 
-                          color: 'white', 
-                          padding: '0.2rem 0.4rem', 
-                          borderRadius: '4px', 
-                          fontSize: '0.7rem',
-                          fontWeight: '500'
-                        }}>
-                          {config.karmaPoints} pts
-                        </span>
-                      </div>
-                      <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>{config.description}</p>
-                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                        <span>⏱️ {config.duration}</span>
-                        <span>😌 {config.emotion}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Clips Section */}
-            <div class="clips-list">
-              {clips.value.map(clip => (
-                <div 
-                  key={clip._id}
-                  style={{
-                    background: 'white',
-                    borderRadius: '8px',
-                    padding: '0.75rem',
-                    marginBottom: '0.75rem',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <h5 style={{ fontWeight: '600', color: '#1e293b', marginBottom: '0.4rem', fontSize: '0.9rem' }}>{clip.title}</h5>
-                  <p style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: '1.3', marginBottom: '0.75rem' }}>{clip.description}</p>
-                  
-                  <div class="clip-media">
-                    {(clip.videoUrl || clip.videoPresignedUrl) && (
-                      <video 
-                        style={{
-                          width: '100%',
-                          maxHeight: '150px',
-                          borderRadius: '6px',
-                          marginBottom: '0.5rem',
-                          objectFit: 'cover'
-                        }}
-                        controls
-                        preload="metadata"
-                      >
-                        <source src={clip.videoPresignedUrl || clip.videoUrl} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                    )}
-                    
-                    {(clip.audioUrl || clip.audioPresignedUrl) && (
-                      <audio 
-                        style={{
-                          width: '100%',
-                          height: '32px'
-                        }}
-                        controls
-                        preload="metadata"
-                      >
-                        <source src={clip.audioPresignedUrl || clip.audioUrl} type="audio/mpeg" />
-                        Your browser does not support the audio tag.
-                      </audio>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+
         
         {/* Active Session Screen */}
         {isSessionActive.value && (
@@ -1052,8 +1004,8 @@ export default {
                     objectFit: 'cover'
                   }}
                   loop
-                  muted
                   preload="auto"
+                  playsInline
                 >
                   <source src={selectedVideoUrl.value} type="video/mp4" />
                 </video>
@@ -1196,19 +1148,120 @@ export default {
                 
                 const completedMinutes = selectedDuration.value - Math.ceil(sessionTimer.value / 60);
                 sessionTimer.value = 0;
-                earnedPoints.value = Math.max(0, completedMinutes * 3);
+                const configKarma = selectedConfig.value?.karmaPoints || (selectedDuration.value * 3);
+                earnedPoints.value = Math.max(0, Math.floor((completedMinutes / selectedDuration.value) * configKarma));
                 // Save partial/incomplete session
                 if (completedMinutes > 0) {
-                  saveSession(selectedDuration.value, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
+                  saveSession(selectedDuration.value, completedMinutes, selectedEmotion.value, earnedPoints.value);
                 } else {
                   // Save interrupted session with 0 actual duration
-                  saveSession(selectedDuration.value, 0, selectedEmotion.value, 0, selectedVideoUrl.value, selectedAudioUrl.value);
+                  saveSession(selectedDuration.value, 0, selectedEmotion.value, 0);
                 }
                 showRewardModal.value = true;
               }}
             >
               End Session
             </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Clip Preview Modal */}
+        {showClipPreview.value && previewClip.value && (
+          <div 
+            class="reward-modal"
+            onClick={() => {
+              showClipPreview.value = false;
+              previewClip.value = null;
+            }}
+          >
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '1.5rem',
+                maxWidth: '90%',
+                width: '400px',
+                maxHeight: '80vh',
+                overflow: 'auto'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>{previewClip.value.title}</h3>
+                <button
+                  onClick={() => {
+                    showClipPreview.value = false;
+                    previewClip.value = null;
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#64748b'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              {previewClip.value.description && (
+                <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: '1.4' }}>
+                  {previewClip.value.description}
+                </p>
+              )}
+              
+              {(previewClip.value.videoUrl || previewClip.value.videoPresignedUrl) && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <video 
+                    style={{
+                      width: '100%',
+                      borderRadius: '8px',
+                      maxHeight: '300px'
+                    }}
+                    controls
+                    preload="metadata"
+                  >
+                    <source src={previewClip.value.videoPresignedUrl || previewClip.value.videoUrl} type="video/mp4" />
+                  </video>
+                </div>
+              )}
+              
+              {(previewClip.value.audioUrl || previewClip.value.audioPresignedUrl) && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <audio 
+                    style={{
+                      width: '100%'
+                    }}
+                    controls
+                    preload="metadata"
+                  >
+                    <source src={previewClip.value.audioPresignedUrl || previewClip.value.audioUrl} type="audio/mpeg" />
+                  </audio>
+                </div>
+              )}
+              
+              <button
+                onClick={() => {
+                  selectClip(previewClip.value);
+                  showClipPreview.value = false;
+                  previewClip.value = null;
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                Select This Clip
+              </button>
             </div>
           </div>
         )}
@@ -1274,7 +1327,10 @@ export default {
                   cursor: 'pointer',
                   transition: 'all 0.3s ease'
                 }}
-                onClick={() => showRewardModal.value = false}
+                onClick={() => {
+                  showRewardModal.value = false;
+                  closeReward();
+                }}
               >
                 Continue Journey 🚀
               </button>

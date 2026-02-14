@@ -158,6 +158,15 @@ export default {
         route: '/client/sankalp',
         color: '#9333ea',
         category: 'Spiritual'
+      },
+      { 
+        id: 16, 
+        name: 'पूजा पद्धति (Puja Padhati)', 
+        icon: BookOpenIcon, 
+        description: 'Manage puja methods, vidhi, mantras and samagri lists', 
+        route: '/client/puja-padhati',
+        color: '#ff6b35',
+        category: 'Spiritual'
       }
     ];
 

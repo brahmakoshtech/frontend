@@ -633,6 +633,11 @@ const routes = [
         name: 'ClientSankalp',
         component: () => import('../views/client/Sankalp.jsx')
       },
+      {
+        path: 'puja-padhati',
+        name: 'ClientPujaPadhati',
+        component: () => import('../views/client/PujaPadhati.jsx')
+      },
 
       // Client Services
       {

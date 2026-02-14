@@ -90,7 +90,7 @@ export default {
         if (response.success) {
           activities.value = response.data.activities || [];
           userStats.value = {
-            totalStats: {
+            totalStats: response.data.totalStats || {
               sessions: response.data.stats?.sessions || 0,
               minutes: response.data.stats?.minutes || 0,
               karmaPoints: response.data.stats?.points || 0,
@@ -579,7 +579,7 @@ export default {
                 </div>
                 <div class="stat">
                   <div class="stat-value">{userStats.value?.totalStats?.karmaPoints || userStats.value?.stats?.points || 0}</div>
-                  <div class="stat-label">Points</div>
+                  <div class="stat-label">Total</div>
                 </div>
                 <div class="stat">
                   <div class="stat-value">{userStats.value?.totalStats?.sessions || userStats.value?.stats?.sessions || 0}</div>

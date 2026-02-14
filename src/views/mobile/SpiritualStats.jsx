@@ -22,6 +22,8 @@ export default {
   setup() {
     const toast = useToast();
     const loading = ref(false);
+    const page = ref(1);
+    const limit = ref(25);
     const userStats = ref({
       totalStats: { sessions: 0, minutes: 0, karmaPoints: 0, streak: 0 },
       categoryStats: {},
@@ -59,10 +61,11 @@ export default {
         if (response.success) {
           console.log('Raw API response:', response.data);
           console.log('Recent activities:', response.data.recentActivities);
+          console.log('Recent activities length:', response.data.recentActivities?.length);
           console.log('Activity types:', response.data.recentActivities?.map(a => a.type));
           
           userStats.value = {
-            totalStats: {
+            totalStats: response.data.totalStats || {
               sessions: response.data.totalStats?.sessions || 0,
               minutes: response.data.totalStats?.minutes || 0,
               karmaPoints: response.data.totalStats?.karmaPoints || 0,
@@ -233,6 +236,22 @@ export default {
     const showAudioModal = ref(false);
     const selectedMedia = ref(null);
     const chartCanvas = ref(null);
+
+    const paginatedActivities = computed(() => {
+      const start = (page.value - 1) * limit.value;
+      const end = start + limit.value;
+      return userStats.value.recentActivities.slice(start, end);
+    });
+
+    const totalPages = computed(() => {
+      return Math.max(Math.ceil(userStats.value.recentActivities.length / limit.value), 1);
+    });
+
+    const goToPage = (newPage) => {
+      const target = Math.min(Math.max(newPage, 1), totalPages.value);
+      if (target === page.value) return;
+      page.value = target;
+    };
 
     const drawChart = () => {
       if (!chartCanvas.value) return;
@@ -799,6 +818,31 @@ export default {
           </div>
         </div>
 
+        {/* Karma Breakdown */}
+        {userStats.value.totalStats?.karmaPointsBreakdown && (
+          <div class="weekly-chart" style={{ padding: '0.75rem', marginBottom: '0.75rem' }}>
+            <h3 class="chart-title" style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>Karma Breakdown</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
+              <div style={{ textAlign: 'center', padding: '0.4rem', background: '#f0fdf4', borderRadius: '4px' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#10b981' }}>+{userStats.value.totalStats.karmaPointsBreakdown.fromActivities}</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>Activities</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '0.4rem', background: '#fffbeb', borderRadius: '4px' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#f59e0b' }}>+{userStats.value.totalStats.karmaPointsBreakdown.bonus}</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>Bonus</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '0.4rem', background: '#fef2f2', borderRadius: '4px' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#ef4444' }}>-{userStats.value.totalStats.karmaPointsBreakdown.spent}</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>Spent</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '0.4rem', background: '#fef3c7', borderRadius: '4px', border: '1px solid #f59e0b' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#92400e' }}>={userStats.value.totalStats.karmaPointsBreakdown.total}</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>Total</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Weekly Chart */}
         <div class="weekly-chart">
           <h3 class="chart-title">Weekly Check-in Pattern</h3>
@@ -844,7 +888,7 @@ export default {
                 <div class="table-cell">Date</div>
                 <div class="table-cell">Status</div>
               </div>
-              {userStats.value.recentActivities.slice(0, 10).map((activity, index) => (
+              {paginatedActivities.value.map((activity, index) => (
                 <div key={index} class="table-row">
                   <div class="table-cell">
                     <div class="user-name">{formatUserName(activity.userDetails)}</div>
@@ -917,6 +961,57 @@ export default {
               <div class="empty-icon">📊</div>
               <h6>No Activities Yet</h6>
               <p>Start your spiritual journey to see your progress here!</p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {userStats.value.recentActivities.length > limit.value && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginTop: '1rem',
+              padding: '1rem',
+              background: 'white',
+              borderRadius: '8px'
+            }}>
+              <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                Page {page.value} of {totalPages.value} ({userStats.value.recentActivities.length} activities)
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    background: page.value <= 1 ? '#f1f5f9' : 'white',
+                    color: page.value <= 1 ? '#94a3b8' : '#1e293b',
+                    cursor: page.value <= 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}
+                  disabled={page.value <= 1}
+                  onClick={() => goToPage(page.value - 1)}
+                >
+                  Previous
+                </button>
+                <button
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    background: page.value >= totalPages.value ? '#f1f5f9' : 'white',
+                    color: page.value >= totalPages.value ? '#94a3b8' : '#1e293b',
+                    cursor: page.value >= totalPages.value ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}
+                  disabled={page.value >= totalPages.value}
+                  onClick={() => goToPage(page.value + 1)}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

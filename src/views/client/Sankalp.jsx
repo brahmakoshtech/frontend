@@ -242,10 +242,10 @@ export default {
           category: formData.value.category,
           subcategory: formData.value.subcategory,
           durationType: formData.value.durationType,
-          totalDays: formData.value.totalDays,
+          totalDays: Number(formData.value.totalDays),
           completionRule: formData.value.completionRule,
-          karmaPointsPerDay: formData.value.karmaPointsPerDay,
-          completionBonusKarma: formData.value.completionBonusKarma,
+          karmaPointsPerDay: Number(formData.value.karmaPointsPerDay),
+          completionBonusKarma: Number(formData.value.completionBonusKarma),
           dailyMotivationMessage: formData.value.dailyMotivationMessage,
           completionMessage: formData.value.completionMessage,
           status: formData.value.status,
@@ -440,7 +440,7 @@ export default {
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
                     <p class="mb-1 text-muted" style="font-size: 0.875rem;">Potential Karma Rewards</p>
-                    <h3 class="mb-0 fw-bold text-dark">{sankalpList.value.reduce((sum, s) => sum + ((s.karmaPointsPerDay || 0) * (s.totalDays || 0) + (s.completionBonusKarma || 0)), 0)}</h3>
+                    <h3 class="mb-0 fw-bold text-dark">{sankalpList.value.reduce((sum, s) => sum + ((Number(s.karmaPointsPerDay) || 0) * (Number(s.totalDays) || 0) + (Number(s.completionBonusKarma) || 0)), 0)}</h3>
                   </div>
                   <SparklesIcon style="width: 2.5rem; height: 2.5rem; color: #3b82f6;" />
                 </div>

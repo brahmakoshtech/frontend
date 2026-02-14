@@ -59,6 +59,7 @@ export default {
       if (path.includes('/voice')) return 'voice';
       if (path.includes('/realtime-agent')) return 'realtime-agent';
       if (path.includes('/activities')) return 'activities';
+      if (path.includes('/meditate') || path.includes('/pray') || path.includes('/chant') || path.includes('/silence')) return 'activities';
       if (path.includes('/spiritual-stats')) return 'spiritual-stats';
       if (path.includes('/ask-bi')) return 'ask-bi';
       if (path.includes('/sadhana')) return 'sadhana';
@@ -67,7 +68,8 @@ export default {
       if (path.includes('/utility')) return 'utility';
       if (path.includes('/profile')) return 'profile';
       if (path.includes('/user-chat')) return 'user-chat';
-      return 'home';
+      if (path.includes('/dashboard')) return 'home';
+      return null;
     });
 
     const setActivePage = (page) => {

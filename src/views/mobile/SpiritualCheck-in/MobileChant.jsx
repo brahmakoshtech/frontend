@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import spiritualClipService from '../../../services/spiritualClipService.js';
 import spiritualStatsService from '../../../services/spiritualStatsService.js';
@@ -15,7 +15,7 @@ export default {
     const isSessionActive = ref(false);
     const sessionTime = ref(0);
     const targetChants = ref(108);
-    const selectedEmotion = ref('devoted');
+    const selectedEmotion = ref('happy');
     const selectedChantingName = ref('Gayatri Mantra');
     const selectedVideoUrl = ref('');
     const selectedAudioUrl = ref('');
@@ -31,29 +31,111 @@ export default {
     const backgroundAudio = ref(null);
     const isVideoPlaying = ref(false);
     const isAudioPlaying = ref(false);
+    const isUserLoggedIn = ref(false);
+    const selectedClip = ref(null);
+    const selectedConfig = ref(null);
+    const availableClips = ref([]);
+    const showClipPreview = ref(false);
+    const previewClip = ref(null);
+    const selectedVideoKey = ref('');
+    const selectedAudioKey = ref('');
+    
+    const checkUserAuth = () => {
+      try {
+        const token = localStorage.getItem('token_user');
+        isUserLoggedIn.value = !!token;
+        return !!token;
+      } catch (error) {
+        isUserLoggedIn.value = false;
+        return false;
+      }
+    };
     
     const emotions = [
-      { emoji: '🕉️', label: 'Devoted', value: 'devoted' },
-      { emoji: '🔥', label: 'Energized', value: 'energized' },
-      { emoji: '🌟', label: 'Focused', value: 'focused' },
-      { emoji: '💫', label: 'Elevated', value: 'elevated' },
-      { emoji: '🙏', label: 'Reverent', value: 'reverent' },
+      { emoji: '😊', label: 'Happy', value: 'happy' },
+      { emoji: '😢', label: 'Sad', value: 'sad' },
+      { emoji: '😠', label: 'Angry', value: 'angry' },
+      { emoji: '😨', label: 'Afraid', value: 'afraid' },
+      { emoji: '🥰', label: 'Loved', value: 'loved' },
+      { emoji: '😲', label: 'Surprised', value: 'surprised' },
+      { emoji: '😌', label: 'Calm', value: 'calm' },
+      { emoji: '🤢', label: 'Disgusted', value: 'disgusted' },
       { emoji: '😐', label: 'Neutral', value: 'neutral' },
       { emoji: '😰', label: 'Stressed', value: 'stressed' }
     ];
     
-    const chantingNames = [
-      'Gayatri Mantra',
-      'Hanuman Chalisa', 
-      'Mahamrityunjaya Mantra',
-      'Shri Ganesh Vandana',
-      'Shri Ram Stuti',
-      'Shiv Tandava Stotram',
-      'Durga Chalisa',
-      'Vishnu Sahasranama',
-      'Saraswati Vandana',
-      'Shanti Path'
-    ];
+    const availableChantingNames = computed(() => {
+      return filteredConfigurations.value.map(config => config.chantingName || config.title || 'Unknown');
+    });
+    
+    const filteredConfigurations = computed(() => {
+      if (!selectedEmotion.value) return configurations.value;
+      const filtered = configurations.value.filter(config => 
+        config.emotion?.toLowerCase() === selectedEmotion.value.toLowerCase()
+      );
+      return filtered;
+    });
+
+    const autoSelectClipForEmotion = async () => {
+      const configs = filteredConfigurations.value;
+      
+      if (configs.length > 0) {
+        selectedChantingName.value = configs[0].chantingName || configs[0].title || 'Chanting';
+        
+        try {
+          const allClipsPromises = configs.map(config => 
+            spiritualClipService.getSingleConfigurationAllClips(config._id)
+              .then(response => ({ config, response }))
+          );
+          
+          const results = await Promise.all(allClipsPromises);
+          const allClips = [];
+          results.forEach(({ config, response }) => {
+            if (response.success && response.data && response.data.length > 0) {
+              response.data.forEach(clip => {
+                allClips.push({ ...clip, configId: config._id, karmaPoints: config.karmaPoints });
+              });
+            }
+          });
+          
+          if (allClips.length > 0) {
+            availableClips.value = allClips;
+            const clip = allClips[0];
+            const config = configs.find(c => c._id === clip.configId);
+            selectedClip.value = clip;
+            selectedConfig.value = config;
+            selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
+            selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
+            selectedVideoKey.value = clip.videoKey || '';
+            selectedAudioKey.value = clip.audioKey || '';
+          } else {
+            selectedClip.value = null;
+            selectedConfig.value = null;
+            availableClips.value = [];
+          }
+        } catch (error) {
+          selectedClip.value = null;
+          selectedConfig.value = null;
+          availableClips.value = [];
+        }
+      } else {
+        selectedChantingName.value = '';
+        selectedClip.value = null;
+        selectedConfig.value = null;
+        availableClips.value = [];
+      }
+    };
+
+    const selectClip = (clip) => {
+      const configs = filteredConfigurations.value;
+      const config = configs.find(c => c._id === clip.configId);
+      selectedClip.value = clip;
+      selectedConfig.value = config;
+      selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
+      selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
+      selectedVideoKey.value = clip.videoKey || '';
+      selectedAudioKey.value = clip.audioKey || '';
+    };
     
     const startTimer = () => {
       timer.value = setInterval(() => {
@@ -90,14 +172,16 @@ export default {
       // Start background media playback after a short delay
       setTimeout(() => {
         if (selectedVideoUrl.value && backgroundVideo.value) {
-          console.log('Starting video:', selectedVideoUrl.value);
-          backgroundVideo.value.play().catch(e => console.log('Video autoplay prevented:', e));
           isVideoPlaying.value = true;
+          backgroundVideo.value.play().catch(() => {
+            isVideoPlaying.value = false;
+          });
         }
         if (selectedAudioUrl.value && backgroundAudio.value) {
-          console.log('Starting audio:', selectedAudioUrl.value);
-          backgroundAudio.value.play().catch(e => console.log('Audio autoplay prevented:', e));
           isAudioPlaying.value = true;
+          backgroundAudio.value.play().catch(() => {
+            isAudioPlaying.value = false;
+          });
         }
       }, 100);
     };
@@ -119,7 +203,7 @@ export default {
       }
       
       const completionPercentage = Math.min((chantCount.value / targetChants.value) * 100, 100);
-      const karmaPoints = Math.floor(chantCount.value / 10);
+      const karmaPoints = selectedConfig.value?.karmaPoints || 0;
       
       earnedKarma.value = karmaPoints;
       
@@ -138,7 +222,6 @@ export default {
       try {
         const token = localStorage.getItem('token_user');
         if (!token) {
-          console.warn('User not logged in, session not saved');
           return;
         }
         
@@ -151,16 +234,18 @@ export default {
           status: completionPercentage >= 100 ? 'completed' : 'incomplete',
           completionPercentage: Math.round(completionPercentage),
           chantCount: chantCount.value,
-          videoUrl: selectedVideoUrl.value,
-          audioUrl: selectedAudioUrl.value
+          videoKey: selectedVideoKey.value || '',
+          audioKey: selectedAudioKey.value || ''
         };
         
         const response = await spiritualStatsService.saveSession(sessionData);
-        if (response.success) {
-          console.log('Chanting session saved successfully:', response.data?.statusMessage || response.message);
+        if (response.success && response.data?.statusMessage) {
+          setTimeout(() => {
+            alert(response.data.statusMessage);
+          }, 1000);
         }
       } catch (error) {
-        console.error('Error saving chanting session:', error);
+        alert('❌ Failed to save session. Please check your internet connection and try again.');
       }
     };
     
@@ -173,14 +258,11 @@ export default {
         const activityType = route.query.type || 'chanting';
         const categoryId = route.query.categoryId;
         
-        console.log('Fetching configurations for:', { activityType, categoryId });
-        
         let response;
         if (categoryId) {
           response = await spiritualActivityService.getSingleCheckinAllConfigration(categoryId);
           
           if (!response.success || !response.data || response.data.length === 0) {
-            console.log('No configurations found for categoryId, falling back to type filter');
             response = await spiritualActivityService.getAllSpiritualCheckinConfigurations(activityType);
           }
         } else {
@@ -189,9 +271,7 @@ export default {
         
         if (response.success && response.data) {
           configurations.value = response.data;
-          console.log('Loaded configurations:', response.data.length);
         } else {
-          console.log('No configurations found');
           configurations.value = [];
         }
       } catch (error) {
@@ -238,12 +318,17 @@ export default {
     };
 
     onMounted(() => {
+      checkUserAuth();
       fetchChantingClips();
       fetchChantingConfigurations();
+      autoSelectClipForEmotion();
     });
     
     onUnmounted(() => {
-      stopTimer();
+      if (timer.value) {
+        clearInterval(timer.value);
+        timer.value = null;
+      }
     });
 
     return () => (
@@ -557,57 +642,66 @@ export default {
           
           <div class="chanting-name-section" style={{ marginBottom: '1.5rem' }}>
             <p style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>Select Chanting</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.75rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {chantingNames.map(name => (
-                <label key={name} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  background: selectedChantingName.value === name ? '#fef3c7' : 'white',
-                  boxShadow: selectedChantingName.value === name ? '0 2px 8px rgba(245, 158, 11, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <input
-                    type="radio"
-                    name="chantingName"
-                    value={name}
-                    checked={selectedChantingName.value === name}
-                    onChange={() => selectedChantingName.value = name}
-                    style={{ marginRight: '0.5rem', accentColor: '#f59e0b' }}
-                  />
-                  <span style={{ fontSize: '0.8rem', color: '#1e293b', fontWeight: '600', lineHeight: '1.2' }}>
-                    {name} {selectedChantingName.value === name ? '(Default)' : ''}
-                  </span>
-                </label>
-              ))}
-            </div>
-            {selectedChantingName.value && (
-              <div style={{ 
-                marginTop: '0.75rem', 
-                padding: '0.75rem', 
-                background: 'white', 
-                borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>Selected Chanting</h5>
-                  <span style={{ 
-                    background: '#10b981', 
-                    color: 'white', 
-                    padding: '0.2rem 0.4rem', 
-                    borderRadius: '4px', 
-                    fontSize: '0.7rem',
-                    fontWeight: '500'
+            {availableChantingNames.value.length > 0 ? (
+              <>
+                <select
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    background: 'white',
+                    cursor: 'pointer',
+                    marginBottom: '0.75rem'
+                  }}
+                  value={selectedChantingName.value}
+                  onChange={(e) => selectedChantingName.value = e.target.value}
+                >
+                  {availableChantingNames.value.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                {selectedChantingName.value && (
+                  <div style={{ 
+                    marginTop: '0.75rem', 
+                    padding: '0.75rem', 
+                    background: 'white', 
+                    borderRadius: '8px',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
                   }}>
-                    Default
-                  </span>
-                </div>
-                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Sacred mantra for spiritual awakening</p>
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                  <span>🕉️ {selectedChantingName.value}</span>
-                  <span>✨ Recommended</span>
-                </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>Selected Chanting</h5>
+                      <span style={{ 
+                        background: '#10b981', 
+                        color: 'white', 
+                        padding: '0.2rem 0.4rem', 
+                        borderRadius: '4px', 
+                        fontSize: '0.7rem',
+                        fontWeight: '500'
+                      }}>
+                        Active
+                      </span>
+                    </div>
+                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Sacred mantra for spiritual awakening</p>
+                    <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                      <span>🕉️ {selectedChantingName.value}</span>
+                      <span>✨ Recommended</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ 
+                padding: '1rem', 
+                background: '#fef3c7', 
+                borderRadius: '8px',
+                border: '1px solid #f59e0b',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#92400e', fontSize: '0.85rem', margin: 0 }}>No chanting configurations available for selected emotion</p>
               </div>
             )}
           </div>
@@ -630,7 +724,10 @@ export default {
                     name="emotion"
                     value={emotion.value}
                     checked={selectedEmotion.value === emotion.value}
-                    onChange={() => selectedEmotion.value = emotion.value}
+                    onChange={() => {
+                      selectedEmotion.value = emotion.value;
+                      autoSelectClipForEmotion();
+                    }}
                     style={{ marginRight: '0.5rem', accentColor: '#f59e0b' }}
                   />
                   <span style={{ fontSize: '0.85rem', color: '#1e293b', fontWeight: '600' }}>{emotion.emoji} {emotion.label} {selectedEmotion.value === emotion.value ? '(Default)' : ''}</span>
@@ -664,6 +761,116 @@ export default {
                   <span>🕉️ {selectedEmotion.value}</span>
                   <span>✨ Recommended</span>
                 </div>
+                
+                {availableClips.value.length > 0 && (
+                  <div style={{ 
+                    marginTop: '0.75rem', 
+                    padding: '0.75rem', 
+                    background: '#fef3c7', 
+                    borderRadius: '6px',
+                    border: '1px solid #f59e0b'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '1rem' }}>🎬</span>
+                      <h6 style={{ color: '#92400e', margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>Available Clips ({availableClips.value.length})</h6>
+                    </div>
+                    
+                    {availableClips.value.map((clip, index) => (
+                      <div 
+                        key={clip._id}
+                        onClick={() => selectClip(clip)}
+                        style={{ 
+                          padding: '0.75rem',
+                          background: selectedClip.value?._id === clip._id ? '#f59e0b' : 'white',
+                          borderRadius: '6px',
+                          marginBottom: index < availableClips.value.length - 1 ? '0.5rem' : '0',
+                          cursor: 'pointer',
+                          border: selectedClip.value?._id === clip._id ? '2px solid #d97706' : '1px solid #e2e8f0',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ 
+                          color: selectedClip.value?._id === clip._id ? 'white' : '#d97706', 
+                          fontSize: '0.8rem', 
+                          fontWeight: '600', 
+                          marginBottom: '0.3rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <span>{clip.title}</span>
+                          {selectedClip.value?._id === clip._id && (
+                            <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>✓ Selected</span>
+                          )}
+                        </div>
+                        {clip.description && (
+                          <div style={{ 
+                            color: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.9)' : '#92400e', 
+                            fontSize: '0.7rem', 
+                            lineHeight: '1.3',
+                            marginBottom: '0.4rem'
+                          }}>
+                            {clip.description}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', flexWrap: 'wrap' }}>
+                          {(clip.videoUrl || clip.videoPresignedUrl) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                previewClip.value = clip;
+                                showClipPreview.value = true;
+                              }}
+                              style={{ 
+                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#f59e0b', 
+                                color: 'white', 
+                                padding: '0.3rem 0.5rem', 
+                                borderRadius: '3px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              📹 Preview Video
+                            </button>
+                          )}
+                          {(clip.audioUrl || clip.audioPresignedUrl) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                previewClip.value = clip;
+                                showClipPreview.value = true;
+                              }}
+                              style={{ 
+                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#d97706', 
+                                color: 'white', 
+                                padding: '0.3rem 0.5rem', 
+                                borderRadius: '3px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              🎵 Preview Audio
+                            </button>
+                          )}
+                          <span style={{ 
+                            background: '#10b981', 
+                            color: 'white', 
+                            padding: '0.3rem 0.5rem', 
+                            borderRadius: '3px',
+                            fontSize: '0.7rem',
+                            fontWeight: '500'
+                          }}>
+                            💎 {clip.karmaPoints} pts
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -731,280 +938,114 @@ export default {
                   border: '1px solid #f59e0b'
                 }}>
                   <div style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: '500' }}>💎 Karma Points Preview</div>
-                  <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.2rem' }}>You will earn {Math.min(Math.floor(targetChants.value / 10), 60)} karma points for completing {targetChants.value} chants</div>
+                  <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.2rem' }}>You will earn {selectedConfig.value?.karmaPoints || 0} karma points for completing {targetChants.value} chants</div>
                 </div>
               </div>
             )}
           </div>
           
-          {/* Media Selection */}
-          <div class="media-selector" style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>Select Media (Optional)</h4>
-            
-            {/* Available Clips Dropdown */}
-            {clips.value.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <select 
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    marginBottom: '0.5rem'
-                  }}
-                  onChange={(e) => {
-                    const selectedClip = clips.value.find(clip => clip._id === e.target.value);
-                    if (selectedClip) {
-                      const videoUrl = selectedClip.videoUrl || selectedClip.videoPresignedUrl || '';
-                      const audioUrl = selectedClip.audioUrl || selectedClip.audioPresignedUrl || '';
-                      
-                      if (videoUrl) {
-                        enableVideo.value = true;
-                        selectedVideoUrl.value = videoUrl;
-                        tempVideoUrl.value = videoUrl;
-                      }
-                      if (audioUrl) {
-                        enableAudio.value = true;
-                        selectedAudioUrl.value = audioUrl;
-                        tempAudioUrl.value = audioUrl;
-                      }
-                    } else {
-                      enableVideo.value = false;
-                      enableAudio.value = false;
-                      selectedVideoUrl.value = '';
-                      selectedAudioUrl.value = '';
-                    }
-                  }}
-                >
-                  <option value="">Select a clip...</option>
-                  {clips.value.map(clip => (
-                    <option key={clip._id} value={clip._id}>
-                      {clip.title} {clip.videoUrl || clip.videoPresignedUrl ? '📹' : ''} {clip.audioUrl || clip.audioPresignedUrl ? '🎵' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            
-            {/* Selected Clip Preview */}
-            {(selectedVideoUrl.value && selectedVideoUrl.value !== '' && selectedVideoUrl.value !== 'https://') || (selectedAudioUrl.value && selectedAudioUrl.value !== '' && selectedAudioUrl.value !== 'https://') ? (
-              <div style={{ 
-                marginBottom: '1rem',
-                padding: '0.75rem', 
-                background: 'white', 
-                borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <h5 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '700' }}>Selected Media Preview</h5>
-                
-                {selectedVideoUrl.value && selectedVideoUrl.value !== '' && selectedVideoUrl.value !== 'https://' && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <video 
-                      style={{
-                        width: '100%',
-                        maxHeight: '120px',
-                        borderRadius: '6px',
-                        objectFit: 'cover'
-                      }}
-                      controls
-                      preload="metadata"
-                    >
-                      <source src={selectedVideoUrl.value} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                  </div>
-                )}
-                
-                {selectedAudioUrl.value && selectedAudioUrl.value !== '' && selectedAudioUrl.value !== 'https://' && (
-                  <div>
-                    <audio 
-                      style={{
-                        width: '100%',
-                        height: '32px'
-                      }}
-                      controls
-                      preload="metadata"
-                    >
-                      <source src={selectedAudioUrl.value} type="audio/mpeg" />
-                      Your browser does not support the audio tag.
-                    </audio>
-                  </div>
-                )}
-              </div>
-            ) : null}
-            
-            {/* Manual URL Inputs */}
-            <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>Or enter custom URLs:</div>
-            
-            {/* Video Selection */}
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={enableVideo.value}
-                  onChange={(e) => {
-                    enableVideo.value = e.target.checked;
-                    if (!e.target.checked) {
-                      tempVideoUrl.value = selectedVideoUrl.value;
-                      selectedVideoUrl.value = '';
-                    } else {
-                      selectedVideoUrl.value = tempVideoUrl.value || '';
-                    }
-                  }}
-                  style={{ marginRight: '0.5rem', accentColor: '#f59e0b' }}
-                />
-                <span style={{ fontSize: '0.85rem', color: '#374151', fontWeight: '600' }}>📹 Include Video</span>
-              </label>
-              {enableVideo.value && (
-                <input 
-                  type="url" 
-                  placeholder="Video URL"
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box'
-                  }}
-                  value={selectedVideoUrl.value}
-                  onInput={(e) => selectedVideoUrl.value = e.target.value}
-                />
-              )}
-            </div>
-            
-            {/* Audio Selection */}
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={enableAudio.value}
-                  onChange={(e) => {
-                    enableAudio.value = e.target.checked;
-                    if (!e.target.checked) {
-                      tempAudioUrl.value = selectedAudioUrl.value;
-                      selectedAudioUrl.value = '';
-                    } else {
-                      selectedAudioUrl.value = tempAudioUrl.value || '';
-                    }
-                  }}
-                  style={{ marginRight: '0.5rem', accentColor: '#f59e0b' }}
-                />
-                <span style={{ fontSize: '0.85rem', color: '#374151', fontWeight: '600' }}>🎵 Include Audio</span>
-              </label>
-              {enableAudio.value && (
-                <input 
-                  type="url" 
-                  placeholder="Audio URL"
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box'
-                  }}
-                  value={selectedAudioUrl.value}
-                  onInput={(e) => selectedAudioUrl.value = e.target.value}
-                />
-              )}
-            </div>
-          </div>
-          
+
           <button class="start-btn" onClick={startSession}>Start Chanting</button>
         </div>
         
-        {loading.value ? (
-          <div class="loading">Loading chanting clips...</div>
-        ) : (
-          <>
-            {configurations.value.length > 0 && (
-              <div class="configurations-section" style={{ marginBottom: '2rem' }}>
-                <h4 style={{ marginBottom: '0.6rem', color: '#1e293b', fontSize: '0.95rem', fontWeight: '700' }}>Available Configurations</h4>
-                <div class="configurations-list">
-                  {configurations.value.map(config => (
-                    <div 
-                      key={config._id}
-                      class="config-item"
-                      style={{
-                        background: 'white',
-                        borderRadius: '8px',
-                        padding: '0.75rem',
-                        marginBottom: '0.75rem',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                        border: '1px solid #e2e8f0'
-                      }}
-                    >
-                      <div class="config-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                        <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>{config.title}</h5>
-                        <span style={{ 
-                          background: '#f59e0b', 
-                          color: 'white', 
-                          padding: '0.2rem 0.4rem', 
-                          borderRadius: '4px', 
-                          fontSize: '0.7rem',
-                          fontWeight: '500'
-                        }}>
-                          {config.karmaPoints} pts
-                        </span>
-                      </div>
-                      <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>{config.description}</p>
-                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                        <span>⏱️ {config.duration}</span>
-                        <span>🕉️ {config.emotion}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div class="clips-list">
-              {clips.value.map(clip => (
-                <div 
-                  key={clip._id}
-                  class="clip-item"
+        {/* Clip Preview Modal */}
+        {showClipPreview.value && previewClip.value && (
+          <div 
+            class="reward-modal"
+            onClick={() => {
+              showClipPreview.value = false;
+              previewClip.value = null;
+            }}
+          >
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '1.5rem',
+                maxWidth: '90%',
+                width: '400px',
+                maxHeight: '80vh',
+                overflow: 'auto'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>{previewClip.value.title}</h3>
+                <button
+                  onClick={() => {
+                    showClipPreview.value = false;
+                    previewClip.value = null;
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#64748b'
+                  }}
                 >
-                  <div class="clip-title">{clip.title}</div>
-                  <div class="clip-desc">{clip.description}</div>
-                  
-                  <div class="clip-media" style={{ marginTop: '1rem' }}>
-                    {(clip.videoUrl || clip.videoPresignedUrl) && (
-                      <video 
-                        style={{
-                          width: '100%',
-                          maxHeight: '150px',
-                          borderRadius: '6px',
-                          marginBottom: '0.5rem',
-                          objectFit: 'cover'
-                        }}
-                        controls
-                        preload="metadata"
-                      >
-                        <source src={clip.videoPresignedUrl || clip.videoUrl} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                    )}
-                    
-                    {(clip.audioUrl || clip.audioPresignedUrl) && (
-                      <audio 
-                        style={{
-                          width: '100%',
-                          height: '32px'
-                        }}
-                        controls
-                        preload="metadata"
-                      >
-                        <source src={clip.audioPresignedUrl || clip.audioUrl} type="audio/mpeg" />
-                        Your browser does not support the audio tag.
-                      </audio>
-                    )}
-                  </div>
+                  ×
+                </button>
+              </div>
+              
+              {previewClip.value.description && (
+                <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: '1.4' }}>
+                  {previewClip.value.description}
+                </p>
+              )}
+              
+              {(previewClip.value.videoUrl || previewClip.value.videoPresignedUrl) && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <video 
+                    style={{
+                      width: '100%',
+                      borderRadius: '8px',
+                      maxHeight: '300px'
+                    }}
+                    controls
+                    preload="metadata"
+                  >
+                    <source src={previewClip.value.videoPresignedUrl || previewClip.value.videoUrl} type="video/mp4" />
+                  </video>
                 </div>
-              ))}
+              )}
+              
+              {(previewClip.value.audioUrl || previewClip.value.audioPresignedUrl) && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <audio 
+                    style={{
+                      width: '100%'
+                    }}
+                    controls
+                    preload="metadata"
+                  >
+                    <source src={previewClip.value.audioPresignedUrl || previewClip.value.audioUrl} type="audio/mpeg" />
+                  </audio>
+                </div>
+              )}
+              
+              <button
+                onClick={() => {
+                  selectClip(previewClip.value);
+                  showClipPreview.value = false;
+                  previewClip.value = null;
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                Select This Clip
+              </button>
             </div>
-          </>
+          </div>
         )}
         
         {/* Active Session Screen */}
