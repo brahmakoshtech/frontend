@@ -8,9 +8,14 @@ import {
   EyeIcon,
   PlusIcon,
   CalendarIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  ClipboardDocumentListIcon,
+  GiftIcon,
+  ShoppingCartIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline';
 import spiritualActivityService from '../../services/spiritualActivityService.js';
+import spiritualStatsService from '../../services/spiritualStatsService.js';
 
 export default {
   name: 'SpiritualCheckin',
@@ -27,6 +32,13 @@ export default {
     const selectedActivity = ref(null);
     const editingActivity = ref(null);
     const expandedDescriptions = ref(new Set());
+    const statsData = ref([]);
+    const statsLoading = ref(false);
+    const categoryStats = ref({});
+    const totalStats = ref({});
+    const statsPage = ref(1);
+    const statsLimit = ref(25);
+    const statsTotal = ref(0);
 
     const newActivity = ref({
       title: '',
@@ -74,6 +86,38 @@ export default {
         loading.value = false;
       }
     };
+
+    const fetchStats = async () => {
+      try {
+        statsLoading.value = true;
+        const response = await spiritualStatsService.getAllUsersStats('all');
+        if (response.success && response.data) {
+          const allActivities = response.data.recentActivities || [];
+          statsTotal.value = allActivities.length;
+          const start = (statsPage.value - 1) * statsLimit.value;
+          const end = start + statsLimit.value;
+          statsData.value = allActivities.slice(start, end);
+          categoryStats.value = response.data.categoryStats || {};
+          totalStats.value = response.data.totalStats || {};
+        }
+      } catch (error) {
+        console.error('Fetch stats error:', error);
+        toast.error('Failed to load statistics');
+      } finally {
+        statsLoading.value = false;
+      }
+    };
+
+    const statsTotalPages = () => Math.max(Math.ceil(statsTotal.value / statsLimit.value), 1);
+
+    const goToStatsPage = async (newPage) => {
+      const max = statsTotalPages();
+      const target = Math.min(Math.max(newPage, 1), max);
+      if (target === statsPage.value) return;
+      statsPage.value = target;
+      await fetchStats();
+    };
+
 
     const handleImageUpload = (event) => {
       const file = event.target.files[0];
@@ -296,6 +340,9 @@ export default {
 
     onMounted(() => {
       fetchActivities();
+      if (activeTab.value === 'stats') {
+        fetchStats();
+      }
     });
 
     return () => (
@@ -362,64 +409,84 @@ export default {
             </div>
 
             {/* Tabs */}
-            <div class="card border-0 shadow-sm mb-4">
+            <div class="card border-0 shadow-sm mb-4" style={{ borderRadius: '16px', overflow: 'hidden' }}>
               <div class="card-body p-0">
                 <nav class="nav nav-pills nav-fill">
                   <button 
                     class={`nav-link ${activeTab.value === 'activity' ? 'active' : ''}`}
                     onClick={() => activeTab.value = 'activity'}
                     style={{ 
-                      borderRadius: '0',
+                      borderRadius: '16px',
                       fontWeight: '600',
                       padding: '1rem 2rem',
                       backgroundColor: activeTab.value === 'activity' ? '#8b5cf6' : 'transparent',
                       color: activeTab.value === 'activity' ? 'white' : '#6c757d',
-                      border: 'none'
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
                     }}
                   >
-                    📋 Activity
+                    <ClipboardDocumentListIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Activity
                   </button>
                   <button 
                     class={`nav-link ${activeTab.value === 'rewards' ? 'active' : ''}`}
                     onClick={() => router.push('/client/spiritual-rewards')}
                     style={{ 
-                      borderRadius: '0',
+                      borderRadius: '16px',
                       fontWeight: '600',
                       padding: '1rem 2rem',
                       backgroundColor: activeTab.value === 'rewards' ? '#8b5cf6' : 'transparent',
                       color: activeTab.value === 'rewards' ? 'white' : '#6c757d',
-                      border: 'none'
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
                     }}
                   >
-                    🎁 Rewards
+                    <GiftIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Rewards
                   </button>
                   <button 
                     class={`nav-link ${activeTab.value === 'orders' ? 'active' : ''}`}
                     onClick={() => activeTab.value = 'orders'}
                     style={{ 
-                      borderRadius: '0',
+                      borderRadius: '16px',
                       fontWeight: '600',
                       padding: '1rem 2rem',
                       backgroundColor: activeTab.value === 'orders' ? '#8b5cf6' : 'transparent',
                       color: activeTab.value === 'orders' ? 'white' : '#6c757d',
-                      border: 'none'
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
                     }}
                   >
-                    🛒 Orders
+                    <ShoppingCartIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Orders
                   </button>
                   <button 
                     class={`nav-link ${activeTab.value === 'stats' ? 'active' : ''}`}
-                    onClick={() => activeTab.value = 'stats'}
+                    onClick={() => { activeTab.value = 'stats'; fetchStats(); }}
                     style={{ 
-                      borderRadius: '0',
+                      borderRadius: '16px',
                       fontWeight: '600',
                       padding: '1rem 2rem',
                       backgroundColor: activeTab.value === 'stats' ? '#8b5cf6' : 'transparent',
                       color: activeTab.value === 'stats' ? 'white' : '#6c757d',
-                      border: 'none'
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
                     }}
                   >
-                    📊 Stats
+                    <ChartBarIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Stats
                   </button>
                 </nav>
               </div>
@@ -680,15 +747,237 @@ export default {
 
             {/* Stats Tab */}
             {activeTab.value === 'stats' && (
-              <div class="text-center py-5">
-                <div class="mb-4">
-                  <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                    <span style={{ fontSize: '2rem' }}>📊</span>
+              <>
+                {/* Summary Cards */}
+                <div class="row g-2 mb-3">
+                  <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100" style={{ borderRadius: '10px', background: 'white' }}>
+                      <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="flex-grow-1">
+                            <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.7rem' }}>Meditation</p>
+                            <h4 class="mb-0 fw-bold" style={{ color: '#667eea' }}>{categoryStats.value.meditation?.sessions || 0}</h4>
+                            <small class="text-muted" style={{ fontSize: '0.65rem' }}>{categoryStats.value.meditation?.minutes || 0} min</small>
+                          </div>
+                          <div class="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                            <span style={{ fontSize: '1rem' }}>🧘</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100" style={{ borderRadius: '10px', background: 'white' }}>
+                      <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="flex-grow-1">
+                            <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.7rem' }}>Chanting</p>
+                            <h4 class="mb-0 fw-bold" style={{ color: '#f093fb' }}>{categoryStats.value.chanting?.sessions || 0}</h4>
+                            <small class="text-muted" style={{ fontSize: '0.65rem' }}>{categoryStats.value.chanting?.karmaPoints || 0} karma</small>
+                          </div>
+                          <div class="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+                            <span style={{ fontSize: '1rem' }}>🕉️</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100" style={{ borderRadius: '10px', background: 'white' }}>
+                      <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="flex-grow-1">
+                            <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.7rem' }}>Prayer</p>
+                            <h4 class="mb-0 fw-bold" style={{ color: '#4facfe' }}>{categoryStats.value.prayer?.sessions || 0}</h4>
+                            <small class="text-muted" style={{ fontSize: '0.65rem' }}>{categoryStats.value.prayer?.minutes || 0} min</small>
+                          </div>
+                          <div class="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+                            <span style={{ fontSize: '1rem' }}>🙏</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100" style={{ borderRadius: '10px', background: 'white' }}>
+                      <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="flex-grow-1">
+                            <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.7rem' }}>Silence</p>
+                            <h4 class="mb-0 fw-bold" style={{ color: '#43e97b' }}>{categoryStats.value.silence?.sessions || 0}</h4>
+                            <small class="text-muted" style={{ fontSize: '0.65rem' }}>{categoryStats.value.silence?.minutes || 0} min</small>
+                          </div>
+                          <div class="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
+                            <span style={{ fontSize: '1rem' }}>🤫</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <h4 class="fw-bold mb-2">Statistics Coming Soon</h4>
-                <p class="text-muted mb-4">View your spiritual progress and analytics</p>
+
+                {/* Total Stats Card */}
+                <div class="card border-0 shadow-sm mb-3" style={{ borderRadius: '10px' }}>
+                  <div class="card-body p-2">
+                    <div class="row g-2">
+                      <div class="col-md-2 col-6">
+                        <div class="text-center p-2 rounded-2" style={{ background: '#f8f9fa' }}>
+                          <h5 class="mb-0 fw-bold" style={{ color: '#8b5cf6' }}>{totalStats.value.karmaPoints || 0}</h5>
+                          <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.65rem' }}>Karma</p>
+                        </div>
+                      </div>
+                      <div class="col-md-2 col-6">
+                        <div class="text-center p-2 rounded-2" style={{ background: '#f8f9fa' }}>
+                          <h5 class="mb-0 fw-bold" style={{ color: '#10b981' }}>{totalStats.value.sessions || 0}</h5>
+                          <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.65rem' }}>Sessions</p>
+                        </div>
+                      </div>
+                      <div class="col-md-2 col-6">
+                        <div class="text-center p-2 rounded-2" style={{ background: '#f8f9fa' }}>
+                          <h5 class="mb-0 fw-bold" style={{ color: '#3b82f6' }}>{totalStats.value.minutes || 0}</h5>
+                          <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.65rem' }}>Minutes</p>
+                        </div>
+                      </div>
+                      <div class="col-md-2 col-6">
+                        <div class="text-center p-2 rounded-2" style={{ background: '#f8f9fa' }}>
+                          <h5 class="mb-0 fw-bold" style={{ color: '#10b981' }}>{totalStats.value.completed || 0}</h5>
+                          <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.65rem' }}>Completed</p>
+                        </div>
+                      </div>
+                      <div class="col-md-2 col-6">
+                        <div class="text-center p-2 rounded-2" style={{ background: '#f8f9fa' }}>
+                          <h5 class="mb-0 fw-bold" style={{ color: '#f59e0b' }}>{totalStats.value.incomplete || 0}</h5>
+                          <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.65rem' }}>Incomplete</p>
+                        </div>
+                      </div>
+                      <div class="col-md-2 col-6">
+                        <div class="text-center p-2 rounded-2" style={{ background: '#f8f9fa' }}>
+                          <h5 class="mb-0 fw-bold" style={{ color: '#6366f1' }}>{totalStats.value.averageCompletion || 0}%</h5>
+                          <p class="mb-0 text-muted fw-semibold" style={{ fontSize: '0.65rem' }}>Avg Complete</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                  <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                      <h4 class="fw-bold mb-0">User Spiritual Activity History</h4>
+                      <button 
+                        class="btn btn-primary btn-sm rounded-pill"
+                        onClick={fetchStats}
+                        disabled={statsLoading.value}
+                      >
+                        {statsLoading.value ? 'Loading...' : 'Refresh'}
+                      </button>
+                    </div>
+
+                  {statsLoading.value ? (
+                    <div class="text-center py-5">
+                      <div class="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                      <p class="text-muted">Loading statistics...</p>
+                    </div>
+                  ) : statsData.value.length > 0 ? (
+                    <>
+                      <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                          <thead class="table-light">
+                            <tr>
+                              <th>User</th>
+                              <th>Category</th>
+                              <th>Duration</th>
+                              <th>Title</th>
+                              <th>Video</th>
+                              <th>Audio</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {statsData.value.map((activity) => (
+                              <tr key={activity.id}>
+                                <td>
+                                  <div class="fw-semibold">{activity.userDetails?.name || 'N/A'}</div>
+                                  <small class="text-muted">{activity.userDetails?.email || ''}</small>
+                                </td>
+                                <td>
+                                  <span class="badge bg-primary rounded-pill">{activity.type}</span>
+                                </td>
+                                <td>{activity.actualDuration || 0} min</td>
+                                <td>
+                                  <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {activity.title || '-'}
+                                  </div>
+                                </td>
+                                <td>
+                                  {activity.videoUrl ? (
+                                    <a href={activity.videoUrl} target="_blank" rel="noopener noreferrer" class="badge bg-success text-decoration-none">
+                                      🎥 Video
+                                    </a>
+                                  ) : (
+                                    <span class="text-muted">-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  {activity.audioUrl ? (
+                                    <a href={activity.audioUrl} target="_blank" rel="noopener noreferrer" class="badge bg-info text-decoration-none">
+                                      🎵 Audio
+                                    </a>
+                                  ) : (
+                                    <span class="text-muted">-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <small>{activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  }) : 'N/A'}</small>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                          Page {statsPage.value} of {statsTotalPages()} ({statsTotal.value} records)
+                        </div>
+                        <div class="btn-group">
+                          <button
+                            class="btn btn-outline-secondary btn-sm"
+                            disabled={statsPage.value <= 1}
+                            onClick={() => goToStatsPage(statsPage.value - 1)}
+                          >
+                            Previous
+                          </button>
+                          <button
+                            class="btn btn-outline-secondary btn-sm"
+                            disabled={statsPage.value >= statsTotalPages()}
+                            onClick={() => goToStatsPage(statsPage.value + 1)}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div class="text-center py-5">
+                      <div class="mb-4">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                          <ChartBarIcon style={{ width: '2rem', height: '2rem', color: '#6c757d' }} />
+                        </div>
+                      </div>
+                      <h4 class="fw-bold mb-2">No Statistics Yet</h4>
+                      <p class="text-muted mb-4">User activity data will appear here</p>
+                    </div>
+                  )}
+                </div>
               </div>
+              </>
             )}
 
             {/* Add Activity Modal */}

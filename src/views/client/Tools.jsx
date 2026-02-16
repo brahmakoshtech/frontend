@@ -15,7 +15,8 @@ import {
   BuildingOffice2Icon,
   VideoCameraIcon,
   FilmIcon,
-  BookOpenIcon
+  BookOpenIcon,
+  MoonIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -166,6 +167,15 @@ export default {
         description: 'Manage puja methods, vidhi, mantras and samagri lists', 
         route: '/client/puja-padhati',
         color: '#ff6b35',
+        category: 'Spiritual'
+      },
+      { 
+        id: 17, 
+        name: 'स्वप्न डिकोडर (Swapna Decoder)', 
+        icon: MoonIcon, 
+        description: 'Decode and interpret dreams with spiritual and Vedic insights', 
+        route: '/client/swapna-decoder',
+        color: '#6366f1',
         category: 'Spiritual'
       }
     ];

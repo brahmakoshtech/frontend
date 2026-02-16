@@ -32,6 +32,9 @@ export default {
     const customCategoryName = ref('');
     const showCustomSubcategory = ref(false);
     const customSubcategoryName = ref('');
+    const showMediaModal = ref(false);
+    const mediaModalUrl = ref('');
+    const mediaModalType = ref('');
 
     const formData = ref({
       pujaName: '',
@@ -489,6 +492,18 @@ export default {
       selectedPuja.value = null;
     };
 
+    const openMediaModal = (url, type) => {
+      mediaModalUrl.value = url;
+      mediaModalType.value = type;
+      showMediaModal.value = true;
+    };
+
+    const closeMediaModal = () => {
+      showMediaModal.value = false;
+      mediaModalUrl.value = '';
+      mediaModalType.value = '';
+    };
+
     const goBack = () => {
       router.push('/client/tools');
     };
@@ -766,9 +781,9 @@ export default {
                       <div class="d-flex gap-2 mb-3">
                         {puja.audioUrl && (
                           puja.status === 'Active' ? (
-                            <a href={puja.audioUrl} target="_blank" rel="noopener noreferrer" class="badge bg-info bg-opacity-10 text-info px-2 py-1 small text-decoration-none" style="cursor: pointer;">
+                            <button onClick={(e) => { e.stopPropagation(); openMediaModal(puja.audioUrl, 'audio'); }} class="badge bg-info bg-opacity-10 text-info px-2 py-1 small border-0" style="cursor: pointer;">
                               🎧 Audio
-                            </a>
+                            </button>
                           ) : (
                             <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1 small" style="cursor: not-allowed; opacity: 0.5;">
                               🎧 Audio
@@ -777,9 +792,9 @@ export default {
                         )}
                         {puja.videoUrl && (
                           puja.status === 'Active' ? (
-                            <a href={puja.videoUrl} target="_blank" rel="noopener noreferrer" class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 small text-decoration-none" style="cursor: pointer;">
+                            <button onClick={(e) => { e.stopPropagation(); openMediaModal(puja.videoUrl, 'video'); }} class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 small border-0" style="cursor: pointer;">
                               🎥 Video
-                            </a>
+                            </button>
                           ) : (
                             <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1 small" style="cursor: not-allowed; opacity: 0.5;">
                               🎥 Video
@@ -1251,14 +1266,14 @@ export default {
                       <h6 class="fw-bold mb-2 small">🎬 Media Resources</h6>
                       <div class="d-flex gap-2 flex-wrap">
                         {selectedPuja.value.audioUrl && (
-                          <a href={selectedPuja.value.audioUrl} target="_blank" rel="noopener noreferrer" class="btn btn-info btn-sm">
-                            🎧 Audio
-                          </a>
+                          <button class="btn btn-info btn-sm" onClick={() => openMediaModal(selectedPuja.value.audioUrl, 'audio')}>
+                            🎧 Play Audio
+                          </button>
                         )}
                         {selectedPuja.value.videoUrl && (
-                          <a href={selectedPuja.value.videoUrl} target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-sm">
-                            🎥 Video
-                          </a>
+                          <button class="btn btn-danger btn-sm" onClick={() => openMediaModal(selectedPuja.value.videoUrl, 'video')}>
+                            🎥 Play Video
+                          </button>
                         )}
                       </div>
                     </div>
@@ -1270,6 +1285,35 @@ export default {
                     <PencilIcon style="width: 0.9rem; height: 0.9rem;" class="me-1" />
                     Edit
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Media Modal */}
+        {showMediaModal.value && (
+          <div class="modal show d-block" style="background: rgba(0,0,0,0.5);" onClick={closeMediaModal}>
+            <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;" onClick={(e) => e.stopPropagation()}>
+              <div class="modal-content" style="border-radius: 12px; border: none;">
+                <div class="modal-header" style="border-bottom: 1px solid #e5e7eb; padding: 0.75rem 1rem;">
+                  <h6 class="modal-title fw-bold mb-0">{mediaModalType.value === 'audio' ? '🎧 Audio Player' : '🎥 Video Player'}</h6>
+                  <button type="button" class="btn-close" onClick={closeMediaModal}></button>
+                </div>
+                <div class="modal-body p-3">
+                  {mediaModalType.value === 'audio' ? (
+                    <div class="text-center">
+                      <audio controls autoplay class="w-100" style="outline: none;">
+                        <source src={mediaModalUrl.value} type="audio/mpeg" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  ) : (
+                    <video controls autoplay class="w-100" style="border-radius: 8px; max-height: 400px;">
+                      <source src={mediaModalUrl.value} type="video/mp4" />
+                      Your browser does not support the video element.
+                    </video>
+                  )}
                 </div>
               </div>
             </div>

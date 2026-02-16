@@ -2,20 +2,21 @@ import { RouterView } from 'vue-router';
 import { useAuth } from '../store/auth.js';
 import { useRouter } from 'vue-router';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import { 
-  Bars3Icon, 
-  XMarkIcon, 
-  HomeIcon, 
-  HeartIcon, 
-  ChatBubbleLeftRightIcon, 
-  TrophyIcon, 
-  ShoppingBagIcon, 
-  CogIcon, 
-  UserIcon, 
-  MicrophoneIcon, 
+import {
+  Bars3Icon,
+  XMarkIcon,
+  HomeIcon,
+  HeartIcon,
+  ChatBubbleLeftRightIcon,
+  TrophyIcon,
+  ShoppingBagIcon,
+  CogIcon,
+  UserIcon,
+  MicrophoneIcon,
   CpuChipIcon,
   SparklesIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  MoonIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -30,7 +31,7 @@ export default {
       const width = window.innerWidth;
       const wasMobile = isMobile.value;
       isMobile.value = width < 1024;
-      
+
       // Only auto-collapse when switching from desktop to mobile
       if (!wasMobile && isMobile.value) {
         sidebarCollapsed.value = true;
@@ -66,6 +67,7 @@ export default {
       if (path.includes('/rewards')) return 'rewards';
       if (path.includes('/brahma-bazar')) return 'brahma-bazar';
       if (path.includes('/utility')) return 'utility';
+      if (path.includes('/swapna-decoder')) return 'swapna-decoder';
       if (path.includes('/profile')) return 'profile';
       if (path.includes('/user-chat')) return 'user-chat';
       if (path.includes('/dashboard')) return 'home';
@@ -77,7 +79,7 @@ export default {
       if (isMobile.value) {
         sidebarCollapsed.value = true;
       }
-      
+
       if (page === 'home') {
         router.push('/mobile/user/dashboard');
       } else if (page === 'chat') {
@@ -100,9 +102,11 @@ export default {
         router.push('/mobile/user/brahma-bazar');
       } else if (page === 'utility') {
         router.push('/mobile/user/utility');
+      } else if (page === 'swapna-decoder') {
+        router.push('/mobile/user/swapna-decoder');
       } else if (page === 'profile') {
         router.push('/mobile/user/profile');
-      } else if(page === 'user-chat') {
+      } else if (page === 'user-chat') {
         router.push('/mobile/user/user-chat');
       }
     };
@@ -118,7 +122,7 @@ export default {
       <div style={{ display: 'flex', minHeight: '100vh' }}>
         {/* Overlay for mobile */}
         {!sidebarCollapsed.value && isMobile.value && (
-          <div 
+          <div
             style={{
               position: 'fixed',
               top: 0,
@@ -131,7 +135,7 @@ export default {
             onClick={toggleSidebar}
           />
         )}
-        
+
         {/* Sidebar */}
         <aside style={{
           width: sidebarCollapsed.value ? '70px' : '260px',
@@ -176,12 +180,12 @@ export default {
               </div>
             )}
           </div>
-          
-          <nav 
+
+          <nav
             class="sidebar-nav"
-            style={{ 
-              flex: 1, 
-              padding: '1rem 0', 
+            style={{
+              flex: 1,
+              padding: '1rem 0',
               overflowY: 'auto',
               overflowX: 'hidden',
               scrollbarWidth: 'none',
@@ -205,6 +209,7 @@ export default {
               { id: 'sadhana', label: 'Connect  (Services)', icon: SparklesIcon },
               { id: 'rewards', label: 'Rewards', icon: TrophyIcon },
               { id: 'brahma-bazar', label: 'Brahma Bazar', icon: ShoppingBagIcon },
+              { id: 'swapna-decoder', label: 'Swapna Decoder', icon: MoonIcon },
               { id: 'utility', label: 'Utility', icon: CogIcon },
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
@@ -237,12 +242,12 @@ export default {
                   fontSize: (sidebarCollapsed.value && !isMobile.value) ? '1.2rem' : '1rem'
                 }}
               >
-                <item.icon style={{ 
+                <item.icon style={{
                   width: '1.5rem',
                   height: '1.5rem',
-                  marginRight: (sidebarCollapsed.value && !isMobile.value) ? '0' : '1rem', 
-                  minWidth: '28px', 
-                  flexShrink: 0 
+                  marginRight: (sidebarCollapsed.value && !isMobile.value) ? '0' : '1rem',
+                  minWidth: '28px',
+                  flexShrink: 0
                 }} />
                 {!(sidebarCollapsed.value && !isMobile.value) && (
                   <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
@@ -250,7 +255,7 @@ export default {
               </button>
             ))}
           </nav>
-          
+
           <div style={{ borderTop: '1px solid #2d2d3e', padding: '0.5rem 0', minWidth: 0, overflow: 'hidden' }}>
             <button
               onClick={handleLogout}
@@ -276,12 +281,12 @@ export default {
                 fontSize: (sidebarCollapsed.value && !isMobile.value) ? '1.2rem' : '1rem'
               }}
             >
-              <span style={{ 
-                fontSize: '1.5rem', 
-                marginRight: (sidebarCollapsed.value && !isMobile.value) ? '0' : '1rem', 
-                minWidth: '28px', 
-                textAlign: 'center', 
-                flexShrink: 0 
+              <span style={{
+                fontSize: '1.5rem',
+                marginRight: (sidebarCollapsed.value && !isMobile.value) ? '0' : '1rem',
+                minWidth: '28px',
+                textAlign: 'center',
+                flexShrink: 0
               }}>🚪</span>
               {!(sidebarCollapsed.value && !isMobile.value) && (
                 <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>Logout</span>
@@ -293,11 +298,11 @@ export default {
 
 
         {/* Main Content */}
-        <div style={{ 
-          flex: 1, 
+        <div style={{
+          flex: 1,
           marginLeft: isMobile.value ? '0' : (sidebarCollapsed.value ? '70px' : '260px'),
-          display: 'flex', 
-          flexDirection: 'column', 
+          display: 'flex',
+          flexDirection: 'column',
           background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
           transition: 'margin-left 0.3s ease',
           minHeight: '100vh'
@@ -332,28 +337,28 @@ export default {
               >
                 <Bars3Icon style={{ width: '1.5rem', height: '1.5rem' }} />
               </button>
-              <h1 style={{ 
-                margin: 0, 
-                fontSize: isMobile.value ? '1.25rem' : '1.5rem', 
-                color: '#1e293b', 
-                fontWeight: 600 
+              <h1 style={{
+                margin: 0,
+                fontSize: isMobile.value ? '1.25rem' : '1.5rem',
+                color: '#1e293b',
+                fontWeight: 600
               }}>User Portal</h1>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ 
-                margin: 0, 
-                fontSize: isMobile.value ? '0.875rem' : '1rem', 
-                color: '#1e293b', 
+              <p style={{
+                margin: 0,
+                fontSize: isMobile.value ? '0.875rem' : '1rem',
+                color: '#1e293b',
                 fontWeight: 500,
                 display: isMobile.value ? 'none' : 'block'
               }}>Welcome, {user.value?.email || 'Spiritual Seeker'}!</p>
             </div>
           </header>
-          
-          <main style={{ 
-            padding: isMobile.value ? '1rem' : '2rem', 
-            flex: 1, 
-            minHeight: 'calc(100vh - 70px)' 
+
+          <main style={{
+            padding: isMobile.value ? '1rem' : '2rem',
+            flex: 1,
+            minHeight: 'calc(100vh - 70px)'
           }}>
             <RouterView />
           </main>

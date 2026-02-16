@@ -301,6 +301,11 @@ const routes = [
         path: 'notifications',
         name: 'MobileNotifications',
         component: () => import('../views/mobile/MobileNotifications.jsx')
+      },
+      {
+        path: 'swapna-decoder',
+        name: 'MobileSwapnaDecoder',
+        component: () => import('../views/mobile/MobileSwapnaDecoder.jsx')
       }
     ]
   },
@@ -637,6 +642,11 @@ const routes = [
         path: 'puja-padhati',
         name: 'ClientPujaPadhati',
         component: () => import('../views/client/PujaPadhati.jsx')
+      },
+      {
+        path: 'swapna-decoder',
+        name: 'ClientSwapnaDecoder',
+        component: () => import('../views/client/SwapnaDecoder.jsx')
       },
 
       // Client Services

@@ -46,11 +46,27 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
+    const method = options.method || 'GET';
     let token = options.token;
     console.log('token', token);
     console.log('endpoint', endpoint);
+    console.log('method', method);
     console.log('client token check:', localStorage.getItem('token_client'));
     let tokenSource = 'provided';
+  
+    // Handle query params
+    if (options.params) {
+      const searchParams = new URLSearchParams();
+      Object.keys(options.params).forEach(key => {
+        if (options.params[key] !== undefined && options.params[key] !== null) {
+          searchParams.append(key, options.params[key]);
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        endpoint = `${endpoint}?${queryString}`;
+      }
+    }
   
     if (!token) {
       // PUBLIC ENDPOINTS - No token required
@@ -98,7 +114,8 @@ class ApiService {
         endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || 
         endpoint.includes('/brand-assets') || endpoint.includes('/meditations') || 
         endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars') ||
-        endpoint.includes('/reviews') || endpoint.includes('/experts')) {
+        endpoint.includes('/reviews') || endpoint.includes('/experts') ||
+        endpoint.includes('/swapna-decoder')) {
         token = getTokenForRole('client');
         console.log('getTokenForRole result:', token);
         if (!token) {
@@ -114,6 +131,22 @@ class ApiService {
                      endpoint.includes('/reviews') ? 'client (reviews endpoint)' :
                      endpoint.includes('/experts') ? 'client (experts endpoint)' :
                      'client (endpoint match)';
+      } else if (endpoint.includes('/dream-requests')) {
+        // Dream requests - check if it's from mobile user or client admin
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/mobile') || currentPath.includes('/user')) {
+          // Mobile user creating request
+          token = getTokenForRole('user');
+          tokenSource = 'user (dream request from mobile)';
+        } else if (currentPath.includes('/client')) {
+          // Client admin viewing/managing requests
+          token = getTokenForRole('client');
+          tokenSource = 'client (dream request management)';
+        } else {
+          // Fallback: try user first, then client
+          token = getTokenForRole('user') || getTokenForRole('client');
+          tokenSource = 'dream-requests (fallback)';
+        }
       } else if (endpoint.includes('/chat/conversations') || 
                  endpoint.includes('/chat/unread-count') || 
                  endpoint.includes('/chat/conversation/') ||
