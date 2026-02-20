@@ -47,6 +47,7 @@ export default {
     };
 
     const getProgressPercentage = (userSankalp) => {
+      if (!userSankalp?.dailyReports || !userSankalp?.totalDays) return 0;
       const yesCount = userSankalp.dailyReports.filter(r => r.status === 'yes').length;
       return Math.round((yesCount / userSankalp.totalDays) * 100);
     };

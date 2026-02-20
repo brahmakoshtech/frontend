@@ -1,9 +1,18 @@
 import api from './api';
 
 const sankalpService = {
-  getAll: async () => {
+  getAll: async (params = {}) => {
     try {
-      const response = await api.get('/sankalp');
+      const queryParams = new URLSearchParams();
+      if (params.search) queryParams.append('search', params.search);
+      if (params.category) queryParams.append('category', params.category);
+      if (params.subcategory) queryParams.append('subcategory', params.subcategory);
+      if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+      
+      const queryString = queryParams.toString();
+      const url = queryString ? `/sankalp?${queryString}` : '/sankalp';
+      
+      const response = await api.get(url);
       return response.data || { data: [] };
     } catch (error) {
       throw error.response?.data || error.message;

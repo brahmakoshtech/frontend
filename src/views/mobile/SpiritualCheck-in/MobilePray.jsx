@@ -15,7 +15,6 @@ export default {
     const isSessionActive = ref(false);
     const sessionTimer = ref(0);
     const selectedEmotion = ref('happy');
-    const selectedDuration = ref(5);
     const selectedVideoUrl = ref('');
     const selectedAudioUrl = ref('');
     const enableVideo = ref(false);
@@ -49,11 +48,11 @@ export default {
     }));
     
     const emotions = [
-      { emoji: '😊', label: 'Happy', value: 'happy' },
       { emoji: '😢', label: 'Sad', value: 'sad' },
       { emoji: '😠', label: 'Angry', value: 'angry' },
       { emoji: '😨', label: 'Afraid', value: 'afraid' },
       { emoji: '🥰', label: 'Loved', value: 'loved' },
+      { emoji: '😊', label: 'Happy', value: 'happy' },
       { emoji: '😲', label: 'Surprised', value: 'surprised' },
       { emoji: '😌', label: 'Calm', value: 'calm' },
       { emoji: '🤢', label: 'Disgusted', value: 'disgusted' },
@@ -72,11 +71,10 @@ export default {
     };
 
     const filteredConfigurations = () => {
-      if (!selectedEmotion.value) return configurations.value;
-      const filtered = configurations.value.filter(config => 
+      if (!selectedEmotion.value) return [];
+      return configurations.value.filter(config => 
         config.emotion?.toLowerCase() === selectedEmotion.value.toLowerCase()
       );
-      return filtered.length > 0 ? filtered : configurations.value;
     };
 
     const filteredClips = () => {
@@ -163,45 +161,46 @@ export default {
 
     const autoSelectClipForEmotion = async () => {
       const configs = filteredConfigurations();
-      console.log('Found configurations:', configs.length);
+      console.log('Found configurations for emotion:', configs.length);
       
-      if (configs.length > 0) {
-        try {
-          const allClipsPromises = configs.map(config => 
-            spiritualClipService.getSingleConfigurationAllClips(config._id)
-              .then(response => ({ config, response }))
-          );
-          
-          const results = await Promise.all(allClipsPromises);
-          const allClips = [];
-          results.forEach(({ config, response }) => {
-            if (response.success && response.data && response.data.length > 0) {
-              response.data.forEach(clip => {
-                allClips.push({ ...clip, configId: config._id, karmaPoints: config.karmaPoints });
-              });
-            }
-          });
-          
-          if (allClips.length > 0) {
-            availableClips.value = allClips;
-            const clip = allClips[0];
-            const config = configs.find(c => c._id === clip.configId);
-            selectedClip.value = clip;
-            selectedConfig.value = config;
-            selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
-            selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
-          } else {
-            selectedClip.value = null;
-            selectedConfig.value = null;
-            availableClips.value = [];
+      if (configs.length === 0) {
+        selectedClip.value = null;
+        selectedConfig.value = null;
+        availableClips.value = [];
+        return;
+      }
+      
+      try {
+        const allClipsPromises = configs.map(config => 
+          spiritualClipService.getSingleConfigurationAllClips(config._id)
+            .then(response => ({ config, response }))
+        );
+        
+        const results = await Promise.all(allClipsPromises);
+        const allClips = [];
+        results.forEach(({ config, response }) => {
+          if (response.success && response.data && response.data.length > 0) {
+            response.data.forEach(clip => {
+              allClips.push({ ...clip, configId: config._id, karmaPoints: config.karmaPoints });
+            });
           }
-        } catch (error) {
-          console.error('Error auto-selecting clip:', error);
+        });
+        
+        if (allClips.length > 0) {
+          availableClips.value = allClips;
+          const clip = allClips[0];
+          const config = configs.find(c => c._id === clip.configId);
+          selectedClip.value = clip;
+          selectedConfig.value = config;
+          selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
+          selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
+        } else {
           selectedClip.value = null;
           selectedConfig.value = null;
           availableClips.value = [];
         }
-      } else {
+      } catch (error) {
+        console.error('Error auto-selecting clip:', error);
         selectedClip.value = null;
         selectedConfig.value = null;
         availableClips.value = [];
@@ -289,13 +288,21 @@ export default {
       }
       
       isSessionActive.value = true;
-      sessionTimer.value = selectedDuration.value * 60;
+      const duration = parseInt(selectedConfig.value?.duration) || 5;
+      sessionTimer.value = duration * 60;
       
       // Start background media playback after a short delay to ensure elements are mounted
       setTimeout(() => {
         if (selectedVideoUrl.value && backgroundVideo.value) {
           console.log('Starting video:', selectedVideoUrl.value);
           isVideoPlaying.value = true;
+          
+          // Listen for video end event
+          backgroundVideo.value.onended = () => {
+            console.log('Video ended, completing session');
+            completeSession();
+          };
+          
           backgroundVideo.value.play().catch(e => {
             console.log('Video autoplay prevented:', e);
             isVideoPlaying.value = false;
@@ -308,6 +315,13 @@ export default {
         if (selectedAudioUrl.value && backgroundAudio.value) {
           console.log('Starting audio:', selectedAudioUrl.value);
           isAudioPlaying.value = true;
+          
+          // Listen for audio end event
+          backgroundAudio.value.onended = () => {
+            console.log('Audio ended, completing session');
+            completeSession();
+          };
+          
           backgroundAudio.value.play().catch(e => {
             console.log('Audio autoplay prevented:', e);
             isAudioPlaying.value = false;
@@ -322,30 +336,38 @@ export default {
       timerInterval.value = setInterval(() => {
         sessionTimer.value--;
         if (sessionTimer.value <= 0) {
-          isSessionActive.value = false;
-          clearInterval(timerInterval.value);
-          if (videoWatchdog.value) {
-            clearInterval(videoWatchdog.value);
-          }
-          
-          // Stop background media
-          if (backgroundVideo.value) {
-            backgroundVideo.value.pause();
-            backgroundVideo.value.currentTime = 0;
-            isVideoPlaying.value = false;
-          }
-          if (backgroundAudio.value) {
-            backgroundAudio.value.pause();
-            backgroundAudio.value.currentTime = 0;
-            isAudioPlaying.value = false;
-          }
-          
-          sessionTimer.value = 0;
-          earnedPoints.value = selectedConfig.value?.karmaPoints || 0;
-          saveSession(selectedDuration.value, selectedDuration.value, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
-          showRewardModal.value = true;
+          completeSession();
         }
       }, 1000);
+    };
+
+    const completeSession = () => {
+      if (!isSessionActive.value) return;
+      
+      isSessionActive.value = false;
+      clearInterval(timerInterval.value);
+      if (videoWatchdog.value) {
+        clearInterval(videoWatchdog.value);
+      }
+      
+      // Stop background media
+      if (backgroundVideo.value) {
+        backgroundVideo.value.pause();
+        backgroundVideo.value.currentTime = 0;
+        isVideoPlaying.value = false;
+      }
+      if (backgroundAudio.value) {
+        backgroundAudio.value.pause();
+        backgroundAudio.value.currentTime = 0;
+        isAudioPlaying.value = false;
+      }
+      
+      const duration = parseInt(selectedConfig.value?.duration) || 5;
+      const completedMinutes = duration - Math.ceil(sessionTimer.value / 60);
+      sessionTimer.value = 0;
+      earnedPoints.value = selectedConfig.value?.karmaPoints || 0;
+      saveSession(duration, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
+      showRewardModal.value = true;
     };
 
     const endSession = () => {
@@ -366,15 +388,16 @@ export default {
         isAudioPlaying.value = false;
       }
       
-      const completedMinutes = selectedDuration.value - Math.ceil(sessionTimer.value / 60);
+      const targetDuration = parseInt(selectedConfig.value?.duration) || 5;
+      const completedMinutes = targetDuration - Math.ceil(sessionTimer.value / 60);
       sessionTimer.value = 0;
       const configKarmaPoints = selectedConfig.value?.karmaPoints || 0;
-      earnedPoints.value = Math.max(0, Math.floor((completedMinutes / selectedDuration.value) * configKarmaPoints));
+      earnedPoints.value = Math.max(0, Math.floor((completedMinutes / targetDuration) * configKarmaPoints));
       
       if (completedMinutes > 0) {
-        saveSession(selectedDuration.value, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
+        saveSession(targetDuration, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
       } else {
-        saveSession(selectedDuration.value, 0, selectedEmotion.value, 0, selectedVideoUrl.value, selectedAudioUrl.value);
+        saveSession(targetDuration, 0, selectedEmotion.value, 0, selectedVideoUrl.value, selectedAudioUrl.value);
       }
       showRewardModal.value = true;
     };
@@ -417,49 +440,106 @@ export default {
     return () => (
       <div class="prayer-page">
         <style>{`
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
+          html, body, #app {
+            overflow-x: hidden !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            position: relative;
+          }
+          
+          body {
+            overscroll-behavior-x: none;
+          }
+          
           .prayer-page {
-            padding: 0.75rem;
+            padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
             min-height: 100vh;
+            min-height: 100dvh;
             background: #f8fafc;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden !important;
+            box-sizing: border-box;
+            margin: 0;
+            position: relative;
+          }
+          
+          @media (min-width: 768px) {
+            .prayer-page {
+              max-width: 1100px;
+              margin: 0 auto;
+              width: 100%;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .prayer-page {
+              padding: max(0.875rem, env(safe-area-inset-top)) max(0.875rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(0.875rem, env(safe-area-inset-left));
+            }
+          }
+          
+          @media (max-width: 360px) {
+            .prayer-page {
+              padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+            }
+          }
+          
+          @media (max-width: 320px) {
+            .prayer-page {
+              padding: max(0.4rem, env(safe-area-inset-top)) max(0.4rem, env(safe-area-inset-right)) max(0.4rem, env(safe-area-inset-bottom)) max(0.4rem, env(safe-area-inset-left));
+            }
           }
           
           .page-header {
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
             color: white;
             padding: 0.75rem;
-            margin-bottom: 1rem;
+            margin: 0 0 1rem 0;
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+          }
+          
+          @media (max-width: 375px) {
+            .page-header {
+              padding: 0.6rem;
+              margin-bottom: 0.75rem;
+            }
+          }
+          
+          .back-btn, .share-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
           }
           
           .back-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
             padding: 0.4rem 0.75rem;
-            border-radius: 6px;
             font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-          
-          .back-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.4);
           }
           
           .share-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
             padding: 0.4rem;
-            border-radius: 6px;
             font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
             width: 32px;
             height: 32px;
             display: flex;
@@ -467,15 +547,28 @@ export default {
             justify-content: center;
           }
           
-          .share-btn:hover {
+          @media (max-width: 375px) {
+            .back-btn {
+              padding: 0.35rem 0.6rem;
+              font-size: 0.75rem;
+            }
+            .share-btn {
+              width: 28px;
+              height: 28px;
+            }
+          }
+          
+          .back-btn:active, .share-btn:active {
+            transform: scale(0.95);
             background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.4);
           }
           
           .header-content {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            flex: 1;
+            justify-content: center;
           }
           
           .activity-icon {
@@ -489,38 +582,74 @@ export default {
             color: white;
           }
           
-          .prayer-content {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          @media (max-width: 375px) {
+            .activity-icon {
+              font-size: 1.1rem;
+            }
+            .activity-title {
+              font-size: 0.9rem;
+            }
+          }
+          
+          .prayer-content, .session-setup {
+            background: #FFFFFF;
+            border-radius: clamp(10px, 2.5vw, 14px);
+            padding: clamp(1rem, 4vw, 1.5rem);
+            margin: 0 0 clamp(1rem, 2.5vw, 1.25rem) 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: visible;
+          }
+          
+          @media (max-width: 320px) {
+            .prayer-content, .session-setup {
+              padding: 0.75rem;
+              margin-bottom: 0.625rem;
+            }
           }
           
           .start-btn {
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.875rem 1.5rem;
             border-radius: 8px;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             width: 100%;
+            max-width: 100%;
+            touch-action: manipulation;
+            min-height: 48px;
+            box-sizing: border-box;
           }
           
-          .start-btn:hover {
-            transform: translateY(-1px);
+          .start-btn:active {
+            transform: scale(0.98);
             box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+          }
+          
+          @media (max-width: 375px) {
+            .start-btn {
+              padding: 0.75rem 1.25rem;
+              font-size: 0.9rem;
+              min-height: 44px;
+            }
           }
           
           .session-screen {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            max-width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             background: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80') center/cover,
                         linear-gradient(135deg, rgba(251, 191, 36, 0.8) 0%, rgba(245, 158, 11, 0.8) 50%, rgba(217, 119, 6, 0.8) 100%);
             display: flex;
@@ -530,8 +659,17 @@ export default {
             z-index: 1000;
             color: #f8fafc;
             text-align: center;
-            overflow-x: hidden;
+            overflow-x: hidden !important;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+            box-sizing: border-box;
+          }
+          
+          @media (max-width: 375px) {
+            .session-screen {
+              padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+            }
           }
           
           .session-card {
@@ -542,13 +680,19 @@ export default {
             margin: 0.5rem auto;
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: none;
-            max-width: 320px;
+            max-width: 240px;
             width: calc(100% - 2rem);
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
             box-sizing: border-box;
+          }
+          
+          @media (min-width: 1024px) {
+            .session-card {
+              max-width: 280px;
+            }
           }
           
           .session-timer {
@@ -591,14 +735,27 @@ export default {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            max-width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 2000;
             animation: fadeIn 0.5s ease;
+            padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+            box-sizing: border-box;
+            overflow-x: hidden !important;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          @media (max-width: 375px) {
+            .reward-modal {
+              padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+            }
           }
           
           @keyframes fadeIn {
@@ -660,6 +817,38 @@ export default {
           @keyframes glow {
             0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.5); }
             50% { text-shadow: 0 0 30px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.6); }
+          }
+          
+          .prayer-page * {
+            max-width: 100%;
+            box-sizing: border-box;
+          }
+          
+          button {
+            min-height: 44px;
+            min-width: 44px;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+          }
+          
+          @media (hover: none) and (pointer: coarse) {
+            button:hover {
+              transform: none;
+            }
+          }
+          
+          .emotion-grid,
+          .session-card,
+          .reward-content {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+          }
+          
+          button:focus-visible {
+            outline: 2px solid #fbbf24;
+            outline-offset: 2px;
           }
           
           .notification-toast {
@@ -759,241 +948,95 @@ export default {
           <h3 style={{ marginBottom: '1.2rem', color: '#1e293b', fontSize: '1.1rem', textAlign: 'center', fontWeight: '700' }}>🙏 Prayer Session</h3>
           
           <div class="emotion-selector" style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>How are you feeling?</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '0.9rem', fontWeight: '500' }}>How are you feeling?</h4>
+            <style>{`
+              .emotion-grid {
+                display: flex;
+                overflow-x: auto;
+                gap: 0.5rem;
+                padding: 0.75rem 0;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+              }
+              .emotion-grid::-webkit-scrollbar {
+                display: none;
+              }
+              .emotion-card {
+                min-width: 120px;
+                flex-shrink: 0;
+              }
+              @media (min-width: 768px) {
+                .emotion-grid {
+                  display: grid;
+                  grid-template-columns: repeat(5, 1fr);
+                  overflow-x: visible;
+                }
+                .emotion-card {
+                  min-width: auto;
+                }
+              }
+              @media (min-width: 1024px) {
+                .emotion-grid {
+                  grid-template-columns: repeat(10, 1fr);
+                }
+              }
+            `}</style>
+            <div class="emotion-grid">
               {emotions.map(item => (
-                <label key={item.value} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  background: selectedEmotion.value === item.value ? '#fef3c7' : 'white',
-                  boxShadow: selectedEmotion.value === item.value ? '0 2px 8px rgba(251, 191, 36, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <input
-                    type="radio"
-                    name="emotion"
-                    value={item.value}
-                    checked={selectedEmotion.value === item.value}
-                    onChange={() => {
-                      selectedEmotion.value = item.value;
-                      autoSelectClipForEmotion();
-                    }}
-                    style={{ marginRight: '0.5rem', accentColor: '#fbbf24' }}
-                  />
-                  <span style={{ fontSize: '0.85rem', color: '#1e293b', fontWeight: '600' }}>{item.emoji} {item.label} {selectedEmotion.value === item.value ? '(Default)' : ''}</span>
-                </label>
-              ))}
-            </div>
-            {selectedEmotion.value && (
-              <div style={{ 
-                marginTop: '0.75rem', 
-                padding: '0.75rem', 
-                background: 'white', 
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>Selected Emotion</h5>
-                  <span style={{ 
-                    background: '#10b981', 
-                    color: 'white', 
-                    padding: '0.2rem 0.4rem', 
-                    borderRadius: '4px', 
-                    fontSize: '0.7rem',
-                    fontWeight: '500'
-                  }}>
-                    Default
-                  </span>
-                </div>
-                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Perfect choice for heartfelt prayer practice</p>
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                  <span>🙏 {selectedEmotion.value}</span>
-                  <span>✨ Recommended</span>
-                </div>
-                
-                {availableClips.value.length > 0 && (
+                <div
+                  class="emotion-card"
+                  key={item.value}
+                  onClick={() => {
+                    selectedEmotion.value = item.value;
+                    autoSelectClipForEmotion();
+                  }}
+                  style={{ 
+                    padding: '0.6rem 0.5rem',
+                    borderRadius: '10px',
+                    border: selectedEmotion.value === item.value ? '2px solid #fbbf24' : '1px solid #e2e8f0',
+                    background: selectedEmotion.value === item.value ? '#fbbf24' : '#FFFFFF',
+                    color: selectedEmotion.value === item.value ? 'white' : '#2D3748',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedEmotion.value === item.value ? '0 4px 12px rgba(251, 191, 36, 0.4)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+                    transform: selectedEmotion.value === item.value ? 'scale(1.05)' : 'scale(1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '85px'
+                  }}
+                >
+                  <div style={{ fontSize: '1.8rem', marginBottom: '0.3rem' }}>{item.emoji}</div>
                   <div style={{ 
-                    marginTop: '0.75rem', 
-                    padding: '0.75rem', 
-                    background: '#fef3c7', 
-                    borderRadius: '6px',
-                    border: '1px solid #fbbf24'
+                    fontSize: '0.75rem', 
+                    fontWeight: selectedEmotion.value === item.value ? '600' : '500', 
+                    textTransform: 'capitalize'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '1rem' }}>🎬</span>
-                      <h6 style={{ color: '#92400e', margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>Available Clips ({availableClips.value.length})</h6>
-                    </div>
-                    
-                    {availableClips.value.map((clip, index) => (
-                      <div 
-                        key={clip._id}
-                        onClick={() => selectClip(clip)}
-                        style={{ 
-                          padding: '0.75rem',
-                          background: selectedClip.value?._id === clip._id ? '#fbbf24' : 'white',
-                          borderRadius: '6px',
-                          marginBottom: index < availableClips.value.length - 1 ? '0.5rem' : '0',
-                          cursor: 'pointer',
-                          border: selectedClip.value?._id === clip._id ? '2px solid #f59e0b' : '1px solid #e2e8f0',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <div style={{ 
-                          color: selectedClip.value?._id === clip._id ? 'white' : '#f59e0b', 
-                          fontSize: '0.8rem', 
-                          fontWeight: '600', 
-                          marginBottom: '0.3rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}>
-                          <span>{clip.title}</span>
-                          {selectedClip.value?._id === clip._id && (
-                            <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>✓ Selected</span>
-                          )}
-                        </div>
-                        {clip.description && (
-                          <div style={{ 
-                            color: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.9)' : '#92400e', 
-                            fontSize: '0.7rem', 
-                            lineHeight: '1.3',
-                            marginBottom: '0.4rem'
-                          }}>
-                            {clip.description}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', flexWrap: 'wrap' }}>
-                          {(clip.videoUrl || clip.videoPresignedUrl) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                previewClip.value = clip;
-                                showPreviewModal.value = true;
-                              }}
-                              style={{ 
-                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#fbbf24', 
-                                color: selectedClip.value?._id === clip._id ? 'white' : 'white', 
-                                padding: '0.3rem 0.5rem', 
-                                borderRadius: '3px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              📹 Preview Video
-                            </button>
-                          )}
-                          {(clip.audioUrl || clip.audioPresignedUrl) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                previewClip.value = clip;
-                                showPreviewModal.value = true;
-                              }}
-                              style={{ 
-                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#f59e0b', 
-                                color: 'white', 
-                                padding: '0.3rem 0.5rem', 
-                                borderRadius: '3px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              🎵 Preview Audio
-                            </button>
-                          )}
-                          <span style={{ 
-                            background: '#10b981', 
-                            color: 'white', 
-                            padding: '0.3rem 0.5rem', 
-                            borderRadius: '3px',
-                            fontSize: '0.7rem',
-                            fontWeight: '500'
-                          }}>
-                            💎 {clip.karmaPoints} pts
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                    {item.label}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <div class="duration-selector" style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>Duration</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(duration => (
-                <label key={duration} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  padding: '0.6rem 0.3rem',
-                  borderRadius: '6px',
-                  background: selectedDuration.value === duration ? '#fef3c7' : 'white',
-                  boxShadow: selectedDuration.value === duration ? '0 2px 8px rgba(251, 191, 36, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
-                  textAlign: 'center',
-                  fontSize: '0.8rem'
-                }}>
-                  <input
-                    type="radio"
-                    name="duration"
-                    value={duration}
-                    checked={selectedDuration.value === duration}
-                    onChange={() => selectedDuration.value = duration}
-                    style={{ marginRight: '0.3rem', accentColor: '#fbbf24' }}
-                  />
-                  <span style={{ fontSize: '0.8rem', color: '#1e293b', fontWeight: '600' }}>{duration}m {selectedDuration.value === duration ? '(Default)' : ''}</span>
-                </label>
+                </div>
               ))}
             </div>
-            {selectedDuration.value && (
-              <div style={{ 
-                marginTop: '0.75rem', 
-                padding: '0.75rem', 
-                background: 'white', 
-                borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>Selected Duration</h5>
-                  <span style={{ 
-                    background: '#fbbf24', 
-                    color: 'white', 
-                    padding: '0.2rem 0.4rem', 
-                    borderRadius: '4px', 
-                    fontSize: '0.7rem',
-                    fontWeight: '500'
-                  }}>
-                    {selectedConfig.value?.karmaPoints || (selectedDuration.value * 3)} pts
-                  </span>
-                </div>
-                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Ideal duration for daily prayer practice</p>
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                  <span>⏱️ {selectedDuration.value} minutes</span>
-                  <span>🎯 Optimal</span>
-                </div>
-                <div style={{ 
-                  marginTop: '0.5rem', 
-                  padding: '0.5rem', 
-                  background: '#fef3c7', 
-                  borderRadius: '6px'
-                }}>
-                  <div style={{ fontSize: '0.8rem', color: '#4b5563', fontWeight: '500' }}>💎 Karma Points Preview</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.2rem' }}>You will earn {selectedConfig.value?.karmaPoints || (selectedDuration.value * 3)} karma points for completing this {selectedDuration.value}-minute prayer session</div>
-                </div>
-              </div>
-            )}
           </div>
           
+          {selectedEmotion.value && selectedConfig.value && (
+            <div style={{ 
+              marginTop: '1rem',
+              marginBottom: '1.5rem',
+              padding: '1rem', 
+              background: '#fef3c7', 
+              borderRadius: '8px',
+              border: '1px solid #fbbf24'
+            }}>
+              <div style={{ fontSize: '0.9rem', color: '#92400e', fontWeight: '600', marginBottom: '0.5rem' }}>💎 Karma Points Preview</div>
+              <div style={{ fontSize: '0.8rem', color: '#78350f', lineHeight: '1.4' }}>
+                You will earn <strong>{selectedConfig.value.karmaPoints || 0}</strong> karma points for completing this {parseInt(selectedConfig.value.duration) || 5}-minute prayer session
+              </div>
+            </div>
+          )}
+
           <button class="start-btn" onClick={startSession}>
             🙏 Begin Prayer
           </button>
@@ -1062,7 +1105,8 @@ export default {
                 display: 'flex', 
                 gap: '1rem', 
                 marginTop: '1.5rem',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexWrap: 'wrap'
               }}>
                 {selectedVideoUrl.value && (
                   <button 
@@ -1184,16 +1228,17 @@ export default {
                   backgroundAudio.value.currentTime = 0;
                 }
                 
-                const completedMinutes = selectedDuration.value - Math.ceil(sessionTimer.value / 60);
+                const targetDuration = parseInt(selectedConfig.value?.duration) || 5;
+                const completedMinutes = targetDuration - Math.ceil(sessionTimer.value / 60);
                 sessionTimer.value = 0;
                 const configKarma = selectedConfig.value?.karmaPoints || 0;
-                earnedPoints.value = Math.max(0, Math.floor((completedMinutes / selectedDuration.value) * configKarma));
+                earnedPoints.value = Math.max(0, Math.floor((completedMinutes / targetDuration) * configKarma));
                 // Save partial/incomplete session
                 if (completedMinutes > 0) {
-                  saveSession(selectedDuration.value, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
+                  saveSession(targetDuration, completedMinutes, selectedEmotion.value, earnedPoints.value, selectedVideoUrl.value, selectedAudioUrl.value);
                 } else {
                   // Save interrupted session with 0 actual duration
-                  saveSession(selectedDuration.value, 0, selectedEmotion.value, 0, selectedVideoUrl.value, selectedAudioUrl.value);
+                  saveSession(targetDuration, 0, selectedEmotion.value, 0, selectedVideoUrl.value, selectedAudioUrl.value);
                 }
                 showRewardModal.value = true;
               }}
@@ -1329,10 +1374,10 @@ export default {
               </h2>
               
               <div style={{ fontSize: '1.2rem', marginBottom: '1rem', opacity: 0.9 }}>
-                You prayed for {selectedDuration.value - Math.ceil(sessionTimer.value / 60)} minutes
-                {selectedDuration.value - Math.ceil(sessionTimer.value / 60) < selectedDuration.value && (
+                You prayed for {(parseInt(selectedConfig.value?.duration) || 5) - Math.ceil(sessionTimer.value / 60)} minutes
+                {(parseInt(selectedConfig.value?.duration) || 5) - Math.ceil(sessionTimer.value / 60) < (parseInt(selectedConfig.value?.duration) || 5) && (
                   <div style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.7 }}>
-                    Target: {selectedDuration.value} minutes
+                    Target: {parseInt(selectedConfig.value?.duration) || 5} minutes
                   </div>
                 )}
               </div>

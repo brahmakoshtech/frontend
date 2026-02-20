@@ -39,6 +39,7 @@ export default {
     const previewClip = ref(null);
     const selectedVideoKey = ref('');
     const selectedAudioKey = ref('');
+    const emotionSliderRef = ref(null);
     
     const checkUserAuth = () => {
       try {
@@ -52,11 +53,11 @@ export default {
     };
     
     const emotions = [
-      { emoji: '😊', label: 'Happy', value: 'happy' },
       { emoji: '😢', label: 'Sad', value: 'sad' },
       { emoji: '😠', label: 'Angry', value: 'angry' },
       { emoji: '😨', label: 'Afraid', value: 'afraid' },
       { emoji: '🥰', label: 'Loved', value: 'loved' },
+      { emoji: '😊', label: 'Happy', value: 'happy' },
       { emoji: '😲', label: 'Surprised', value: 'surprised' },
       { emoji: '😌', label: 'Calm', value: 'calm' },
       { emoji: '🤢', label: 'Disgusted', value: 'disgusted' },
@@ -78,6 +79,7 @@ export default {
 
     const autoSelectClipForEmotion = async () => {
       const configs = filteredConfigurations.value;
+      const fallbackKarma = Math.round((targetChants.value / 108) * 10);
       
       if (configs.length > 0) {
         selectedChantingName.value = configs[0].chantingName || configs[0].title || 'Chanting';
@@ -110,18 +112,18 @@ export default {
             selectedAudioKey.value = clip.audioKey || '';
           } else {
             selectedClip.value = null;
-            selectedConfig.value = null;
+            selectedConfig.value = { karmaPoints: fallbackKarma };
             availableClips.value = [];
           }
         } catch (error) {
           selectedClip.value = null;
-          selectedConfig.value = null;
+          selectedConfig.value = { karmaPoints: fallbackKarma };
           availableClips.value = [];
         }
       } else {
         selectedChantingName.value = '';
         selectedClip.value = null;
-        selectedConfig.value = null;
+        selectedConfig.value = { karmaPoints: fallbackKarma };
         availableClips.value = [];
       }
     };
@@ -203,11 +205,14 @@ export default {
       }
       
       const completionPercentage = Math.min((chantCount.value / targetChants.value) * 100, 100);
-      const karmaPoints = selectedConfig.value?.karmaPoints || 0;
+      const fallbackKarma = Math.round((targetChants.value / 108) * 10);
+      const fullKarmaPoints = selectedConfig.value?.karmaPoints || fallbackKarma;
       
-      earnedKarma.value = karmaPoints;
+      // Calculate karma based on completion percentage
+      const earnedKarmaPoints = Math.round((completionPercentage / 100) * fullKarmaPoints);
+      earnedKarma.value = earnedKarmaPoints;
       
-      await saveSession(karmaPoints, completionPercentage);
+      await saveSession(earnedKarmaPoints, completionPercentage);
       
       showRewardModal.value = true;
       
@@ -322,6 +327,18 @@ export default {
       fetchChantingClips();
       fetchChantingConfigurations();
       autoSelectClipForEmotion();
+      
+      // Auto-scroll emotion slider to show Happy in middle
+      setTimeout(() => {
+        if (emotionSliderRef.value) {
+          const happyIndex = emotions.findIndex(e => e.value === 'happy');
+          if (happyIndex !== -1) {
+            const cardWidth = 130; // min-width + gap
+            const scrollPosition = (happyIndex * cardWidth) - (window.innerWidth / 2) + (cardWidth / 2);
+            emotionSliderRef.value.scrollTo({ left: Math.max(0, scrollPosition), behavior: 'smooth' });
+          }
+        }
+      }, 100);
     });
     
     onUnmounted(() => {
@@ -334,10 +351,40 @@ export default {
     return () => (
       <div class="chant-page">
         <style>{`
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
+          html, body, #app {
+            overflow-x: hidden !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+          }
+          
           .chant-page {
-            padding: 0.75rem;
+            padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
             min-height: 100vh;
+            min-height: 100dvh;
             background: #f8fafc;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden !important;
+          }
+          
+          @media (min-width: 768px) {
+            .chant-page {
+              max-width: 1100px;
+              margin: 0 auto;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .chant-page {
+              padding: max(0.875rem, env(safe-area-inset-top)) max(0.875rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(0.875rem, env(safe-area-inset-left));
+            }
           }
           
           .page-header {
@@ -436,8 +483,10 @@ export default {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            max-width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             background: url('https://usagif.com/wp-content/uploads/gif/outerspace-70.gif') center/cover,
                         linear-gradient(135deg, rgba(251, 146, 60, 0.8) 0%, rgba(245, 158, 11, 0.8) 50%, rgba(217, 119, 6, 0.8) 100%);
             display: flex;
@@ -447,19 +496,22 @@ export default {
             z-index: 1000;
             color: #f8fafc;
             text-align: center;
-            overflow-x: hidden;
+            overflow-x: hidden !important;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+            box-sizing: border-box;
           }
           
           .session-card {
             background: transparent;
             backdrop-filter: none;
-            border-radius: 25px;
-            padding: 0.75rem;
+            border-radius: 20px;
+            padding: 0.5rem;
             margin: 0.5rem auto;
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: none;
-            max-width: 320px;
+            max-width: 200px;
             width: calc(100% - 2rem);
             text-align: center;
             display: flex;
@@ -706,174 +758,220 @@ export default {
             )}
           </div>
           
-          <div class="emotion-section" style={{ marginBottom: '1.5rem' }}>
-            <p style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>How are you feeling?</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              {emotions.map(emotion => (
-                <label key={emotion.value} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  background: selectedEmotion.value === emotion.value ? '#fef3c7' : 'white',
-                  boxShadow: selectedEmotion.value === emotion.value ? '0 2px 8px rgba(245, 158, 11, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <input
-                    type="radio"
-                    name="emotion"
-                    value={emotion.value}
-                    checked={selectedEmotion.value === emotion.value}
-                    onChange={() => {
-                      selectedEmotion.value = emotion.value;
-                      autoSelectClipForEmotion();
-                    }}
-                    style={{ marginRight: '0.5rem', accentColor: '#f59e0b' }}
-                  />
-                  <span style={{ fontSize: '0.85rem', color: '#1e293b', fontWeight: '600' }}>{emotion.emoji} {emotion.label} {selectedEmotion.value === emotion.value ? '(Default)' : ''}</span>
-                </label>
+          <div class="emotion-selector" style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ marginBottom: '0.8rem', color: '#374151', fontSize: '0.9rem', fontWeight: '500' }}>How are you feeling?</h4>
+            <style>{`
+              .emotion-grid {
+                display: flex;
+                overflow-x: auto;
+                gap: 0.5rem;
+                padding: 0.75rem 0;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+                scroll-behavior: smooth;
+              }
+              .emotion-grid::-webkit-scrollbar {
+                display: none;
+              }
+              .emotion-card {
+                min-width: 120px;
+                flex-shrink: 0;
+              }
+              @media (min-width: 768px) {
+                .emotion-grid {
+                  display: grid;
+                  grid-template-columns: repeat(5, 1fr);
+                  overflow-x: visible;
+                }
+                .emotion-card {
+                  min-width: auto;
+                }
+              }
+              @media (min-width: 1024px) {
+                .emotion-grid {
+                  grid-template-columns: repeat(10, 1fr);
+                }
+              }
+            `}</style>
+            <div class="emotion-grid" ref={emotionSliderRef}>
+              {emotions.map(item => (
+                <div
+                  class="emotion-card"
+                  key={item.value}
+                  onClick={() => {
+                    selectedEmotion.value = item.value;
+                    autoSelectClipForEmotion();
+                  }}
+                  style={{ 
+                    padding: '0.6rem 0.5rem',
+                    borderRadius: '10px',
+                    border: selectedEmotion.value === item.value ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                    background: selectedEmotion.value === item.value ? '#f59e0b' : '#FFFFFF',
+                    color: selectedEmotion.value === item.value ? 'white' : '#2D3748',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedEmotion.value === item.value ? '0 4px 12px rgba(245, 158, 11, 0.4)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+                    transform: selectedEmotion.value === item.value ? 'scale(1.05)' : 'scale(1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '85px'
+                  }}
+                >
+                  <div style={{ fontSize: '1.8rem', marginBottom: '0.3rem' }}>{item.emoji}</div>
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: selectedEmotion.value === item.value ? '600' : '500', 
+                    textTransform: 'capitalize'
+                  }}>
+                    {item.label}
+                  </div>
+                </div>
               ))}
             </div>
-            {selectedEmotion.value && (
-              <div style={{ 
-                marginTop: '0.75rem', 
-                padding: '0.75rem', 
-                background: 'white', 
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>Selected Emotion</h5>
-                  <span style={{ 
-                    background: '#10b981', 
-                    color: 'white', 
-                    padding: '0.2rem 0.4rem', 
-                    borderRadius: '4px', 
-                    fontSize: '0.7rem',
-                    fontWeight: '500'
-                  }}>
-                    Default
-                  </span>
-                </div>
-                <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Perfect choice for mindful chanting practice</p>
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                  <span>🕉️ {selectedEmotion.value}</span>
-                  <span>✨ Recommended</span>
-                </div>
-                
-                {availableClips.value.length > 0 && (
-                  <div style={{ 
-                    marginTop: '0.75rem', 
-                    padding: '0.75rem', 
-                    background: '#fef3c7', 
-                    borderRadius: '6px',
-                    border: '1px solid #f59e0b'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '1rem' }}>🎬</span>
-                      <h6 style={{ color: '#92400e', margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>Available Clips ({availableClips.value.length})</h6>
-                    </div>
-                    
-                    {availableClips.value.map((clip, index) => (
-                      <div 
-                        key={clip._id}
-                        onClick={() => selectClip(clip)}
-                        style={{ 
-                          padding: '0.75rem',
-                          background: selectedClip.value?._id === clip._id ? '#f59e0b' : 'white',
-                          borderRadius: '6px',
-                          marginBottom: index < availableClips.value.length - 1 ? '0.5rem' : '0',
-                          cursor: 'pointer',
-                          border: selectedClip.value?._id === clip._id ? '2px solid #d97706' : '1px solid #e2e8f0',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <div style={{ 
-                          color: selectedClip.value?._id === clip._id ? 'white' : '#d97706', 
-                          fontSize: '0.8rem', 
-                          fontWeight: '600', 
-                          marginBottom: '0.3rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}>
-                          <span>{clip.title}</span>
-                          {selectedClip.value?._id === clip._id && (
-                            <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>✓ Selected</span>
-                          )}
-                        </div>
-                        {clip.description && (
-                          <div style={{ 
-                            color: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.9)' : '#92400e', 
-                            fontSize: '0.7rem', 
-                            lineHeight: '1.3',
-                            marginBottom: '0.4rem'
-                          }}>
-                            {clip.description}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', flexWrap: 'wrap' }}>
-                          {(clip.videoUrl || clip.videoPresignedUrl) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                previewClip.value = clip;
-                                showClipPreview.value = true;
-                              }}
-                              style={{ 
-                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#f59e0b', 
-                                color: 'white', 
-                                padding: '0.3rem 0.5rem', 
-                                borderRadius: '3px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              📹 Preview Video
-                            </button>
-                          )}
-                          {(clip.audioUrl || clip.audioPresignedUrl) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                previewClip.value = clip;
-                                showClipPreview.value = true;
-                              }}
-                              style={{ 
-                                background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#d97706', 
-                                color: 'white', 
-                                padding: '0.3rem 0.5rem', 
-                                borderRadius: '3px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              🎵 Preview Audio
-                            </button>
-                          )}
-                          <span style={{ 
-                            background: '#10b981', 
-                            color: 'white', 
-                            padding: '0.3rem 0.5rem', 
-                            borderRadius: '3px',
-                            fontSize: '0.7rem',
-                            fontWeight: '500'
-                          }}>
-                            💎 {clip.karmaPoints} pts
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+          
+          {selectedEmotion.value && (
+            <div style={{ 
+              marginTop: '0.75rem', 
+              padding: '0.75rem', 
+              background: 'white', 
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h5 style={{ color: '#1e293b', margin: 0, fontSize: '0.9rem', fontWeight: '700' }}>Selected Emotion</h5>
+                <span style={{ 
+                  background: '#10b981', 
+                  color: 'white', 
+                  padding: '0.2rem 0.4rem', 
+                  borderRadius: '4px', 
+                  fontSize: '0.7rem',
+                  fontWeight: '500'
+                }}>
+                  Default
+                </span>
+              </div>
+              <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.4rem 0', lineHeight: '1.3' }}>Perfect choice for mindful chanting practice</p>
+              <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                <span>🕉️ {selectedEmotion.value}</span>
+                <span>✨ Recommended</span>
+              </div>
+              
+              {availableClips.value.length > 0 && (
+                <div style={{ 
+                  marginTop: '0.75rem', 
+                  padding: '0.75rem', 
+                  background: '#fef3c7', 
+                  borderRadius: '6px',
+                  border: '1px solid #f59e0b'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1rem' }}>🎬</span>
+                    <h6 style={{ color: '#92400e', margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>Available Clips ({availableClips.value.length})</h6>
+                  </div>
+                  
+                  {availableClips.value.map((clip, index) => (
+                    <div 
+                      key={clip._id}
+                      onClick={() => selectClip(clip)}
+                      style={{ 
+                        padding: '0.75rem',
+                        background: selectedClip.value?._id === clip._id ? '#f59e0b' : 'white',
+                        borderRadius: '6px',
+                        marginBottom: index < availableClips.value.length - 1 ? '0.5rem' : '0',
+                        cursor: 'pointer',
+                        border: selectedClip.value?._id === clip._id ? '2px solid #d97706' : '1px solid #e2e8f0',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ 
+                        color: selectedClip.value?._id === clip._id ? 'white' : '#d97706', 
+                        fontSize: '0.8rem', 
+                        fontWeight: '600', 
+                        marginBottom: '0.3rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <span>{clip.title}</span>
+                        {selectedClip.value?._id === clip._id && (
+                          <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>✓ Selected</span>
+                        )}
+                      </div>
+                      {clip.description && (
+                        <div style={{ 
+                          color: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.9)' : '#92400e', 
+                          fontSize: '0.7rem', 
+                          lineHeight: '1.3',
+                          marginBottom: '0.4rem'
+                        }}>
+                          {clip.description}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', flexWrap: 'wrap' }}>
+                        {(clip.videoUrl || clip.videoPresignedUrl) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              previewClip.value = clip;
+                              showClipPreview.value = true;
+                            }}
+                            style={{ 
+                              background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#f59e0b', 
+                              color: 'white', 
+                              padding: '0.3rem 0.5rem', 
+                              borderRadius: '3px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.7rem',
+                              fontWeight: '500'
+                            }}
+                          >
+                            📹 Preview Video
+                          </button>
+                        )}
+                        {(clip.audioUrl || clip.audioPresignedUrl) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              previewClip.value = clip;
+                              showClipPreview.value = true;
+                            }}
+                            style={{ 
+                              background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#d97706', 
+                              color: 'white', 
+                              padding: '0.3rem 0.5rem', 
+                              borderRadius: '3px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.7rem',
+                              fontWeight: '500'
+                            }}
+                          >
+                            🎵 Preview Audio
+                          </button>
+                        )}
+                        <span style={{ 
+                          background: '#10b981', 
+                          color: 'white', 
+                          padding: '0.3rem 0.5rem', 
+                          borderRadius: '3px',
+                          fontSize: '0.7rem',
+                          fontWeight: '500'
+                        }}>
+                          💎 {clip.karmaPoints} pts
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           
           <div class="chants-section" style={{ marginBottom: '1.5rem' }}>
             <p style={{ marginBottom: '0.6rem', color: '#374151', fontSize: '0.95rem', fontWeight: '600' }}>Target Chants</p>
@@ -938,7 +1036,7 @@ export default {
                   border: '1px solid #f59e0b'
                 }}>
                   <div style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: '500' }}>💎 Karma Points Preview</div>
-                  <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.2rem' }}>You will earn {selectedConfig.value?.karmaPoints || 0} karma points for completing {targetChants.value} chants</div>
+                  <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.2rem' }}>You will earn {selectedConfig.value?.karmaPoints || '1-10'} karma points for completing {targetChants.value} chants</div>
                 </div>
               </div>
             )}

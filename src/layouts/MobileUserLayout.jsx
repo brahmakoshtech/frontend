@@ -16,7 +16,8 @@ import {
   CpuChipIcon,
   SparklesIcon,
   ChartBarIcon,
-  MoonIcon
+  MoonIcon,
+  StarIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -68,6 +69,7 @@ export default {
       if (path.includes('/brahma-bazar')) return 'brahma-bazar';
       if (path.includes('/utility')) return 'utility';
       if (path.includes('/swapna-decoder')) return 'swapna-decoder';
+      if (path.includes('/kundali')) return 'kundali';
       if (path.includes('/profile')) return 'profile';
       if (path.includes('/user-chat')) return 'user-chat';
       if (path.includes('/dashboard')) return 'home';
@@ -104,6 +106,8 @@ export default {
         router.push('/mobile/user/utility');
       } else if (page === 'swapna-decoder') {
         router.push('/mobile/user/swapna-decoder');
+      } else if (page === 'kundali') {
+        router.push('/mobile/user/kundali');
       } else if (page === 'profile') {
         router.push('/mobile/user/profile');
       } else if (page === 'user-chat') {
@@ -210,6 +214,7 @@ export default {
               { id: 'rewards', label: 'Rewards', icon: TrophyIcon },
               { id: 'brahma-bazar', label: 'Brahma Bazar', icon: ShoppingBagIcon },
               { id: 'swapna-decoder', label: 'Swapna Decoder', icon: MoonIcon },
+              { id: 'kundali', label: 'My Kundali', icon: StarIcon },
               { id: 'utility', label: 'Utility', icon: CogIcon },
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },

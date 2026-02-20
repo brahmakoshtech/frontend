@@ -37,9 +37,12 @@ const userSankalpService = {
   },
 
   // Submit daily report
-  submitReport: async (id, status) => {
+  submitReport: async (id, status, reportDay = null) => {
     try {
-      const response = await api.post(`/user-sankalp/${id}/report`, { status });
+      const payload = { status };
+      if (reportDay) payload.reportDay = reportDay;
+      
+      const response = await api.post(`/user-sankalp/${id}/report`, payload);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

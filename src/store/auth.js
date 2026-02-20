@@ -286,7 +286,13 @@ export function useAuth() {
         }
       }
       
-      const userData = response.data.user;
+      let userData = response.data.user;
+      
+      // For mobile user endpoint, merge benchmark data into user object
+      if (currentRole === 'user' && response.data.benchmark) {
+        userData = { ...userData, benchmark: response.data.benchmark };
+      }
+      
       // Ensure role is set
       if (userData && !userData.role) {
         userData.role = currentRole || getRoleFromToken(auth.token.value);

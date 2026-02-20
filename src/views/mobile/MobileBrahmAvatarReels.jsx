@@ -24,7 +24,7 @@ export default {
     const loadReels = async () => {
       try {
         loading.value = true;
-        const response = await brahmAvatarService.getBrahmAvatars(true);
+        const response = await brahmAvatarService.getBrahmAvatars(false);
         
         // Handle nested data structure: response.data.data.data
         const reelsData = response.data?.data?.data || response.data?.data || [];

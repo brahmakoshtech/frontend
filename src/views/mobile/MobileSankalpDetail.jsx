@@ -41,13 +41,29 @@ export default {
     };
 
     const joinSankalp = async () => {
+      // Validate custom days
+      if (customDays.value && (customDays.value < 1 || customDays.value > 365)) {
+        toast.error('Days must be between 1 and 365');
+        return;
+      }
+      
       joining.value = true;
       try {
-        await userSankalpService.join(route.params.id, customDays.value, reminderTime.value);
-        toast.success('Successfully joined sankalp!');
-        isJoined.value = true;
+        const response = await userSankalpService.join(route.params.id, customDays.value, reminderTime.value);
+        
+        // Check if already joined
+        if (response.data?.alreadyJoined) {
+          toast.info('You have already joined this sankalp');
+          isJoined.value = true;
+          userSankalpId.value = response.data?.data?._id || null;
+        } else if (response.data) {
+          toast.success('Successfully joined sankalp!');
+          isJoined.value = true;
+          userSankalpId.value = response.data?._id || null;
+        }
+        
         showJoinModal.value = false;
-        fetchSankalp();
+        await fetchSankalp();
       } catch (error) {
         console.error('Error:', error);
         toast.error(error.message || 'Failed to join sankalp');
@@ -480,9 +496,10 @@ export default {
                   class="form-input" 
                   v-model={customDays.value}
                   min="1"
+                  max="365"
                   placeholder={`Default: ${sankalp.value?.totalDays} days`}
                 />
-                <small class="form-hint">How many days do you want to commit?</small>
+                <small class="form-hint">How many days do you want to commit? (1-365)</small>
               </div>
 
               <div class="form-group">

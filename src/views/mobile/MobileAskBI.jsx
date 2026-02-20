@@ -1,12 +1,26 @@
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import liveAvatarService from '../../services/liveAvatarService.js';
 
 export default {
   name: 'MobileAskBI',
   setup() {
+    const router = useRouter();
     const avatars = ref([]);
     const loading = ref(true);
     const error = ref(null);
+
+    const startConversation = (avatar) => {
+      router.push({
+        path: '/mobile/user/askbi/chat',
+        query: {
+          avatarId: avatar._id,
+          name: avatar.name,
+          image: avatar.imageUrl,
+          agentId: avatar.agentId
+        }
+      });
+    };
 
     const fetchAvatars = async () => {
       try {
@@ -98,18 +112,12 @@ export default {
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <h5 class="card-title fw-bold">{avatar.name}</h5>
-                      <span class="badge bg-success">LIVE</span>
                     </div>
                     <p class="card-text text-muted mb-3">{avatar.description}</p>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <small class="text-muted">
-                        👥 {avatar.viewers || 0} viewers
-                      </small>
-                      <small class="text-muted">
-                        ⏰ {avatar.duration || '0m'}
-                      </small>
-                    </div>
-                    <button class="btn btn-primary w-100">
+                    <button 
+                      class="btn btn-primary w-100"
+                      onClick={() => startConversation(avatar)}
+                    >
                       💬 Start Conversation
                     </button>
                   </div>

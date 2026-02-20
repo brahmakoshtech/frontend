@@ -182,7 +182,8 @@ class ApiService {
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
         endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards') ||
         endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points') ||
-        endpoint.includes('/user-sankalp') || endpoint.includes('/notifications')) {
+        endpoint.includes('/user-sankalp') || endpoint.includes('/notifications') ||
+        endpoint.includes('/analytics') || endpoint.includes('/leaderboard')) {
         // USER ENDPOINTS - Use user token
         token = getTokenForRole('user');
         tokenSource = 'user (authenticated endpoint)';
@@ -523,7 +524,8 @@ class ApiService {
   }
 
   async getCurrentUser(token = null) {
-    return this.request('/auth/user/me', { token });
+    // Use mobile profile endpoint which includes benchmark and profileImageUrl
+    return this.request('/mobile/user/profile', { token });
   }
 
   // Mobile User Registration

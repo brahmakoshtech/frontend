@@ -35,6 +35,12 @@ const dreamRequestService = {
   getStats: async (params = {}) => {
     const response = await api.get('/dream-requests/analytics/stats', { params });
     return response.data;
+  },
+
+  // Get dream requests by user ID
+  getByUserId: async (userId) => {
+    const response = await api.get('/dream-requests', { params: { userId } });
+    return response.data;
   }
 };
 

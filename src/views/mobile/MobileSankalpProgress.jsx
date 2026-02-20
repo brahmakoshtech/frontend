@@ -12,13 +12,17 @@ export default {
     const toast = useToast();
     const loading = ref(false);
     const reporting = ref(false);
+    const abandoning = ref(false);
+    const showQuitModal = ref(false);
+    const showPastReportModal = ref(false);
+    const selectedPastDay = ref(null);
     const userSankalp = ref(null);
     const progress = ref(null);
 
     const goBack = () => router.back();
 
     const todayReport = computed(() => {
-      if (!userSankalp.value) return null;
+      if (!userSankalp.value?.dailyReports) return null;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       return userSankalp.value.dailyReports.find(r => {
@@ -50,12 +54,69 @@ export default {
       reporting.value = true;
       try {
         const response = await userSankalpService.submitReport(route.params.id, status);
-        toast.success(response.message);
         
-        if (response.data.isCompleted) {
-          toast.success(`🎉 Congratulations! +${response.data.completionBonus} bonus karma!`, { timeout: 5000 });
+        if (response.data?.alreadyReported) {
+          toast.info('You have already reported today');
+        } else {
+          toast.success(response.message);
+          
+          if (response.data.isCompleted) {
+            toast.success(`🎉 Congratulations! +${response.data.completionBonus} bonus karma!`, { timeout: 5000 });
+          }
         }
         
+        await fetchProgress();
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error(error.message || 'Failed to submit report');
+      } finally {
+        reporting.value = false;
+      }
+    };
+
+    const abandonSankalp = async () => {
+      abandoning.value = true;
+      try {
+        await userSankalpService.abandon(route.params.id);
+        toast.success('Sankalp abandoned');
+        showQuitModal.value = false;
+        router.push('/mobile/user/my-sankalpas');
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error(error.message || 'Failed to abandon sankalp');
+      } finally {
+        abandoning.value = false;
+      }
+    };
+
+    const handlePastDayClick = (report) => {
+      const reportDate = new Date(report.date);
+      reportDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Only allow reporting for past pending days
+      if (report.status === 'not_reported' && reportDate.getTime() < today.getTime() && userSankalp.value?.status === 'active') {
+        selectedPastDay.value = report;
+        showPastReportModal.value = true;
+      }
+    };
+
+    const submitPastReport = async (status) => {
+      if (!selectedPastDay.value) return;
+      
+      reporting.value = true;
+      try {
+        const response = await userSankalpService.submitReport(route.params.id, status, selectedPastDay.value.day);
+        
+        if (response.data?.alreadyReported) {
+          toast.info('Already reported for this day');
+        } else {
+          toast.success(response.message);
+        }
+        
+        showPastReportModal.value = false;
+        selectedPastDay.value = null;
         await fetchProgress();
       } catch (error) {
         console.error('Error:', error);
@@ -311,6 +372,14 @@ export default {
             font-size: 0.75rem;
             font-weight: 600;
             padding: 0.25rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+          }
+          .calendar-day.clickable:hover {
+            transform: scale(1.05);
+          }
+          .calendar-day.clickable {
+            cursor: pointer;
           }
           .day-number {
             font-size: 0.625rem;
@@ -337,6 +406,98 @@ export default {
             border-top-color: #9333ea;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
+          }
+          .quit-button {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid #ef4444;
+            background: white;
+            color: #ef4444;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+          }
+          .quit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+          }
+          .quit-modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            max-width: 400px;
+            width: 100%;
+          }
+          .quit-modal-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.75rem;
+          }
+          .quit-modal-text {
+            color: #6b7280;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+          }
+          .quit-modal-actions {
+            display: flex;
+            gap: 0.75rem;
+          }
+          .quit-cancel-btn {
+            flex: 1;
+            padding: 0.875rem;
+            border: 2px solid #e5e7eb;
+            background: white;
+            color: #6b7280;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+          .quit-confirm-btn {
+            flex: 1;
+            padding: 0.875rem;
+            border: none;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+          .quit-confirm-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          .motivation-card {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #fbbf24;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+          }
+          .motivation-icon {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+          }
+          .motivation-text {
+            color: #92400e;
+            font-size: 0.9375rem;
+            line-height: 1.7;
+            text-align: center;
+            font-weight: 500;
+            font-style: italic;
           }
           @keyframes spin {
             to { transform: rotate(360deg); }
@@ -415,6 +576,20 @@ export default {
               </div>
             </div>
 
+            {userSankalp.value.sankalpId?.dailyMotivationMessage && userSankalp.value.status === 'active' && (
+              <div class="motivation-card">
+                <div class="motivation-icon">🌟</div>
+                <p class="motivation-text">"{userSankalp.value.sankalpId.dailyMotivationMessage}"</p>
+              </div>
+            )}
+
+            {userSankalp.value.sankalpId?.completionMessage && userSankalp.value.status === 'completed' && (
+              <div class="motivation-card">
+                <div class="motivation-icon">🎉</div>
+                <p class="motivation-text">"{userSankalp.value.sankalpId.completionMessage}"</p>
+              </div>
+            )}
+
             {userSankalp.value.status === 'active' && (
               <div class="report-card">
                 <h3 class="report-title">Today's Report</h3>
@@ -469,20 +644,89 @@ export default {
                 Daily Calendar
               </h3>
               <div class="calendar-grid">
-                {userSankalp.value.dailyReports.map((report, index) => (
-                  <div 
-                    key={index}
-                    class="calendar-day"
-                    style={`background: ${getStatusColor(report.status)}15; border: 2px solid ${getStatusColor(report.status)};`}
-                  >
-                    <div class="day-number">Day {report.day}</div>
-                    <div class="day-icon">{getStatusIcon(report.status)}</div>
-                  </div>
-                ))}
+                {userSankalp.value.dailyReports.map((report, index) => {
+                  const reportDate = new Date(report.date);
+                  reportDate.setHours(0, 0, 0, 0);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const isPastPending = report.status === 'not_reported' && reportDate.getTime() < today.getTime() && userSankalp.value?.status === 'active';
+                  
+                  return (
+                    <div 
+                      key={index}
+                      class={`calendar-day ${isPastPending ? 'clickable' : ''}`}
+                      style={`background: ${getStatusColor(report.status)}15; border: 2px solid ${getStatusColor(report.status)};`}
+                      onClick={() => isPastPending && handlePastDayClick(report)}
+                    >
+                      <div class="day-number">Day {report.day}</div>
+                      <div class="day-icon">{getStatusIcon(report.status)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {userSankalp.value.status === 'active' && (
+              <button class="quit-button" onClick={() => showQuitModal.value = true}>
+                Quit Sankalp
+              </button>
+            )}
+          </div>
+        ) : null}
+        
+        {/* Quit Confirmation Modal */}
+        {showQuitModal.value && (
+          <div class="quit-modal" onClick={() => showQuitModal.value = false}>
+            <div class="quit-modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3 class="quit-modal-title">Quit Sankalp?</h3>
+              <p class="quit-modal-text">
+                Are you sure you want to quit this sankalp? Your progress will be saved but you won't be able to continue reporting.
+              </p>
+              <div class="quit-modal-actions">
+                <button class="quit-cancel-btn" onClick={() => showQuitModal.value = false}>
+                  Cancel
+                </button>
+                <button 
+                  class="quit-confirm-btn" 
+                  onClick={abandonSankalp}
+                  disabled={abandoning.value}
+                >
+                  {abandoning.value ? 'Quitting...' : 'Yes, Quit'}
+                </button>
               </div>
             </div>
           </div>
-        ) : null}
+        )}
+        
+        {/* Past Day Report Modal */}
+        {showPastReportModal.value && selectedPastDay.value && (
+          <div class="quit-modal" onClick={() => { showPastReportModal.value = false; selectedPastDay.value = null; }}>
+            <div class="quit-modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3 class="quit-modal-title">Report for Day {selectedPastDay.value.day}</h3>
+              <p class="quit-modal-text">
+                Did you complete your sankalp on {new Date(selectedPastDay.value.date).toLocaleDateString()}?
+              </p>
+              <div class="report-buttons">
+                <button 
+                  class="report-button report-yes"
+                  onClick={() => submitPastReport('yes')}
+                  disabled={reporting.value}
+                >
+                  <CheckCircleIcon style="width: 1.5rem; height: 1.5rem;" />
+                  Yes
+                </button>
+                <button 
+                  class="report-button report-no"
+                  onClick={() => submitPastReport('no')}
+                  disabled={reporting.value}
+                >
+                  <XCircleIcon style="width: 1.5rem; height: 1.5rem;" />
+                  No
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

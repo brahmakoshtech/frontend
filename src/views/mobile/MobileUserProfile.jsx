@@ -77,8 +77,31 @@ export default {
       return user.value.profileImageUrl || user.value.profileImage || null;
     };
 
+    // Local color management for tiers
+    const getTierColors = (tierName) => {
+      const colors = {
+        'Beginner': { gradient: 'linear-gradient(135deg, #90EE90 0%, #32CD32 100%)', shadow: 'rgba(144, 238, 144, 0.3)' },
+        'Bronze': { gradient: 'linear-gradient(135deg, #CD7F32 0%, #B87333 100%)', shadow: 'rgba(205, 127, 50, 0.3)' },
+        'Silver': { gradient: 'linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%)', shadow: 'rgba(192, 192, 192, 0.3)' },
+        'Gold': { gradient: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', shadow: 'rgba(255, 215, 0, 0.3)' },
+        'Platinum': { gradient: 'linear-gradient(135deg, #E5E4E2 0%, #B8B8B8 100%)', shadow: 'rgba(229, 228, 226, 0.3)' }
+      };
+      return colors[tierName] || colors['Beginner'];
+    };
+
     return () => {
       const imageUrl = getProfileImageUrl();
+      const currentPoints = user.value?.karmaPoints || 0;
+      
+      // Get benchmark from API
+      const benchmarkData = user.value?.benchmark;
+      const currentTier = benchmarkData?.current || { name: 'Beginner', icon: '🌿' };
+      const nextBenchmark = benchmarkData?.next;
+      const progress = benchmarkData?.progress || 0;
+      
+      // Apply local colors
+      const tierColors = getTierColors(currentTier.name);
+      const benchmark = { ...currentTier, ...tierColors };
 
       return (
         <div class="profile-page">
@@ -113,6 +136,26 @@ export default {
                       <img src={imageUrl} alt="Profile" />
                     </div>
                   )}
+                  
+                  <div class="section benchmark-section" style={{ background: benchmark.gradient, boxShadow: `0 4px 15px ${benchmark.shadow}` }}>
+                    <div class="benchmark-badge">
+                      <span class="badge-icon">{benchmark.icon}</span>
+                      <h2 class="badge-name">{benchmark.name}</h2>
+                      <p class="badge-points">{currentPoints} Points</p>
+                    </div>
+                    {nextBenchmark && (
+                      <div class="progress-container">
+                        <div class="progress-info">
+                          <span class="progress-label">To {nextBenchmark.name}</span>
+                          <span class="progress-percentage">{Math.floor(progress)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                          <div class="progress-fill" style={{ width: `${progress}%` }}></div>
+                        </div>
+                        <p class="progress-text">{nextBenchmark.min - currentPoints} points left</p>
+                      </div>
+                    )}
+                  </div>
                   
                   <div class="section">
                     <h3>Basic Info</h3>
@@ -193,8 +236,9 @@ export default {
                   <div class="section">
                     <h3>Karma Points</h3>
                     <div class="karma">
-                      <span class="points">{user.value.karmaPoints || 0}</span>
-                      <p class="karma-label">Total Points</p>
+                      <span class="badge-icon-large">{benchmark.icon}</span>
+                      <span class="points">{currentPoints}</span>
+                      <p class="karma-label">{benchmark.name} Member</p>
                     </div>
                   </div>
                   
@@ -270,29 +314,32 @@ export default {
           <style>{`
             .profile-page {
               min-height: 100vh;
-              background: #f5f5f5;
+              background: #f8f9fa;
               padding: 0;
               width: 100%;
               overflow-x: hidden;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             }
             
             .header {
               background: white;
-              padding: 1rem;
+              padding: 1.25rem;
               text-align: center;
-              border-bottom: 1px solid #eee;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             }
             
             .header h1 {
               margin: 0;
               font-size: 1.5rem;
-              color: #333;
+              color: #1e293b;
+              font-weight: 700;
+              letter-spacing: 0.5px;
             }
             
             .tabs {
               display: flex;
               background: white;
-              border-bottom: 1px solid #eee;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             }
             
             .tab {
@@ -300,15 +347,17 @@ export default {
               padding: 1rem;
               border: none;
               background: none;
-              color: #666;
+              color: #64748b;
               font-size: 1rem;
+              font-weight: 600;
               cursor: pointer;
-              border-bottom: 2px solid transparent;
+              border-bottom: 3px solid transparent;
+              transition: all 0.3s ease;
             }
             
             .tab.active {
-              color: #333;
-              border-bottom-color: #007bff;
+              color: #667eea;
+              border-bottom-color: #667eea;
             }
             
             .loading, .error {
@@ -343,19 +392,20 @@ export default {
             .section {
               background: white;
               margin-bottom: 1rem;
-              border-radius: 8px;
-              padding: 1rem;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+              border-radius: 12px;
+              padding: 1.25rem;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.08);
               width: 100%;
               box-sizing: border-box;
             }
             
             .section h3 {
               margin: 0 0 1rem 0;
-              font-size: 1.1rem;
-              color: #333;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 0.5rem;
+              font-size: 1.15rem;
+              color: #1e293b;
+              font-weight: 700;
+              border-bottom: 2px solid #f1f5f9;
+              padding-bottom: 0.75rem;
             }
             
             .field {
@@ -373,35 +423,40 @@ export default {
             }
             
             .label {
-              font-weight: 500;
-              color: #666;
+              font-weight: 600;
+              color: #64748b;
               min-width: 100px;
               flex-shrink: 0;
+              font-size: 0.9rem;
             }
             
             .value {
-              color: #333;
+              color: #1e293b;
               text-align: right;
               word-break: break-word;
               flex: 1;
+              font-weight: 500;
+              font-size: 0.95rem;
             }
             
             .karma {
               text-align: center;
-              padding: 1rem;
+              padding: 1.5rem 1rem;
             }
             
             .points {
-              font-size: 2rem;
-              font-weight: bold;
-              color: #27ae60;
+              font-size: 2.5rem;
+              font-weight: 800;
+              color: #667eea;
               display: block;
+              text-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
             }
             
             .karma-label {
-              margin: 0.5rem 0 0 0;
-              color: #666;
-              font-size: 0.9rem;
+              margin: 0.75rem 0 0 0;
+              color: #64748b;
+              font-size: 1rem;
+              font-weight: 600;
             }
             
             .bonus-label {
@@ -420,17 +475,23 @@ export default {
             .action-btn {
               flex: 1;
               min-width: 120px;
-              padding: 0.75rem;
-              border: 1px solid #ddd;
+              padding: 0.875rem;
+              border: 2px solid #e2e8f0;
               background: white;
-              color: #333;
-              border-radius: 4px;
+              color: #475569;
+              border-radius: 8px;
               cursor: pointer;
               font-size: 0.9rem;
+              font-weight: 600;
+              transition: all 0.3s ease;
             }
             
             .action-btn:hover {
-              background: #f8f9fa;
+              background: #667eea;
+              color: white;
+              border-color: #667eea;
+              transform: translateY(-2px);
+              box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
             }
             
             .history-item {
@@ -459,26 +520,29 @@ export default {
             .history-details h4 {
               margin: 0 0 0.25rem 0;
               font-size: 1rem;
-              color: #333;
+              color: #1e293b;
+              font-weight: 600;
             }
             
             .history-category {
               margin: 0 0 0.25rem 0;
               font-size: 0.85rem;
-              color: #666;
+              color: #64748b;
+              font-weight: 500;
             }
             
             .history-points {
               margin: 0 0 0.25rem 0;
-              font-size: 0.9rem;
-              color: #e74c3c;
-              font-weight: 600;
+              font-size: 0.95rem;
+              color: #ef4444;
+              font-weight: 700;
             }
             
             .history-date {
               margin: 0;
               font-size: 0.8rem;
-              color: #999;
+              color: #94a3b8;
+              font-weight: 500;
             }
             
             .bonus-item {
@@ -498,36 +562,153 @@ export default {
             }
             
             .bonus-amount {
-              font-size: 1.1rem;
-              font-weight: 600;
-              color: #27ae60;
+              font-size: 1.15rem;
+              font-weight: 700;
+              color: #10b981;
             }
             
             .bonus-date {
               font-size: 0.8rem;
-              color: #999;
+              color: #94a3b8;
+              font-weight: 500;
             }
             
             .bonus-desc {
               margin: 0 0 0.25rem 0;
               font-size: 0.9rem;
-              color: #333;
+              color: #475569;
+              font-weight: 500;
             }
             
             .bonus-by {
               margin: 0 0 0.25rem 0;
               font-size: 0.85rem;
-              color: #666;
+              color: #64748b;
             }
             
             .bonus-balance {
               margin: 0;
               font-size: 0.8rem;
-              color: #999;
+              color: #94a3b8;
+              font-weight: 500;
+            }
+            
+            .benchmark-section {
+              border-radius: 12px;
+              overflow: hidden;
+            }
+            
+            .benchmark-badge {
+              text-align: center;
+              padding: 1.25rem 1rem 1rem;
+            }
+            
+            .badge-icon {
+              font-size: 3rem;
+              display: block;
+              margin-bottom: 0.5rem;
+              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            }
+            
+            .badge-icon-large {
+              font-size: 2.5rem;
+              display: block;
+              margin-bottom: 0.5rem;
+            }
+            
+            .badge-name {
+              margin: 0;
+              font-size: 1.5rem;
+              font-weight: 800;
+              color: white;
+              text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+              letter-spacing: 0.5px;
+            }
+            
+            .badge-points {
+              margin: 0.5rem 0 0 0;
+              font-size: 1rem;
+              color: rgba(255,255,255,0.95);
+              font-weight: 600;
+            }
+            
+            .progress-container {
+              padding: 1rem;
+              background: rgba(255,255,255,0.15);
+            }
+            
+            .progress-info {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 0.5rem;
+              font-size: 0.85rem;
+              color: white;
+            }
+            
+            .progress-label {
+              font-weight: 600;
+            }
+            
+            .progress-percentage {
+              font-weight: 700;
+              background: rgba(255,255,255,0.25);
+              padding: 0.15rem 0.4rem;
+              border-radius: 8px;
+            }
+            
+            .progress-bar {
+              height: 8px;
+              background: rgba(255,255,255,0.25);
+              border-radius: 10px;
+              overflow: hidden;
+              margin-bottom: 0.5rem;
+            }
+            
+            .progress-fill {
+              height: 100%;
+              background: white;
+              border-radius: 10px;
+              transition: width 0.5s ease;
+            }
+            
+            .progress-text {
+              margin: 0;
+              font-size: 0.8rem;
+              text-align: center;
+              color: rgba(255,255,255,0.95);
+              font-weight: 600;
             }
             
             /* Mobile Responsive Styles */
             @media (max-width: 480px) {
+              .badge-icon {
+                font-size: 2.5rem;
+              }
+              
+              .badge-icon-large {
+                font-size: 2rem;
+              }
+              
+              .badge-name {
+                font-size: 1.3rem;
+              }
+              
+              .badge-points {
+                font-size: 0.9rem;
+              }
+              
+              .progress-info {
+                font-size: 0.8rem;
+              }
+              
+              .benchmark-badge {
+                padding: 1rem 0.75rem 0.75rem;
+              }
+              
+              .progress-container {
+                padding: 0.75rem;
+              }
+              
               .header {
                 padding: 0.75rem;
               }
@@ -594,6 +775,30 @@ export default {
             }
             
             @media (max-width: 360px) {
+              .badge-icon {
+                font-size: 2rem;
+              }
+              
+              .badge-icon-large {
+                font-size: 1.75rem;
+              }
+              
+              .badge-name {
+                font-size: 1.15rem;
+              }
+              
+              .badge-points {
+                font-size: 0.85rem;
+              }
+              
+              .benchmark-badge {
+                padding: 0.75rem 0.5rem 0.5rem;
+              }
+              
+              .progress-container {
+                padding: 0.75rem;
+              }
+              
               .header {
                 padding: 0.5rem;
               }

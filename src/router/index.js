@@ -188,6 +188,11 @@ const routes = [
         component: () => import('../views/mobile/MobileAskBI.jsx')
       },
       {
+        path: 'askbi/chat',
+        name: 'MobileAskBIChat',
+        component: () => import('../views/mobile/MobileAskBIChat.jsx')
+      },
+      {
         path: 'brahm-avatar-reels',
         name: 'MobileBrahmAvatarReels',
         component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')
@@ -298,6 +303,16 @@ const routes = [
         component: () => import('../views/mobile/MobileSankalpProgress.jsx')
       },
       {
+        path: 'leaderboard',
+        name: 'MobileLeaderboard',
+        component: () => import('../views/mobile/MobileLeaderboard.jsx')
+      },
+      {
+        path: 'analytics',
+        name: 'MobileAnalytics',
+        component: () => import('../views/mobile/MobileAnalytics.jsx')
+      },
+      {
         path: 'notifications',
         name: 'MobileNotifications',
         component: () => import('../views/mobile/MobileNotifications.jsx')
@@ -306,6 +321,11 @@ const routes = [
         path: 'swapna-decoder',
         name: 'MobileSwapnaDecoder',
         component: () => import('../views/mobile/MobileSwapnaDecoder.jsx')
+      },
+      {
+        path: 'kundali',
+        name: 'MobileKundali',
+        component: () => import('../views/mobile/MobileKundali.jsx')
       }
     ]
   },
