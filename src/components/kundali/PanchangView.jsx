@@ -340,10 +340,10 @@ export default {
                         <tbody>
                           {props.data?.chaughadiyaMuhurta?.day?.map((muhurta, index) => (
                             <tr key={index}>
-                              <td class="small">{muhurta.start} - {muhurta.end}</td>
+                              <td class="small">{muhurta.time}</td>
                               <td>
-                                <span class={`badge bg-${formatMuhurtaType(muhurta.type)}`}>
-                                  {muhurta.type}
+                                <span class={`badge bg-${formatMuhurtaType(muhurta.muhurta)}`}>
+                                  {muhurta.muhurta}
                                 </span>
                               </td>
                             </tr>
@@ -370,10 +370,10 @@ export default {
                         <tbody>
                           {props.data?.chaughadiyaMuhurta?.night?.map((muhurta, index) => (
                             <tr key={index}>
-                              <td class="small">{muhurta.start} - {muhurta.end}</td>
+                              <td class="small">{muhurta.time}</td>
                               <td>
-                                <span class={`badge bg-${formatMuhurtaType(muhurta.type)}`}>
-                                  {muhurta.type}
+                                <span class={`badge bg-${formatMuhurtaType(muhurta.muhurta)}`}>
+                                  {muhurta.muhurta}
                                 </span>
                               </td>
                             </tr>
@@ -391,100 +391,134 @@ export default {
 
               {/* Nakshatra Prediction Tab */}
               {activeTab.value === 'nakshatra' && (
-                <div class="row g-4">
-                  <div class="col-12">
-                    <h6 class="text-primary mb-3">Daily Nakshatra Prediction</h6>
-                    {props.data?.dailyNakshatraPrediction?.missingFields?.length ? (
-                      <div class="alert alert-warning mb-0">
-                        <h6 class="alert-heading">Personalization data required</h6>
-                        <p class="mb-2">{props.data.dailyNakshatraPrediction.message}</p>
-                        <p class="mb-0"><strong>These fields are missing:</strong> {props.data.dailyNakshatraPrediction.missingFields.join(', ')}</p>
-                      </div>
-                    ) : (
+                <div>
+                  <h6 style={{ color: '#6366f1', marginBottom: '1rem', fontWeight: '700' }}>Daily Nakshatra Prediction</h6>
+                  {props.data?.dailyNakshatraPrediction?.missingFields?.length ? (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      border: '2px dashed #f59e0b'
+                    }}>
+                      <h6 style={{ color: '#92400e', marginBottom: '0.5rem' }}>Personalization data required</h6>
+                      <p style={{ color: '#92400e', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                        {props.data.dailyNakshatraPrediction.message}
+                      </p>
+                      <p style={{ color: '#92400e', margin: 0, fontSize: '0.85rem' }}>
+                        <strong>Missing fields:</strong> {props.data.dailyNakshatraPrediction.missingFields.join(', ')}
+                      </p>
+                    </div>
+                  ) : (
                     <>
-                    <div class="row g-3 mb-4">
-                      <div class="col-md-6 col-lg-3">
-                        <div class="p-3 rounded-3 border bg-light">
-                          <small class="text-muted d-block mb-1">Birth Moon Sign</small>
-                          <strong class="text-dark">{safeGet(props.data, 'dailyNakshatraPrediction.birthMoonSign')}</strong>
+                      {/* Basic Info */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+                        <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Birth Moon Sign</div>
+                          <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                            {safeGet(props.data, 'dailyNakshatraPrediction.birthMoonSign')}
+                          </div>
+                        </div>
+                        <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Birth Nakshatra</div>
+                          <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                            {safeGet(props.data, 'dailyNakshatraPrediction.birthMoonNakshatra')}
+                          </div>
+                        </div>
+                        <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Current Nakshatra</div>
+                          <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                            {safeGet(props.data, 'dailyNakshatraPrediction.nakshatra')}
+                          </div>
+                        </div>
+                        <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Mood</div>
+                          <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                            {safeGet(props.data, 'dailyNakshatraPrediction.mood')} ({safeGet(props.data, 'dailyNakshatraPrediction.mood_percentage')})
+                          </div>
                         </div>
                       </div>
-                      <div class="col-md-6 col-lg-3">
-                        <div class="p-3 rounded-3 border bg-light">
-                          <small class="text-muted d-block mb-1">Birth Nakshatra</small>
-                          <strong class="text-dark">{safeGet(props.data, 'dailyNakshatraPrediction.birthMoonNakshatra')}</strong>
-                        </div>
-                      </div>
-                      <div class="col-md-6 col-lg-3">
-                        <div class="p-3 rounded-3 border bg-light">
-                          <small class="text-muted d-block mb-1">Current Nakshatra</small>
-                          <strong class="text-dark">{safeGet(props.data, 'dailyNakshatraPrediction.nakshatra')}</strong>
-                        </div>
-                      </div>
-                      <div class="col-md-6 col-lg-3">
-                        <div class="p-3 rounded-3 border bg-light">
-                          <small class="text-muted d-block mb-1">Mood</small>
-                          <strong class="text-dark">{safeGet(props.data, 'dailyNakshatraPrediction.mood')} ({safeGet(props.data, 'dailyNakshatraPrediction.mood_percentage')})</strong>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Lucky Details */}
-                    <div class="row g-3 mb-4">
-                      <div class="col-md-4">
-                        <div class="p-3 rounded-3 border bg-success bg-opacity-10">
-                          <small class="text-muted d-block mb-2">Lucky Colors</small>
-                          <div class="d-flex flex-wrap gap-2">
+                      {/* Lucky Details */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                        <div style={{ padding: '0.875rem', background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', borderRadius: '12px', border: '1px solid #6ee7b7' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#065f46', marginBottom: '0.5rem', fontWeight: '600' }}>Lucky Colors</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {props.data?.dailyNakshatraPrediction?.lucky_color?.map((color, index) => (
-                              <span key={index} class="badge bg-success">{color}</span>
-                            )) || <span class="text-muted">N/A</span>}
+                              <span key={index} style={{
+                                padding: '0.25rem 0.625rem',
+                                background: '#10b981',
+                                color: 'white',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: '600'
+                              }}>
+                                {color}
+                              </span>
+                            )) || <span style={{ color: '#065f46' }}>N/A</span>}
                           </div>
                         </div>
-                      </div>
-                      <div class="col-md-4">
-                        <div class="p-3 rounded-3 border bg-info bg-opacity-10">
-                          <small class="text-muted d-block mb-2">Lucky Numbers</small>
-                          <div class="d-flex flex-wrap gap-2">
+                        <div style={{ padding: '0.875rem', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', borderRadius: '12px', border: '1px solid #60a5fa' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#1e40af', marginBottom: '0.5rem', fontWeight: '600' }}>Lucky Numbers</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {props.data?.dailyNakshatraPrediction?.lucky_number?.map((num, index) => (
-                              <span key={index} class="badge bg-info">{num}</span>
-                            )) || <span class="text-muted">N/A</span>}
+                              <span key={index} style={{
+                                padding: '0.25rem 0.625rem',
+                                background: '#3b82f6',
+                                color: 'white',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: '600'
+                              }}>
+                                {num}
+                              </span>
+                            )) || <span style={{ color: '#1e40af' }}>N/A</span>}
+                          </div>
+                        </div>
+                        <div style={{ padding: '0.875rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', borderRadius: '12px', border: '1px solid #fbbf24' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#78350f', marginBottom: '0.25rem', fontWeight: '600' }}>Lucky Time</div>
+                          <div style={{ fontWeight: '600', color: '#78350f' }}>
+                            {safeGet(props.data, 'dailyNakshatraPrediction.lucky_time')}
                           </div>
                         </div>
                       </div>
-                      <div class="col-md-4">
-                        <div class="p-3 rounded-3 border bg-warning bg-opacity-10">
-                          <small class="text-muted d-block mb-1">Lucky Time</small>
-                          <strong class="text-dark">{safeGet(props.data, 'dailyNakshatraPrediction.lucky_time')}</strong>
+
+                      {/* Prediction Text */}
+                      {props.data?.dailyNakshatraPrediction?.bot_response && (
+                        <div style={{
+                          padding: '1rem',
+                          background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
+                          borderRadius: '12px',
+                          border: '1px solid #818cf8',
+                          marginBottom: '1rem'
+                        }}>
+                          <h6 style={{ color: '#3730a3', marginBottom: '0.5rem', fontWeight: '700' }}>Today's Prediction</h6>
+                          <p style={{ margin: 0, color: '#3730a3', lineHeight: '1.6', fontSize: '0.9rem' }}>
+                            {props.data.dailyNakshatraPrediction.bot_response}
+                          </p>
                         </div>
-                      </div>
-                    </div>
+                      )}
 
-                    {/* Prediction Text */}
-                    {props.data?.dailyNakshatraPrediction?.bot_response && (
-                      <div class="alert alert-primary">
-                        <h6 class="alert-heading">Today's Prediction</h6>
-                        <p class="mb-0">{props.data.dailyNakshatraPrediction.bot_response}</p>
-                      </div>
-                    )}
-
-                    {/* Detailed Predictions */}
-                    {props.data?.dailyNakshatraPrediction?.prediction && (
-                      <div class="row g-3">
-                        {Object.entries(props.data.dailyNakshatraPrediction.prediction).map(([key, value]) => (
-                          <div key={key} class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                              <div class="card-body">
-                                <h6 class="card-title text-capitalize">{key.replace(/_/g, ' ')}</h6>
-                                <p class="card-text mb-0">{value}</p>
-                              </div>
+                      {/* Detailed Predictions */}
+                      {props.data?.dailyNakshatraPrediction?.prediction && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {Object.entries(props.data.dailyNakshatraPrediction.prediction).map(([key, value]) => (
+                            <div key={key} style={{
+                              padding: '1rem',
+                              background: 'white',
+                              borderRadius: '12px',
+                              border: '1px solid #e2e8f0',
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                            }}>
+                              <h6 style={{ color: '#6366f1', marginBottom: '0.5rem', fontWeight: '600', textTransform: 'capitalize' }}>
+                                {key.replace(/_/g, ' ')}
+                              </h6>
+                              <p style={{ margin: 0, color: '#475569', lineHeight: '1.6', fontSize: '0.9rem' }}>{value}</p>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
                     </>
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
             </div>

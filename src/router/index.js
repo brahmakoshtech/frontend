@@ -193,6 +193,11 @@ const routes = [
         component: () => import('../views/mobile/MobileAskBIChat.jsx')
       },
       {
+        path: 'geeta-shlokas',
+        name: 'MobileGeetaShlokas',
+        component: () => import('../views/mobile/MobileGeetaShlokas.jsx')
+      },
+      {
         path: 'brahm-avatar-reels',
         name: 'MobileBrahmAvatarReels',
         component: () => import('../views/mobile/MobileBrahmAvatarReels.jsx')

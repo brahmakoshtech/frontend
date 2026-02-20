@@ -5,6 +5,18 @@ class AvatarChatService {
     this.currentChatId = null;
   }
 
+  async getChatHistory(chatId) {
+    try {
+      const token = localStorage.getItem('token_user');
+      if (!token) throw new Error('User not authenticated');
+      
+      const response = await api.getChat(chatId, token);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
   async sendMessage(agentId, message, avatarName = 'AI Guide') {
     try {
       const token = localStorage.getItem('token_user');
@@ -33,13 +45,20 @@ class AvatarChatService {
         }
       };
     } catch (error) {
-      console.error('Avatar chat error:', error);
       this.currentChatId = null;
       return {
         success: false,
         message: error.message || 'Failed to send message'
       };
     }
+  }
+
+  setCurrentChatId(chatId) {
+    this.currentChatId = chatId;
+  }
+
+  getCurrentChatId() {
+    return this.currentChatId;
   }
 
   resetChat() {
