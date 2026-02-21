@@ -115,7 +115,8 @@ class ApiService {
         endpoint.includes('/brand-assets') || endpoint.includes('/meditations') || 
         endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars') ||
         endpoint.includes('/reviews') || endpoint.includes('/experts') ||
-        endpoint.includes('/spiritual-rewards') || endpoint.includes('/swapna-decoder')) {
+        endpoint.includes('/spiritual-rewards') || endpoint.includes('/swapna-decoder') ||
+        endpoint.includes('/spiritual-stats')) {
         token = getTokenForRole('client');
         console.log('getTokenForRole result:', token);
         if (!token) {
@@ -180,7 +181,6 @@ class ApiService {
       } else if (endpoint.includes('/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
-        endpoint.includes('/spiritual-stats') || 
         endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points') ||
         endpoint.includes('/user-sankalp') || endpoint.includes('/notifications') ||
         endpoint.includes('/analytics') || endpoint.includes('/leaderboard')) {
