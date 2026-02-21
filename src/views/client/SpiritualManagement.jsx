@@ -2457,9 +2457,9 @@ export default {
                                         )}
                                       </td>
                                       <td>
-                                        {activity.videoUrl ? (
+                                        {activity.video ? (
                                           <a 
-                                            href={activity.videoUrl} 
+                                            href={activity.video} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
@@ -2473,9 +2473,9 @@ export default {
                                         )}
                                       </td>
                                       <td>
-                                        {activity.audioUrl ? (
+                                        {activity.audio ? (
                                           <a 
-                                            href={activity.audioUrl} 
+                                            href={activity.audio} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"

@@ -912,8 +912,8 @@ export default {
                                   </div>
                                 </td>
                                 <td>
-                                  {activity.videoUrl ? (
-                                    <a href={activity.videoUrl} target="_blank" rel="noopener noreferrer" class="badge bg-success text-decoration-none">
+                                  {activity.video ? (
+                                    <a href={activity.video} target="_blank" rel="noopener noreferrer" class="badge bg-success text-decoration-none">
                                       🎥 Video
                                     </a>
                                   ) : (
@@ -921,8 +921,8 @@ export default {
                                   )}
                                 </td>
                                 <td>
-                                  {activity.audioUrl ? (
-                                    <a href={activity.audioUrl} target="_blank" rel="noopener noreferrer" class="badge bg-info text-decoration-none">
+                                  {activity.audio ? (
+                                    <a href={activity.audio} target="_blank" rel="noopener noreferrer" class="badge bg-info text-decoration-none">
                                       🎵 Audio
                                     </a>
                                   ) : (
