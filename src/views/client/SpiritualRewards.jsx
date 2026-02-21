@@ -102,6 +102,7 @@ export default {
       if (isEdit) {
         editForm.value.category = category;
         editForm.value.subcategory = '';
+        availableSubcategories.value = categories.value[category] || [];
       } else {
         newReward.value.category = category;
         newReward.value.subcategory = '';
@@ -222,6 +223,12 @@ export default {
     const editReward = (reward) => {
       editingReward.value = reward;
       editForm.value = { ...reward };
+      
+      // Set available subcategories for edit mode
+      if (reward.category && categories.value[reward.category]) {
+        availableSubcategories.value = categories.value[reward.category];
+      }
+      
       editPhotoUploaded.value = false;
       editPhotoFileName.value = '';
       editBannerUploaded.value = false;
@@ -632,7 +639,12 @@ export default {
             </div>
 
             {/* Rewards Grid */}
-            {rewards.value.length > 0 ? (
+            {loading.value ? (
+              <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status" style="color: #8b5cf6 !important;"></div>
+                <p class="text-muted mt-3">Loading rewards...</p>
+              </div>
+            ) : rewards.value.length > 0 ? (
               <div class="row g-4">
                 {rewards.value.map(reward => (
                   <div key={reward._id} class="col-xl-4 col-lg-6 col-md-6">
@@ -1197,10 +1209,10 @@ export default {
                     </div>
                     <div class="modal-body p-4">
                       {/* Banner Image */}
-                      {selectedReward.value.bannerUrl && (
+                      {selectedReward.value.banner && (
                         <div class="mb-4">
                           <img 
-                            src={cleanS3Url(selectedReward.value.bannerUrl)} 
+                            src={selectedReward.value.banner} 
                             alt={selectedReward.value.title}
                             class="w-100 rounded-3"
                             style={{ maxHeight: '200px', objectFit: 'cover' }}
@@ -1212,9 +1224,9 @@ export default {
                         <div class="col-12">
                           <div class="d-flex align-items-start gap-3">
                             {/* Photo */}
-                            {selectedReward.value.photoUrl && (
+                            {selectedReward.value.image && (
                               <img 
-                                src={cleanS3Url(selectedReward.value.photoUrl)} 
+                                src={selectedReward.value.image} 
                                 alt={selectedReward.value.title}
                                 class="rounded-3"
                                 style={{ width: '80px', height: '80px', objectFit: 'cover' }}

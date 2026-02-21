@@ -511,13 +511,19 @@ export default {
             margin: 0.5rem auto;
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: none;
-            max-width: 200px;
+            max-width: 200px !important;
             width: calc(100% - 2rem);
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
             box-sizing: border-box;
+          }
+          
+          @media (min-width: 768px) {
+            .session-card {
+              max-width: 350px !important;
+            }
           }
           
           .chant-circle {
@@ -608,6 +614,14 @@ export default {
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          }
+          
+          @media (min-width: 768px) {
+            .reward-content {
+              max-width: 340px !important;
+              width: 340px !important;
+              padding: 1.5rem 1.25rem;
+            }
           }
           
           .clips-list {

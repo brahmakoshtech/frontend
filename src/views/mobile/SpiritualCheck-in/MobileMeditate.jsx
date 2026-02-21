@@ -710,13 +710,19 @@ export default {
             margin: 0 auto;
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: none;
-            max-width: min(400px, 92vw);
+            max-width: min(350px, 92vw) !important;
             width: 100%;
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
             box-sizing: border-box;
+          }
+          
+          @media (min-width: 768px) {
+            .session-card {
+              max-width: 350px !important;
+            }
           }
           
           @media (max-width: 320px) {
@@ -801,13 +807,20 @@ export default {
             padding: clamp(1.5rem, 5vw, 3rem) clamp(1.25rem, 4vw, 2rem);
             text-align: center;
             color: #1e293b;
-            max-width: min(350px, 92vw);
+            max-width: min(330px, 92vw) !important;
             width: 100%;
             animation: bounceIn 0.6s ease;
             position: relative;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          }
+          
+          @media (min-width: 768px) {
+            .reward-content {
+              max-width: 340px !important;
+              padding: 1.5rem 1.25rem;
+            }
           }
           
           @media (max-width: 320px) {
@@ -1440,7 +1453,9 @@ export default {
         {/* Reward Modal */}
         {showRewardModal.value && (
           <div class="reward-modal">
-            <div class="reward-content">
+            <div class="reward-content" style={{
+              maxWidth: window.innerWidth >= 768 ? '360px' : 'min(350px, 92vw)'
+            }}>
               {/* Sparkles Animation */}
               <div class="reward-sparkles">
                 {Array.from({length: 15}).map((_, i) => (

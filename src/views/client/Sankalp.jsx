@@ -306,8 +306,12 @@ export default {
       };
     };
 
+    const showViewModal = ref(false);
+    const viewingSankalp = ref(null);
+
     const viewSankalp = (sankalp) => {
-      toast.info(`Viewing: ${sankalp.title}`);
+      viewingSankalp.value = sankalp;
+      showViewModal.value = true;
       showDropdown.value = {};
     };
 
@@ -593,7 +597,144 @@ export default {
           </div>
         )}
 
-        {/* Modal */}
+        {/* View Modal */}
+        {showViewModal.value && viewingSankalp.value && (
+          <div class="modal show d-block" style="background: rgba(0,0,0,0.5);" onClick={() => showViewModal.value = false}>
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
+              <div class="modal-content" style="border-radius: 12px; border: none;">
+                <div class="modal-header bg-gradient-primary text-white" style="border-bottom: none; border-radius: 12px 12px 0 0;">
+                  <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <EyeIcon style="width: 1.5rem; height: 1.5rem;" />
+                    Sankalp Details
+                  </h5>
+                  <button type="button" class="btn-close btn-close-white" onClick={() => showViewModal.value = false}></button>
+                </div>
+                <div class="modal-body p-3 p-md-4" style="max-height: 70vh; overflow-y: auto;">
+                  {/* Banner Image */}
+                  {viewingSankalp.value.bannerImage && (
+                    <div class="mb-3 mb-md-4 text-center">
+                      <img 
+                        src={viewingSankalp.value.bannerImage} 
+                        alt={viewingSankalp.value.title} 
+                        class="img-fluid rounded" 
+                        style="max-height: 200px; width: 100%; object-fit: cover;" 
+                      />
+                    </div>
+                  )}
+
+                  {/* Title & Status */}
+                  <div class="mb-3 mb-md-4">
+                    <h4 class="fw-bold mb-2">{viewingSankalp.value.title}</h4>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                      <span class={`badge ${viewingSankalp.value.status === 'Active' ? 'bg-success' : 'bg-secondary'} px-2 py-1`}>
+                        {viewingSankalp.value.status}
+                      </span>
+                      <span class="badge bg-primary px-2 py-1">{viewingSankalp.value.category}</span>
+                      {viewingSankalp.value.subcategory && (
+                        <span class="badge bg-secondary px-2 py-1">{viewingSankalp.value.subcategory}</span>
+                      )}
+                      <span class="badge bg-info px-2 py-1">{viewingSankalp.value.visibility}</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.95rem;">{viewingSankalp.value.description}</p>
+                  </div>
+
+                  {/* Duration & Completion */}
+                  <div class="row g-2 g-md-3 mb-3 mb-md-4">
+                    <div class="col-6">
+                      <div class="p-2 p-md-3 rounded" style="background: #f3f4f6;">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">Duration</small>
+                        <div class="fw-bold" style="font-size: 0.9rem;">📅 {viewingSankalp.value.totalDays} days</div>
+                        <small class="text-muted" style="font-size: 0.75rem;">({viewingSankalp.value.durationType})</small>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="p-2 p-md-3 rounded" style="background: #f3f4f6;">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">Completion Rule</small>
+                        <div class="fw-bold" style="font-size: 0.9rem;">✅ {viewingSankalp.value.completionRule}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Karma Points */}
+                  <div class="mb-3 mb-md-4 p-2 p-md-3 rounded" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #86efac;">
+                    <h6 class="fw-bold mb-2 mb-md-3 text-success" style="font-size: 0.95rem;">🎁 Karma Rewards</h6>
+                    <div class="row g-2">
+                      <div class="col-6">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">Daily Points</small>
+                        <div class="fw-bold text-success" style="font-size: 0.9rem;">✨ {viewingSankalp.value.karmaPointsPerDay} pts/day</div>
+                      </div>
+                      <div class="col-6">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">Completion Bonus</small>
+                        <div class="fw-bold text-success" style="font-size: 0.9rem;">🎁 +{viewingSankalp.value.completionBonusKarma} pts</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Participants & Completed */}
+                  <div class="row g-2 g-md-3 mb-3 mb-md-4">
+                    <div class="col-6">
+                      <div class="p-2 p-md-3 rounded" style="background: #fef3c7;">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">Participants</small>
+                        <div class="fw-bold" style="font-size: 0.9rem;">👥 {viewingSankalp.value.participantsCount || 0}</div>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="p-2 p-md-3 rounded" style="background: #dbeafe;">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">Completed</small>
+                        <div class="fw-bold" style="font-size: 0.9rem;">🏆 {viewingSankalp.value.completedCount || 0}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Messages */}
+                  {viewingSankalp.value.dailyMotivationMessage && (
+                    <div class="mb-2 mb-md-3 p-2 p-md-3 rounded" style="background: #fef3c7; border-left: 4px solid #f59e0b;">
+                      <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">💬 Daily Motivation</small>
+                      <div class="fw-semibold" style="font-size: 0.9rem;">{viewingSankalp.value.dailyMotivationMessage}</div>
+                    </div>
+                  )}
+
+                  {viewingSankalp.value.completionMessage && (
+                    <div class="mb-2 mb-md-3 p-2 p-md-3 rounded" style="background: #dbeafe; border-left: 4px solid #3b82f6;">
+                      <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">🎊 Completion Message</small>
+                      <div class="fw-semibold" style="font-size: 0.9rem;">{viewingSankalp.value.completionMessage}</div>
+                    </div>
+                  )}
+
+                  {/* Slug */}
+                  {viewingSankalp.value.slug && (
+                    <div class="p-2 p-md-3 rounded" style="background: #f3f4f6;">
+                      <small class="text-muted d-block mb-1" style="font-size: 0.75rem;">🔗 Slug</small>
+                      <code class="text-primary" style="font-size: 0.85rem; word-break: break-all;">{viewingSankalp.value.slug}</code>
+                    </div>
+                  )}
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #e5e7eb;">
+                  <button 
+                    type="button" 
+                    class="btn btn-secondary btn-sm" 
+                    onClick={() => showViewModal.value = false} 
+                    style="border-radius: 8px;"
+                  >
+                    Close
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-primary btn-sm d-flex align-items-center gap-2" 
+                    onClick={() => { showViewModal.value = false; openEditModal(viewingSankalp.value); }} 
+                    style="background: #9333ea; border: none; border-radius: 8px;"
+                  >
+                    <PencilIcon style="width: 1rem; height: 1rem;" />
+                    <span class="d-none d-sm-inline">Edit Sankalp</span>
+                    <span class="d-sm-none">Edit</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add/Edit Modal */}
         {showModal.value && (
           <div class="modal show d-block" style="background: rgba(0,0,0,0.5);" onClick={closeModal}>
             <div class="modal-dialog modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
