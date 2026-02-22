@@ -114,9 +114,7 @@ class ApiService {
         endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || 
         endpoint.includes('/brand-assets') || endpoint.includes('/meditations') || 
         endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars') ||
-        endpoint.includes('/reviews') || endpoint.includes('/experts') ||
-        endpoint.includes('/spiritual-rewards') || endpoint.includes('/swapna-decoder') ||
-        endpoint.includes('/spiritual-stats')) {
+        endpoint.includes('/reviews') || endpoint.includes('/experts') || endpoint.includes('/swapna-decoder')) {
         token = getTokenForRole('client');
         console.log('getTokenForRole result:', token);
         if (!token) {
@@ -183,20 +181,21 @@ class ApiService {
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
         endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points') ||
         endpoint.includes('/user-sankalp') || endpoint.includes('/notifications') ||
-        endpoint.includes('/analytics') || endpoint.includes('/leaderboard')) {
-        // USER ENDPOINTS - Use user token
-        token = getTokenForRole('user');
-        tokenSource = 'user (authenticated endpoint)';
+        endpoint.includes('/analytics') || endpoint.includes('/leaderboard') ||
+        endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards')) {
+        // USER ENDPOINTS - Try user token first, then client token as fallback
+        token = getTokenForRole('user') || getTokenForRole('client');
+        tokenSource = token ? (getTokenForRole('user') ? 'user (authenticated endpoint)' : 'client (fallback)') : 'none';
   
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role !== 'user') {
+            if (payload.role !== 'user' && payload.role !== 'client') {
               console.error('[API Error] Wrong token role for user endpoint:', {
                 endpoint,
                 tokenRole: payload.role,
-                requiredRole: 'user',
-                message: 'Rejecting non-user token for user endpoint'
+                requiredRole: 'user or client',
+                message: 'Rejecting non-user/client token for user endpoint'
               });
               token = null;
               tokenSource = 'rejected (wrong role)';

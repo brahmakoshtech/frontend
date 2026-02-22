@@ -57,6 +57,14 @@ export default {
     const fetchUserStats = async () => {
       try {
         loading.value = true;
+        const userToken = localStorage.getItem('token_user');
+        const clientToken = localStorage.getItem('token_client');
+        if (!userToken && !clientToken) {
+          console.error('No token found. Please login.');
+          toast.error('Please login to view spiritual stats');
+          loading.value = false;
+          return;
+        }
         const response = await spiritualStatsService.getUserStats();
         if (response.success) {
           console.log('Raw API response:', response.data);
