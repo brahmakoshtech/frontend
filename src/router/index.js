@@ -493,6 +493,11 @@ const routes = [
         component: () => import('../views/client/Users.jsx')
       },
       {
+        path: 'partners/pending',
+        name: 'ClientPendingPartners',
+        component: () => import('../views/client/PendingPartners.jsx')
+      },
+      {
         path: 'credits',
         name: 'ClientCredits',
         component: () => import('../views/client/Credits.jsx')

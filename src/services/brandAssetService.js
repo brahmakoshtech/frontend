@@ -1,6 +1,6 @@
 import api from './api.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://stage.brahmakosh.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://prod.brahmakosh.com/api';
 
 const brandAssetService = {
   // Get all brand assets for authenticated client

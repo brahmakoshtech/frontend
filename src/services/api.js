@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://stage.brahmakosh.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://prod.brahmakosh.com/api';
 
 // Helper to get role from path
 const getRoleFromPath = (path) => {
@@ -862,6 +862,28 @@ class ApiService {
     return this.request('/client/dashboard/overview');
   }
 
+  // Client - Partners (pending approval, approve, reject)
+  async getPendingPartners(params = {}) {
+    return this.request('/client/partners/pending', { params });
+  }
+
+  async getPartners(params = {}) {
+    return this.request('/client/partners', { params });
+  }
+
+  async approvePartner(partnerId) {
+    return this.request(`/client/partners/${partnerId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectPartner(partnerId, reason) {
+    return this.request(`/client/partners/${partnerId}/reject`, {
+      method: 'POST',
+      body: reason ? { reason } : {},
+    });
+  }
+
   // User endpoints
   async getUserProfile() {
     return this.request('/users/profile');
@@ -1143,6 +1165,10 @@ const api = {
   getUserKarmaPointsHistory: apiService.getUserKarmaPointsHistory.bind(apiService),
   submitConversationFeedback: apiService.submitConversationFeedback.bind(apiService),
   getClientDashboard: apiService.getClientDashboard.bind(apiService),
+  getPendingPartners: apiService.getPendingPartners.bind(apiService),
+  getPartners: apiService.getPartners.bind(apiService),
+  approvePartner: apiService.approvePartner.bind(apiService),
+  rejectPartner: apiService.rejectPartner.bind(apiService),
   getUserProfile: apiService.getUserProfile.bind(apiService),
   updateUserProfile: apiService.updateUserProfile.bind(apiService),
   getPresignedUrl: apiService.getPresignedUrl.bind(apiService),

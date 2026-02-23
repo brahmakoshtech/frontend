@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://stage.brahmakosh.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://prod.brahmakosh.com/api';
 
 // Create axios instance with default config
 const api = axios.create({
