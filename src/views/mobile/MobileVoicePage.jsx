@@ -89,7 +89,7 @@ export default {
         connectionStatus.value = 'connecting';
 
         // Setup WebSocket connection
-        const wsUrl = 'ws://localhost:5000/api/voice/agent';
+        const wsUrl = 'wss://https://prod.brahmakosh.com/api/voice/agent';
         
         addDebugLog(`Connecting to WebSocket: ${wsUrl}`);
         console.log('[VoiceAgent] Connecting to WebSocket:', wsUrl);
