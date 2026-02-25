@@ -23,6 +23,8 @@ export default {
     const peerConnection = ref(null);
     const localStream = ref(null);
     const remoteStream = ref(null);
+    const localTracksAdded = ref(false);
+    const pendingIceCandidates = ref([]);
     let unsubscribeSignals = null;
 
     const createPeerConnection = (conversationId) => {
@@ -77,6 +79,8 @@ export default {
         remoteStream.value.getTracks().forEach((t) => t.stop());
       }
       remoteStream.value = null;
+      localTracksAdded.value = false;
+      pendingIceCandidates.value = [];
       status.value = 'ended';
     };
 
@@ -93,6 +97,13 @@ export default {
       return stream;
     };
 
+    const ensureTracksAdded = async (pc) => {
+      if (localTracksAdded.value) return;
+      const stream = await ensureLocalStream();
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      localTracksAdded.value = true;
+    };
+
     const handleSignal = async (conversationId, signal) => {
       if (!conversationId || !signal) return;
 
@@ -103,8 +114,7 @@ export default {
 
       try {
         if (signal.type === 'offer') {
-          const stream = await ensureLocalStream();
-          stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+          await ensureTracksAdded(pc);
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -112,12 +122,26 @@ export default {
             conversationId,
             signal: { type: 'answer', sdp: pc.localDescription }
           });
+          // Flush any ICE candidates that arrived early
+          for (const cand of pendingIceCandidates.value) {
+            await pc.addIceCandidate(new RTCIceCandidate(cand));
+          }
+          pendingIceCandidates.value = [];
           status.value = 'in_call';
         } else if (signal.type === 'answer') {
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          // Flush buffered ICE now that remoteDescription is set
+          for (const cand of pendingIceCandidates.value) {
+            await pc.addIceCandidate(new RTCIceCandidate(cand));
+          }
+          pendingIceCandidates.value = [];
           status.value = 'in_call';
         } else if (signal.type === 'ice-candidate' && signal.candidate) {
-          await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          if (!pc.remoteDescription) {
+            pendingIceCandidates.value.push(signal.candidate);
+          } else {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          }
         }
       } catch (err) {
         console.error('WebRTC error (partner voice):', err);
@@ -131,8 +155,7 @@ export default {
       try {
         status.value = 'calling';
         const pc = createPeerConnection(convId);
-        const stream = await ensureLocalStream();
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+        await ensureTracksAdded(pc);
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -162,8 +185,7 @@ export default {
       try {
         const convId = targetConversationId.value;
         const pc = createPeerConnection(convId);
-        const stream = await ensureLocalStream();
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+        await ensureTracksAdded(pc);
         partnerVoiceAccept(convId);
         status.value = 'in_call';
       } catch (err) {

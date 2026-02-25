@@ -15,6 +15,8 @@ export default {
     const localStream = ref(null);
     const remoteStream = ref(null);
     const activeConversationId = ref(null);
+    const localTracksAdded = ref(false);
+    const pendingIceCandidates = ref([]);
 
     const createPeerConnection = (conversationId) => {
       if (peerConnection.value) return peerConnection.value;
@@ -71,6 +73,8 @@ export default {
       }
       remoteStream.value = null;
       activeConversationId.value = null;
+      localTracksAdded.value = false;
+      pendingIceCandidates.value = [];
       status.value = 'ended';
     };
 
@@ -87,12 +91,18 @@ export default {
       return stream;
     };
 
+    const ensureTracksAdded = async (pc) => {
+      if (localTracksAdded.value) return;
+      const stream = await ensureLocalStream();
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      localTracksAdded.value = true;
+    };
+
     const startOutgoingCall = async (conversationId) => {
       if (!conversationId || !socket.value || !isConnected.value) return;
       try {
         const pc = createPeerConnection(conversationId);
-        const stream = await ensureLocalStream();
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+        await ensureTracksAdded(pc);
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -176,8 +186,7 @@ export default {
 
         try {
           if (signal.type === 'offer') {
-            const stream = await ensureLocalStream();
-            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+            await ensureTracksAdded(pc);
 
             await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
             const answer = await pc.createAnswer();
@@ -187,12 +196,25 @@ export default {
               conversationId,
               signal: { type: 'answer', sdp: pc.localDescription }
             });
+            // Flush buffered ICE
+            for (const cand of pendingIceCandidates.value) {
+              await pc.addIceCandidate(new RTCIceCandidate(cand));
+            }
+            pendingIceCandidates.value = [];
             status.value = 'in_call';
           } else if (signal.type === 'answer') {
             await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            for (const cand of pendingIceCandidates.value) {
+              await pc.addIceCandidate(new RTCIceCandidate(cand));
+            }
+            pendingIceCandidates.value = [];
             status.value = 'in_call';
           } else if (signal.type === 'ice-candidate' && signal.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            if (!pc.remoteDescription) {
+              pendingIceCandidates.value.push(signal.candidate);
+            } else {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
           }
         } catch (err) {
           console.error('WebRTC error (user voice):', err);
@@ -205,8 +227,7 @@ export default {
       const conversationId = info.value.conversationId;
       try {
         const pc = createPeerConnection(conversationId);
-        const stream = await ensureLocalStream();
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+        await ensureTracksAdded(pc);
         socket.value.emit('voice:call:accept', { conversationId });
         status.value = 'in_call';
       } catch (err) {
