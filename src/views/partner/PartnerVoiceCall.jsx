@@ -189,7 +189,7 @@ export default {
     const startRecording = () => {
       if (!localStream.value || mediaRecorder.value) return;
       try {
-        const mr = new MediaRecorder(localStream.value, { mimeType: 'audio/webm' });
+        const mr = new MediaRecorder(localStream.value);
         mediaRecorder.value = mr;
         recordedChunks.value = [];
         mr.ondataavailable = (e) => {
@@ -395,6 +395,16 @@ export default {
                         <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
                           Status: <strong style={{ color: 'white' }}>{c.status}</strong>
                         </div>
+                        {c.startedAt && (
+                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                            Started: {new Date(c.startedAt).toLocaleString()}
+                          </div>
+                        )}
+                        {c.endedAt && (
+                          <div style={{ fontSize: 11, color: '#6b7280' }}>
+                            Ended: {new Date(c.endedAt).toLocaleString()}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                         <button
@@ -404,7 +414,16 @@ export default {
                           }}
                           style="padding:8px 10px; background:#1f2937; color:white; border:1px solid rgba(148,163,184,0.18); border-radius:9999px; cursor:pointer; font-weight:700;"
                         >
-                          View
+                          View on right
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Navigate to the chat screen for this conversation
+                            window.location.href = `/partner/chat?conversationId=${encodeURIComponent(c.conversationId)}`;
+                          }}
+                          style="padding:8px 10px; background:#0ea5e9; color:white; border:none; border-radius:9999px; cursor:pointer; font-weight:700;"
+                        >
+                          Open Chat
                         </button>
                       </div>
                     </div>

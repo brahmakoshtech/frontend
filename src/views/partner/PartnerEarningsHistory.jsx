@@ -11,6 +11,9 @@ export default {
     const limit = ref(20);
     const totalPages = ref(1);
 
+    const currentAudioUrl = ref('');
+    const currentLabel = ref('');
+
     const loadHistory = async () => {
       try {
         loading.value = true;
@@ -29,14 +32,15 @@ export default {
       }
     };
 
-    const playRecording = async (key) => {
+    const playRecording = async (key, label) => {
       if (!key) return;
       try {
         const res = await api.get(`/upload/presigned-url/${encodeURIComponent(key)}`);
         const payload = res?.data || res;
         const url = payload?.data?.presignedUrl;
         if (url) {
-          window.open(url, '_blank');
+          currentAudioUrl.value = url;
+          currentLabel.value = label || 'Recording';
         } else {
           // eslint-disable-next-line no-alert
           alert('Unable to load audio recording.');
@@ -128,7 +132,7 @@ export default {
                           <button
                             class="btn btn-sm btn-outline-primary me-1"
                             type="button"
-                            onClick={() => playRecording(entry.voiceRecordings.partner.key)}
+                            onClick={() => playRecording(entry.voiceRecordings.partner.key, 'You')}
                           >
                             Play (You)
                           </button>
@@ -137,7 +141,7 @@ export default {
                           <button
                             class="btn btn-sm btn-outline-primary"
                             type="button"
-                            onClick={() => playRecording(entry.voiceRecordings.user.key)}
+                            onClick={() => playRecording(entry.voiceRecordings.user.key, 'User')}
                           >
                             Play (User)
                           </button>
@@ -153,22 +157,32 @@ export default {
                 </div>
               ))}
             </div>
-            <div style="padding: 12px 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-              <button
-                class="btn btn-sm btn-outline-secondary"
-                disabled={page.value <= 1}
-                onClick={prevPage}
-              >
-                Previous
-              </button>
-              <span style="font-size: 12px; color: #9ca3af;">Page {page.value} of {totalPages.value}</span>
-              <button
-                class="btn btn-sm btn-outline-secondary"
-                disabled={page.value >= totalPages.value}
-                onClick={nextPage}
-              >
-                Next
-              </button>
+            <div style="padding: 12px 16px; border-top: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 8px;">
+              {currentAudioUrl.value && (
+                <div>
+                  <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">
+                    Playing: {currentLabel.value}
+                  </div>
+                  <audio controls src={currentAudioUrl.value} style="width: 100%;" />
+                </div>
+              )}
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  disabled={page.value <= 1}
+                  onClick={prevPage}
+                >
+                  Previous
+                </button>
+                <span style="font-size: 12px; color: #9ca3af;">Page {page.value} of {totalPages.value}</span>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  disabled={page.value >= totalPages.value}
+                  onClick={nextPage}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -11,6 +11,9 @@ export default {
     const limit = ref(20);
     const totalPages = ref(1);
 
+    const currentAudioUrl = ref('');
+    const currentLabel = ref('');
+
     const loadHistory = async () => {
       try {
         loading.value = true;
@@ -29,14 +32,15 @@ export default {
       }
     };
 
-    const playRecording = async (key) => {
+    const playRecording = async (key, label) => {
       if (!key) return;
       try {
         const res = await api.get(`/upload/presigned-url/${encodeURIComponent(key)}`);
         const payload = res?.data || res;
         const url = payload?.data?.presignedUrl;
         if (url) {
-          window.open(url, '_blank');
+          currentAudioUrl.value = url;
+          currentLabel.value = label || 'Recording';
         } else {
           // Simple fallback; avoid throwing to keep UX smooth
           // eslint-disable-next-line no-alert
@@ -124,7 +128,7 @@ export default {
                             <button
                               class="btn btn-sm btn-outline-primary me-1"
                               type="button"
-                              onClick={() => playRecording(entry.voiceRecordings.user.key)}
+                              onClick={() => playRecording(entry.voiceRecordings.user.key, 'You')}
                             >
                               Play (You)
                             </button>
@@ -133,7 +137,7 @@ export default {
                             <button
                               class="btn btn-sm btn-outline-primary"
                               type="button"
-                              onClick={() => playRecording(entry.voiceRecordings.partner.key)}
+                              onClick={() => playRecording(entry.voiceRecordings.partner.key, 'Partner')}
                             >
                               Play (Partner)
                             </button>
@@ -150,7 +154,17 @@ export default {
                 ))}
               </div>
             </div>
-            <div class="card-footer d-flex justify-content-between align-items-center">
+            <div class="card-footer d-flex flex-column align-items-stretch gap-2">
+              {currentAudioUrl.value && (
+                <div class="mb-2">
+                  <div class="text-muted mb-1" style="font-size: 0.8rem;">
+                    Playing: {currentLabel.value}
+                  </div>
+                  <audio controls src={currentAudioUrl.value} style="width: 100%;" />
+                </div>
+              )}
+
+              <div class="d-flex justify-content-between align-items-center">
               <button
                 class="btn btn-sm btn-outline-secondary"
                 disabled={page.value <= 1}
@@ -168,6 +182,7 @@ export default {
               >
                 Next
               </button>
+              </div>
             </div>
           </div>
         )}

@@ -107,7 +107,7 @@ export default {
     const startRecording = () => {
       if (!localStream.value || mediaRecorder.value) return;
       try {
-        const mr = new MediaRecorder(localStream.value, { mimeType: 'audio/webm' });
+        const mr = new MediaRecorder(localStream.value);
         mediaRecorder.value = mr;
         recordedChunks.value = [];
         mr.ondataavailable = (e) => {
