@@ -1,5 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
+import api from '../../services/api.js';
 import {
   consumePartnerVoiceSignals,
   ensurePartnerVoiceConnected,
@@ -25,6 +26,9 @@ export default {
     const remoteStream = ref(null);
     const localTracksAdded = ref(false);
     const pendingIceCandidates = ref([]);
+    const mediaRecorder = ref(null);
+    const recordedChunks = ref([]);
+    const isMuted = ref(false);
     let unsubscribeSignals = null;
 
     const createPeerConnection = (conversationId) => {
@@ -81,6 +85,8 @@ export default {
       remoteStream.value = null;
       localTracksAdded.value = false;
       pendingIceCandidates.value = [];
+      mediaRecorder.value = null;
+      recordedChunks.value = [];
       status.value = 'ended';
     };
 
@@ -180,12 +186,78 @@ export default {
       }
     };
 
+    const startRecording = () => {
+      if (!localStream.value || mediaRecorder.value) return;
+      try {
+        const mr = new MediaRecorder(localStream.value, { mimeType: 'audio/webm' });
+        mediaRecorder.value = mr;
+        recordedChunks.value = [];
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedChunks.value.push(e.data);
+          }
+        };
+        mr.start(); // continuous recording
+      } catch (e) {
+        console.warn('MediaRecorder not available for partner voice:', e?.message);
+      }
+    };
+
+    const stopRecording = async () => {
+      return new Promise((resolve) => {
+        if (!mediaRecorder.value) return resolve();
+        const mr = mediaRecorder.value;
+        mediaRecorder.value = null;
+        try {
+          mr.onstop = () => resolve();
+          mr.stop();
+        } catch {
+          resolve();
+        }
+      });
+    };
+
+    const uploadRecording = async (conversationId) => {
+      if (!conversationId || recordedChunks.value.length === 0) return;
+      const blob = new Blob(recordedChunks.value, { type: 'audio/webm' });
+      try {
+        const { data: presigned } = await api.post('/chat/voice/recording/upload-url', {
+          conversationId,
+          role: 'partner'
+        });
+        const uploadUrl = presigned?.data?.uploadUrl;
+        const key = presigned?.data?.key;
+        if (!uploadUrl || !key) return;
+
+        await fetch(uploadUrl, {
+          method: 'PUT',
+          body: blob,
+          headers: { 'Content-Type': 'audio/webm' }
+        });
+
+        await api.patch(`/chat/conversations/${conversationId}/voice-recording`, {
+          audioKey: key
+        });
+      } catch (e) {
+        console.warn('Failed to upload partner call recording:', e?.message);
+      }
+    };
+
+    const toggleMute = () => {
+      if (!localStream.value) return;
+      isMuted.value = !isMuted.value;
+      localStream.value.getAudioTracks().forEach((t) => {
+        t.enabled = !isMuted.value;
+      });
+    };
+
     const acceptIncoming = async () => {
       if (!targetConversationId.value || !socket.value || !isConnected.value) return;
       try {
         const convId = targetConversationId.value;
         const pc = createPeerConnection(convId);
         await ensureTracksAdded(pc);
+        startRecording();
         partnerVoiceAccept(convId);
         status.value = 'in_call';
       } catch (err) {
@@ -203,11 +275,17 @@ export default {
 
     const endCall = () => {
       if (!targetConversationId.value || !socket.value || !isConnected.value) {
-        destroyPeerConnection();
+        const convId = targetConversationId.value;
+        stopRecording().then(() => uploadRecording(convId)).finally(() => {
+          destroyPeerConnection();
+        });
         return;
       }
-      partnerVoiceEnd(targetConversationId.value);
-      destroyPeerConnection();
+      const convId = targetConversationId.value;
+      partnerVoiceEnd(convId);
+      stopRecording().then(() => uploadRecording(convId)).finally(() => {
+        destroyPeerConnection();
+      });
     };
 
     onMounted(() => {
@@ -386,12 +464,20 @@ export default {
           )}
 
           {status.value === 'in_call' && (
-            <button
-              onClick={endCall}
-              style="padding:10px 16px; background:#ef4444; border:none; border-radius:9999px; color:white; font-weight:600; cursor:pointer;"
-            >
-              End Call
-            </button>
+            <div style="display:flex; gap:12px; justify-content:center;">
+              <button
+                onClick={toggleMute}
+                style="padding:10px 16px; background:#6b7280; border:none; border-radius:9999px; color:white; font-weight:600; cursor:pointer;"
+              >
+                {isMuted.value ? 'Unmute' : 'Mute'}
+              </button>
+              <button
+                onClick={endCall}
+                style="padding:10px 16px; background:#ef4444; border:none; border-radius:9999px; color:white; font-weight:600; cursor:pointer;"
+              >
+                End Call
+              </button>
+            </div>
           )}
 
           {status.value === 'ended' && (

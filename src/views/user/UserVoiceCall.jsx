@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { io } from 'socket.io-client';
+import api from '../../services/api.js';
 
 export default {
   name: 'UserVoiceCall',
@@ -17,6 +18,9 @@ export default {
     const activeConversationId = ref(null);
     const localTracksAdded = ref(false);
     const pendingIceCandidates = ref([]);
+    const mediaRecorder = ref(null);
+    const recordedChunks = ref([]);
+    const isMuted = ref(false);
 
     const createPeerConnection = (conversationId) => {
       if (peerConnection.value) return peerConnection.value;
@@ -75,6 +79,8 @@ export default {
       activeConversationId.value = null;
       localTracksAdded.value = false;
       pendingIceCandidates.value = [];
+      mediaRecorder.value = null;
+      recordedChunks.value = [];
       status.value = 'ended';
     };
 
@@ -96,6 +102,71 @@ export default {
       const stream = await ensureLocalStream();
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       localTracksAdded.value = true;
+    };
+
+    const startRecording = () => {
+      if (!localStream.value || mediaRecorder.value) return;
+      try {
+        const mr = new MediaRecorder(localStream.value, { mimeType: 'audio/webm' });
+        mediaRecorder.value = mr;
+        recordedChunks.value = [];
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedChunks.value.push(e.data);
+          }
+        };
+        mr.start();
+      } catch (e) {
+        console.warn('MediaRecorder not available for user voice:', e?.message);
+      }
+    };
+
+    const stopRecording = async () => {
+      return new Promise((resolve) => {
+        if (!mediaRecorder.value) return resolve();
+        const mr = mediaRecorder.value;
+        mediaRecorder.value = null;
+        try {
+          mr.onstop = () => resolve();
+          mr.stop();
+        } catch {
+          resolve();
+        }
+      });
+    };
+
+    const uploadRecording = async (conversationId) => {
+      if (!conversationId || recordedChunks.value.length === 0) return;
+      const blob = new Blob(recordedChunks.value, { type: 'audio/webm' });
+      try {
+        const { data: presigned } = await api.post('/chat/voice/recording/upload-url', {
+          conversationId,
+          role: 'user'
+        });
+        const uploadUrl = presigned?.data?.uploadUrl;
+        const key = presigned?.data?.key;
+        if (!uploadUrl || !key) return;
+
+        await fetch(uploadUrl, {
+          method: 'PUT',
+          body: blob,
+          headers: { 'Content-Type': 'audio/webm' }
+        });
+
+        await api.patch(`/chat/conversations/${conversationId}/voice-recording`, {
+          audioKey: key
+        });
+      } catch (e) {
+        console.warn('Failed to upload user call recording:', e?.message);
+      }
+    };
+
+    const toggleMute = () => {
+      if (!localStream.value) return;
+      isMuted.value = !isMuted.value;
+      localStream.value.getAudioTracks().forEach((t) => {
+        t.enabled = !isMuted.value;
+      });
     };
 
     const startOutgoingCall = async (conversationId) => {
@@ -123,6 +194,7 @@ export default {
           conversationId,
           signal: { type: 'offer', sdp: pc.localDescription }
         });
+        startRecording();
       } catch (err) {
         console.error('Failed to start outgoing call (user):', err);
         status.value = 'ended';
@@ -228,6 +300,7 @@ export default {
       try {
         const pc = createPeerConnection(conversationId);
         await ensureTracksAdded(pc);
+        startRecording();
         socket.value.emit('voice:call:accept', { conversationId });
         status.value = 'in_call';
       } catch (err) {
@@ -246,11 +319,17 @@ export default {
 
     const endCall = () => {
       if (!activeConversationId.value || !socket.value || !isConnected.value) {
-        destroyPeerConnection();
+        const convId = activeConversationId.value;
+        stopRecording().then(() => uploadRecording(convId)).finally(() => {
+          destroyPeerConnection();
+        });
         return;
       }
-      socket.value.emit('voice:call:end', { conversationId: activeConversationId.value });
-      destroyPeerConnection();
+      const convId = activeConversationId.value;
+      socket.value.emit('voice:call:end', { conversationId: convId });
+      stopRecording().then(() => uploadRecording(convId)).finally(() => {
+        destroyPeerConnection();
+      });
     };
 
     onMounted(() => {
