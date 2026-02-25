@@ -368,6 +368,14 @@ class ApiService {
     });
   }
 
+  // User - cancel pending conversation request before partner acceptance
+  async cancelUserConversationRequest(conversationId, reason) {
+    return this.request(`/chat/user/requests/${conversationId}/cancel`, {
+      method: 'POST',
+      body: reason ? { reason } : {},
+    });
+  }
+
   // ==================== CHAT API - USER ====================
   
   // Get available partners (for users)
@@ -1088,6 +1096,7 @@ const api = {
   getPartnerRequests: apiService.getPartnerRequests.bind(apiService),
   acceptConversationRequest: apiService.acceptConversationRequest.bind(apiService),
   rejectConversationRequest: apiService.rejectConversationRequest.bind(apiService),
+  cancelUserConversationRequest: apiService.cancelUserConversationRequest.bind(apiService),
   
   // Chat - User Methods
   getAvailablePartners: apiService.getAvailablePartners.bind(apiService),
