@@ -1,10 +1,12 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import {io} from 'socket.io-client';
+import { io } from 'socket.io-client';
+import { useRouter } from 'vue-router';
 import api from '../../services/api.js';
 
 export default {
   name: 'UserChat',
   setup() {
+    const router = useRouter();
     // State
     const socket = ref(null);
     const isConnected = ref(false);
@@ -137,6 +139,30 @@ export default {
         if (partner) {
           partner.onlineStatus = data.status;
         }
+      });
+
+      // Voice call events
+      socket.value.on('voice:call:incoming', (payload) => {
+        console.log('📞 Incoming voice call (web user):', payload);
+        // TODO: show incoming call UI and allow accept/reject
+      });
+
+      socket.value.on('voice:call:accepted', (payload) => {
+        console.log('📞 Call accepted (web user):', payload);
+        // TODO: start WebRTC here
+      });
+
+      socket.value.on('voice:call:rejected', (payload) => {
+        console.log('📞 Call rejected (web user):', payload);
+      });
+
+      socket.value.on('voice:call:ended', (payload) => {
+        console.log('📞 Call ended (web user):', payload);
+      });
+
+      socket.value.on('voice:signal', (payload) => {
+        console.log('📶 Voice signal (web user):', payload);
+        // TODO: feed payload.signal into WebRTC peer connection on user side
       });
     };
     
@@ -361,6 +387,14 @@ export default {
         });
       }
     };
+
+    const openVoiceCallPage = () => {
+      if (!selectedConversation.value) return;
+      router.push({
+        name: 'UserVoiceCall',
+        query: { conversationId: selectedConversation.value.conversationId }
+      });
+    };
     
     // Scroll to bottom
     const scrollToBottom = () => {
@@ -529,7 +563,7 @@ export default {
                 </div>
               </div>
               
-              <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
                 <button
                   onClick={() => {
                     showAstrologyForm.value = false;
@@ -543,7 +577,24 @@ export default {
                   onClick={createConversationRequest}
                   style="flex: 1; padding: 12px; background-color: #6366f1; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;"
                 >
-                  Send Request
+                  Request Consultation
+                </button>
+                <button
+                  onClick={() => {
+                    // First create conversation, then go to voice page when it’s created
+                    createConversationRequest().then(() => {
+                      const conv = conversations.value[0];
+                      if (conv) {
+                        router.push({
+                          name: 'UserVoiceCall',
+                          query: { conversationId: conv.conversationId }
+                        });
+                      }
+                    });
+                  }}
+                  style="flex: 1; padding: 12px; background-color: #0ea5e9; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;"
+                >
+                  Voice Call Request
                 </button>
               </div>
             </div>

@@ -1,6 +1,14 @@
 import { ref, onMounted, computed } from 'vue';
 import logo from '../../assets/logo.jpeg';
 import PartnerChat from './PartnerChat.jsx';
+import PartnerVoiceCall from './PartnerVoiceCall.jsx';
+import {
+  ensurePartnerVoiceConnected,
+  getPartnerVoiceState,
+  partnerVoiceAccept,
+  partnerVoiceReject,
+  partnerVoiceNavigateToCall
+} from '../../services/partnerVoiceService.js';
 
 export default {
   name: 'PartnerDashboard',
@@ -36,6 +44,9 @@ export default {
     };
 
     onMounted(() => {
+      // Only connect voice socket while on partner dashboard
+      ensurePartnerVoiceConnected();
+
       const partnerData = localStorage.getItem('partner_data');
       if (partnerData) {
         try {
@@ -50,6 +61,19 @@ export default {
         }
       }
     });
+
+    const { incomingCalls, isConnected } = getPartnerVoiceState();
+
+    const acceptIncoming = (conversationId) => {
+      if (!conversationId) return;
+      partnerVoiceAccept(conversationId);
+      partnerVoiceNavigateToCall(conversationId);
+    };
+
+    const declineIncoming = (conversationId) => {
+      if (!conversationId) return;
+      partnerVoiceReject(conversationId);
+    };
 
     const StatsCard = ({ title, value, icon, color = 'blue' }) => (
       <div style="background-color: white; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6; padding: 24px;">
@@ -77,6 +101,64 @@ export default {
 
     const renderDashboard = () => (
       <div style="display: flex; flex-direction: column; gap: 24px;">
+        {incomingCalls.value.length > 0 && (
+          <div style="background: linear-gradient(135deg, #0b1224 0%, #060a16 100%); border-radius: 14px; border: 1px solid rgba(245,158,11,0.35); padding: 18px; color: white; box-shadow: 0 18px 40px rgba(0,0,0,0.35);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px; flex-wrap: wrap;">
+              <div>
+                <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(251,191,36,0.95);">
+                  Incoming voice call
+                </div>
+                <div style="margin-top: 8px; font-size: 18px; font-weight: 900; color: white;">
+                  {incomingCalls.value[0]?.from?.name || incomingCalls.value[0]?.from?.email || 'User'}
+                </div>
+                <div style="margin-top: 6px; font-size: 12px; color: rgba(148,163,184,0.95);">
+                  {isConnected.value ? 'Ringing…' : 'Connecting…'}
+                </div>
+              </div>
+              <div style="display:flex; gap: 10px;">
+                <button
+                  onClick={() => declineIncoming(incomingCalls.value[0]?.conversationId)}
+                  style="padding: 10px 16px; background:#ef4444; color:white; border:none; border-radius: 9999px; font-weight: 800; cursor: pointer;"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => acceptIncoming(incomingCalls.value[0]?.conversationId)}
+                  style="padding: 10px 16px; background:#22c55e; color:white; border:none; border-radius: 9999px; font-weight: 800; cursor: pointer;"
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
+
+            {incomingCalls.value.length > 1 && (
+              <div style="margin-top: 14px; display:flex; flex-direction:column; gap: 10px;">
+                <div style="font-size: 12px; color: rgba(148,163,184,0.95); font-weight: 700;">
+                  Other incoming calls
+                </div>
+                {incomingCalls.value.slice(1, 4).map((c) => (
+                  <div key={c.conversationId} style="display:flex; align-items:center; justify-content:space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(2,6,23,0.65); border: 1px solid rgba(148,163,184,0.12);">
+                    <div style="min-width:0;">
+                      <div style="font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {c.from?.name || c.from?.email || 'User'}
+                      </div>
+                      <div style="font-size: 12px; color: rgba(251,191,36,0.95); margin-top: 2px;">Ringing…</div>
+                    </div>
+                    <div style="display:flex; gap: 8px; flex-shrink:0;">
+                      <button onClick={() => declineIncoming(c.conversationId)} style="padding: 8px 12px; background:#ef4444; color:white; border:none; border-radius: 9999px; font-weight: 800; cursor: pointer;">
+                        Decline
+                      </button>
+                      <button onClick={() => acceptIncoming(c.conversationId)} style="padding: 8px 12px; background:#22c55e; color:white; border:none; border-radius: 9999px; font-weight: 800; cursor: pointer;">
+                        Accept
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
           <StatsCard title="Total Sessions" value={stats.value.totalSessions} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>} color="blue" />
           <StatsCard title="Completed" value={stats.value.completed} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>} color="green" />
@@ -128,6 +210,8 @@ export default {
           return renderPlaceholder('Analytics');
         case 'chat':
           return <PartnerChat />;
+        case 'PartnerChat':
+          return <PartnerVoiceCall />;
         case 'voice':
           return renderPlaceholder('Voice Sessions');
         case 'video':
@@ -182,6 +266,7 @@ export default {
               { id: 'dashboard', label: 'Dashboard', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg> },
               { id: 'analytics', label: 'Analytics', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg> },
               { id: 'chat', label: 'Chat', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/></svg> },
+              { id: 'PartnerChat', label: 'Partner Chat', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/></svg> },
               { id: 'voice', label: 'Voice', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/></svg> },
               { id: 'video', label: 'Video', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/></svg> },
               { id: 'payments', label: 'Payments', icon: <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zM14 6a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h8zM6 10a1 1 0 011-1h2a1 1 0 110 2H7a1 1 0 01-1-1zm5 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z"/></svg> },

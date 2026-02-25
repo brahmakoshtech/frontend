@@ -1,10 +1,12 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import io from 'socket.io-client';
 import api from '../../services/api.js';
 
 export default {
   name: 'PartnerChat',
   setup() {
+    const router = useRouter();
     // State
     const socket = ref(null);
     const isConnected = ref(false);
@@ -29,6 +31,15 @@ export default {
     const endFeedbackSatisfaction = ref('');
     const endModalSubmitting = ref(false);
     const conversationDetails = ref({ sessionDetails: null, rating: null });
+
+    // Voice call state (WebRTC)
+    const inVoiceCall = ref(false);
+    const incomingVoiceCall = ref(null);
+    const isVoiceCalling = ref(false);
+    const activeCallConversationId = ref(null);
+    const peerConnection = ref(null);
+    const localStream = ref(null);
+    const remoteStream = ref(null);
     
     // Partner info
     const partnerInfo = ref({
@@ -42,6 +53,79 @@ export default {
     let typingTimeout = null;
     // Message poll interval when WebSocket is disconnected
     let messagePollInterval = null;
+
+    // WebRTC helpers
+    const createPeerConnection = (conversationId) => {
+      if (peerConnection.value) return peerConnection.value;
+
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socket.value && isConnected.value && activeCallConversationId.value) {
+          socket.value.emit('voice:signal', {
+            conversationId: activeCallConversationId.value,
+            signal: {
+              type: 'ice-candidate',
+              candidate: event.candidate
+            }
+          });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        if (!remoteStream.value) {
+          remoteStream.value = new MediaStream();
+        }
+        remoteStream.value.addTrack(event.track);
+        const audioEl = document.getElementById('partner-voice-remote-audio');
+        if (audioEl) {
+          audioEl.srcObject = remoteStream.value;
+          audioEl.play().catch(() => {});
+        }
+      };
+
+      peerConnection.value = pc;
+      activeCallConversationId.value = conversationId;
+      return pc;
+    };
+
+    const destroyPeerConnection = () => {
+      if (peerConnection.value) {
+        peerConnection.value.getSenders().forEach((sender) => {
+          if (sender.track) sender.track.stop();
+        });
+        peerConnection.value.close();
+      }
+      peerConnection.value = null;
+
+      if (localStream.value) {
+        localStream.value.getTracks().forEach((t) => t.stop());
+      }
+      localStream.value = null;
+
+      if (remoteStream.value) {
+        remoteStream.value.getTracks().forEach((t) => t.stop());
+      }
+      remoteStream.value = null;
+      activeCallConversationId.value = null;
+      isVoiceCalling.value = false;
+      inVoiceCall.value = false;
+    };
+
+    const ensureLocalStream = async () => {
+      if (localStream.value) return localStream.value;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream.value = stream;
+      const audioEl = document.getElementById('partner-voice-local-audio');
+      if (audioEl) {
+        audioEl.srcObject = stream;
+        audioEl.muted = true;
+        audioEl.play().catch(() => {});
+      }
+      return stream;
+    };
     
     // WebSocket Connection
     const connectWebSocket = () => {
@@ -165,6 +249,68 @@ export default {
         }
       });
       
+      // Voice call events
+      socket.value.on('voice:call:incoming', (payload) => {
+        console.log('📞 Incoming voice call:', payload);
+        incomingVoiceCall.value = payload;
+      });
+
+      socket.value.on('voice:call:accepted', (payload) => {
+        console.log('📞 Call accepted:', payload);
+        inVoiceCall.value = true;
+        incomingVoiceCall.value = null;
+      });
+
+      socket.value.on('voice:call:rejected', (payload) => {
+        console.log('📞 Call rejected:', payload);
+        inVoiceCall.value = false;
+        incomingVoiceCall.value = null;
+      });
+
+      socket.value.on('voice:call:ended', (payload) => {
+        console.log('📞 Call ended:', payload);
+        inVoiceCall.value = false;
+        incomingVoiceCall.value = null;
+      });
+
+      socket.value.on('voice:signal', async (payload) => {
+        console.log('📶 Voice signal (partner):', payload);
+        const { conversationId, signal } = payload || {};
+        if (!signal || !conversationId) return;
+
+        if (!peerConnection.value || activeCallConversationId.value !== conversationId) {
+          createPeerConnection(conversationId);
+        }
+        const pc = peerConnection.value;
+
+        try {
+          if (signal.type === 'offer') {
+            const stream = await ensureLocalStream();
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            socket.value.emit('voice:signal', {
+              conversationId,
+              signal: {
+                type: 'answer',
+                sdp: pc.localDescription
+              }
+            });
+            inVoiceCall.value = true;
+          } else if (signal.type === 'answer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            inVoiceCall.value = true;
+          } else if (signal.type === 'ice-candidate' && signal.candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          }
+        } catch (err) {
+          console.error('WebRTC handling error (partner):', err);
+        }
+      });
+
       // Conversation events
       socket.value.on('conversation:user:joined', (data) => {
         console.log('👤 User joined conversation:', data);
@@ -283,6 +429,59 @@ export default {
       }
     };
     
+    // Voice call helpers
+    const startVoiceCall = () => {
+      if (!selectedConversation.value || !socket.value || !isConnected.value) return;
+      const conversationId = selectedConversation.value.conversationId;
+      socket.value.emit('voice:call:initiate', { conversationId }, (res) => {
+        if (!res?.success) {
+          alert(res?.message || 'Failed to start voice call');
+        } else {
+          console.log('📞 Voice call initiated:', res);
+        }
+      });
+    };
+
+    const acceptVoiceCall = () => {
+      if (!incomingVoiceCall.value || !socket.value || !isConnected.value) return;
+      const conversationId = incomingVoiceCall.value.conversationId;
+      socket.value.emit('voice:call:accept', { conversationId }, (res) => {
+        if (!res?.success) {
+          alert(res?.message || 'Failed to accept call');
+        } else {
+          console.log('📞 Voice call accepted:', res);
+        }
+      });
+    };
+
+    const rejectVoiceCall = () => {
+      if (!incomingVoiceCall.value || !socket.value || !isConnected.value) return;
+      const conversationId = incomingVoiceCall.value.conversationId;
+      socket.value.emit('voice:call:reject', { conversationId }, (res) => {
+        if (!res?.success) {
+          alert(res?.message || 'Failed to reject call');
+        }
+        incomingVoiceCall.value = null;
+      });
+    };
+
+    const endVoiceCall = () => {
+      if (!selectedConversation.value || !socket.value || !isConnected.value) return;
+      const conversationId = selectedConversation.value.conversationId;
+      socket.value.emit('voice:call:end', { conversationId }, () => {
+        destroyPeerConnection();
+      });
+    };
+
+    // Navigate to full voice-call page with current conversation
+    const openVoiceCallPage = () => {
+      if (!selectedConversation.value) return;
+      router.push({
+        name: 'PartnerVoiceCall',
+        query: { conversationId: selectedConversation.value.conversationId }
+      });
+    };
+
     // Select conversation
     const selectConversation = async (conversation) => {
       console.log('💬 Selecting conversation:', conversation);
@@ -938,6 +1137,17 @@ export default {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {selectedConversation.value && (
+                    <button
+                      onClick={openVoiceCallPage}
+                      title="Open voice call for this conversation"
+                      style={{ padding: 8, background: '#e0f2fe', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <svg style={{ width: 20, height: 20, color: '#0ea5e9' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.535 3.515a2.121 2.121 0 013 0l1.95 1.95a2.121 2.121 0 010 3L17.5 9.45a2.121 2.121 0 01-3 0l-.707-.707a11.05 11.05 0 01-3.536 3.536l.707.707a2.121 2.121 0 010 3l-1.95 1.95a2.121 2.121 0 01-3 0L3.515 17.5a2.121 2.121 0 010-3l1.414-1.414" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={openUserDetailsModal}
                     title="View user astrology, numerology & more"
@@ -1105,7 +1315,7 @@ export default {
                 ) : selectedConversation.value.status === 'pending' ? (
                   <div style="text-align: center; padding: 12px; background-color: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px;">
                     Please accept the conversation request to enable messaging
-                  </div>
+              </div>
                 ) : (
                   <div style="display: flex; gap: 12px; align-items: center;">
                     <input
@@ -1159,6 +1369,10 @@ export default {
             </div>
           )}
         </div>
+
+        {/* Hidden audio elements for WebRTC voice */}
+        <audio id="partner-voice-local-audio" style="display:none" playsInline muted />
+        <audio id="partner-voice-remote-audio" style="display:none" playsInline />
         
         {/* End Session Modal - polished card design */}
         {showEndModal.value && (

@@ -36,7 +36,14 @@ const routes = [
   {
     path: '/partner/chat',
     name: 'PartnerChat',
-    component: () => import('../views/partner/PartnerChat.jsx')
+    component: () => import('../views/partner/PartnerChat.jsx'),
+    meta: { requiresAuth: true, requiresRole: 'partner' }
+  },
+  {
+    path: '/partner/voice',
+    name: 'PartnerVoiceCall',
+    component: () => import('../views/partner/PartnerVoiceCall.jsx'),
+    meta: { requiresAuth: true, requiresRole: 'partner' }
   },
   {
     path: '/partner/earnings',
@@ -286,6 +293,13 @@ const routes = [
         path: 'user-chat',
         name: 'MobileUserChat',
         component: () => import('../views/mobile/UserChat.jsx')
+      },
+      
+      {
+        path: 'voice-call',
+        name: 'UserVoiceCall',
+        component: () => import('../views/user/UserVoiceCall.jsx'),
+        meta: { requiresAuth: true, requiresRole: 'user' }
       },
       {
         path: 'sankalpas',

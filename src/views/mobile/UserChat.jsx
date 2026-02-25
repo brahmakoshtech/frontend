@@ -1,4 +1,5 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import io from 'socket.io-client';
 import api from '../../services/api.js';
 
@@ -6,6 +7,7 @@ export default {
   name: 'UserChat',
   setup() {
     // State
+    const router = useRouter();
     const socket = ref(null);
     const isConnected = ref(false);
     const loading = ref(false);
@@ -217,6 +219,29 @@ export default {
         // Reload conversations
         await loadConversations();
       });
+
+      // Voice call events (mobile)
+      socket.value.on('voice:call:incoming', (payload) => {
+        console.log('📞 Incoming voice call (mobile user):', payload);
+        // Mobile app dev can hook incoming call UI here
+      });
+
+      socket.value.on('voice:call:accepted', (payload) => {
+        console.log('📞 Call accepted (mobile user):', payload);
+      });
+
+      socket.value.on('voice:call:rejected', (payload) => {
+        console.log('📞 Call rejected (mobile user):', payload);
+      });
+
+      socket.value.on('voice:call:ended', (payload) => {
+        console.log('📞 Call ended (mobile user):', payload);
+      });
+
+      socket.value.on('voice:signal', (payload) => {
+        console.log('📶 Voice signal (mobile user):', payload);
+        // Mobile app dev: feed payload.signal into WebRTC stack
+      });
     };
     
     // Load user profile for auto-fill (birth details)
@@ -347,14 +372,58 @@ export default {
       const hasCompleteDetails = fillAstrologyFromProfile();
       if (hasCompleteDetails) {
         console.log('✅ Birth details from profile - creating conversation directly');
-        await createConversationRequest();
+        await createConversationRequest('consultation');
+      } else {
+        showAstrologyForm.value = true;
+      }
+    };
+
+    const startVoiceCallForSelectedPartner = async () => {
+      if (!selectedPartner.value) return;
+      const partner = selectedPartner.value;
+
+      const existingConv = conversations.value.find(
+        c => c.otherUser?._id === partner._id
+      );
+
+      // If active conversation exists, go directly to voice call screen
+      if (existingConv && existingConv.status !== 'ended') {
+        console.log('ℹ️ Conversation already exists, opening voice call');
+        showPartnerDetails.value = false;
+        showPartnersList.value = false;
+        await selectConversation(existingConv);
+        router.push({
+          name: 'UserVoiceCall',
+          query: { conversationId: existingConv.conversationId }
+        });
+        return;
+      }
+
+      // No conversation or previous one ended → start new consultation
+      if (existingConv?.status === 'ended') {
+        console.log('ℹ️ Previous consultation ended - starting new voice call request');
+      }
+
+      showPartnerDetails.value = false;
+      showPartnersList.value = false;
+
+      const hasCompleteDetails = fillAstrologyFromProfile();
+      if (hasCompleteDetails) {
+        console.log('✅ Birth details from profile - creating conversation for voice call');
+        const conv = await createConversationRequest('voice');
+        if (conv?.conversationId) {
+          router.push({
+            name: 'UserVoiceCall',
+            query: { conversationId: conv.conversationId }
+          });
+        }
       } else {
         showAstrologyForm.value = true;
       }
     };
     
     // Create conversation request
-    const createConversationRequest = async () => {
+    const createConversationRequest = async (mode = 'consultation') => {
       if (!selectedPartner.value) return;
       
       try {
@@ -383,7 +452,7 @@ export default {
           conversations.value.unshift(conversation);
           
           // Select the new conversation
-          selectConversation(conversation);
+          await selectConversation(conversation);
           
           // Hide form
           showAstrologyForm.value = false;
@@ -393,7 +462,13 @@ export default {
           resetAstrologyForm();
           
           // Show notification
-          alert('Consultation request sent! Waiting for partner to accept.');
+          alert(
+            mode === 'voice'
+              ? 'Voice call request sent! Connecting...'
+              : 'Consultation request sent! Waiting for partner to accept.'
+          );
+
+          return conversation;
         }
       } catch (error) {
         console.error('❌ Error creating conversation:', error);
@@ -401,6 +476,8 @@ export default {
       } finally {
         loading.value = false;
       }
+
+      return null;
     };
     
     // Reset astrology form
@@ -1181,7 +1258,7 @@ export default {
                   </div>
                 </div>
                 
-                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
                   <button
                     onClick={cancelConversationRequest}
                     style="flex: 1; padding: 12px; background-color: #f3f4f6; color: #374151; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s;"
@@ -1191,7 +1268,7 @@ export default {
                     Cancel
                   </button>
                   <button
-                    onClick={createConversationRequest}
+                    onClick={() => createConversationRequest('consultation')}
                     disabled={!astrologyData.value.name || !astrologyData.value.dateOfBirth}
                     style={`flex: 1; padding: 12px; background-color: #6366f1; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; ${
                       !astrologyData.value.name || !astrologyData.value.dateOfBirth ? 'opacity: 0.5; cursor: not-allowed;' : ''
@@ -1207,7 +1284,24 @@ export default {
                       }
                     }}
                   >
-                    Send Consultation Request
+                    Request Consultation
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const conv = await createConversationRequest('voice');
+                      if (conv?.conversationId) {
+                        router.push({
+                          name: 'UserVoiceCall',
+                          query: { conversationId: conv.conversationId }
+                        });
+                      }
+                    }}
+                    disabled={!astrologyData.value.name || !astrologyData.value.dateOfBirth}
+                    style={`flex: 1; padding: 12px; background-color: #0ea5e9; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; ${
+                      !astrologyData.value.name || !astrologyData.value.dateOfBirth ? 'opacity: 0.5; cursor: not-allowed;' : ''
+                    }`}
+                  >
+                    Voice Call Request
                   </button>
                 </div>
               </div>
@@ -1223,7 +1317,10 @@ export default {
                 {renderPartnerDetailsPanel(fullPartnerDetails.value || selectedPartner.value)}
               </div>
               <div style={{ padding: 16, borderTop: '1px solid #e5e7eb' }}>
-                <button onClick={startConsultationForSelectedPartner} style={{ width: '100%', padding: 12, background: '#6366f1', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Request Consultation</button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={startConsultationForSelectedPartner} style={{ flex: 1, padding: 12, background: '#6366f1', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Request Consultation</button>
+                  <button onClick={startVoiceCallForSelectedPartner} style={{ flex: 1, padding: 12, background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Voice Call Request</button>
+                </div>
               </div>
             </div>
           ) : selectedConversation.value ? (

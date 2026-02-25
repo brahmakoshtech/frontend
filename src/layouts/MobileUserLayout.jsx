@@ -72,6 +72,7 @@ export default {
       if (path.includes('/kundali')) return 'kundali';
       if (path.includes('/profile')) return 'profile';
       if (path.includes('/user-chat')) return 'user-chat';
+      if (path.includes('/voice-call')) return 'voice-call';
       if (path.includes('/dashboard')) return 'home';
       return null;
     });
@@ -112,7 +113,9 @@ export default {
         router.push('/mobile/user/profile');
       } else if (page === 'user-chat') {
         router.push('/mobile/user/user-chat');
-      }
+      } else if (page === 'voice-call') {
+        router.push('/mobile/user/voice-call');
+      } 
     };
 
     const handleLogout = async () => {
@@ -220,7 +223,8 @@ export default {
               { id: 'chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
               { id: 'voice', label: 'Voice', icon: MicrophoneIcon },
               { id: 'realtime-agent', label: 'Real Time Agent', icon: CpuChipIcon },
-              { id: 'user-chat', label: 'User Chat', icon: ChatBubbleLeftRightIcon }
+              { id: 'user-chat', label: 'User Chat', icon: ChatBubbleLeftRightIcon },
+              { id: 'voice-call', label: 'Voice Call', icon: MicrophoneIcon }
             ].map(item => (
               <button
                 key={item.id}
