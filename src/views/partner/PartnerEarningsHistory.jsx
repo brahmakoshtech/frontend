@@ -29,6 +29,26 @@ export default {
       }
     };
 
+    const playRecording = async (key) => {
+      if (!key) return;
+      try {
+        const res = await api.get(`/upload/presigned-url/${encodeURIComponent(key)}`);
+        const payload = res?.data || res;
+        const url = payload?.data?.presignedUrl;
+        if (url) {
+          window.open(url, '_blank');
+        } else {
+          // eslint-disable-next-line no-alert
+          alert('Unable to load audio recording.');
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load audio recording', e);
+        // eslint-disable-next-line no-alert
+        alert('Failed to load audio recording.');
+      }
+    };
+
     const nextPage = () => {
       if (page.value < totalPages.value) {
         page.value += 1;
@@ -58,7 +78,7 @@ export default {
           Earnings History
         </h1>
         <p style="color: #6b7280; margin: 0 0 20px 0; font-size: 14px;">
-          Credits you earned from completed chat sessions.
+          Credits you earned from completed chat / voice / video sessions.
         </p>
 
         {error.value && (
@@ -91,12 +111,39 @@ export default {
                     <p style="margin: 0; font-weight: 500; color: #111827; font-size: 14px;">
                       {entry.user?.profile?.name || entry.user?.email || 'User'}
                     </p>
+                    <p style="margin: '6px 0 0'; font-size: 12px;">
+                      <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 9999, background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
+                        {(entry.serviceType || 'chat').toUpperCase()}
+                      </span>
+                    </p>
                     <p style="margin: '4px 0 0'; color: #6b7280; font-size: 12px;">
                       {formatDateTime(entry.createdAt)}
                     </p>
                     <p style="margin: '2px 0 0'; color: #9ca3af; font-size: 12px;">
                       {entry.billableMinutes} min • Conversation: {entry.conversationId}
                     </p>
+                    {entry.voiceRecordings && (
+                      <p style="margin: '4px 0 0'; font-size: 12px;">
+                        {entry.voiceRecordings.partner?.key && (
+                          <button
+                            class="btn btn-sm btn-outline-primary me-1"
+                            type="button"
+                            onClick={() => playRecording(entry.voiceRecordings.partner.key)}
+                          >
+                            Play (You)
+                          </button>
+                        )}
+                        {entry.voiceRecordings.user?.key && (
+                          <button
+                            class="btn btn-sm btn-outline-primary"
+                            type="button"
+                            onClick={() => playRecording(entry.voiceRecordings.user.key)}
+                          >
+                            Play (User)
+                          </button>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div style="text-align: right;">
                     <p style="margin: 0; font-weight: 600; color: #16a34a; font-size: 14px;">

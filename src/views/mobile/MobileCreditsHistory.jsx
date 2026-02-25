@@ -29,6 +29,27 @@ export default {
       }
     };
 
+    const playRecording = async (key) => {
+      if (!key) return;
+      try {
+        const res = await api.get(`/upload/presigned-url/${encodeURIComponent(key)}`);
+        const payload = res?.data || res;
+        const url = payload?.data?.presignedUrl;
+        if (url) {
+          window.open(url, '_blank');
+        } else {
+          // Simple fallback; avoid throwing to keep UX smooth
+          // eslint-disable-next-line no-alert
+          alert('Unable to load audio recording.');
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load audio recording', e);
+        // eslint-disable-next-line no-alert
+        alert('Failed to load audio recording.');
+      }
+    };
+
     const nextPage = () => {
       if (page.value < totalPages.value) {
         page.value += 1;
@@ -56,7 +77,7 @@ export default {
       <div class="container-fluid px-4 py-4">
         <h1 class="h4 fw-bold text-dark mb-2">Credit History</h1>
         <p class="text-muted mb-4" style="font-size: 0.9rem;">
-          See how many credits you spent on each consultation.
+          See how many credits you spent on chat / voice / video consultations.
         </p>
 
         {error.value && (
@@ -86,12 +107,39 @@ export default {
                       <div class="fw-semibold" style="font-size: 0.95rem;">
                         {entry.partner?.name || entry.partner?.email || 'Partner'}
                       </div>
+                      <div class="text-muted" style="font-size: 0.78rem;">
+                        <span class="badge bg-secondary" style="font-weight:600;">
+                          {(entry.serviceType || 'chat').toUpperCase()}
+                        </span>
+                      </div>
                       <div class="text-muted" style="font-size: 0.8rem;">
                         {formatDateTime(entry.createdAt)}
                       </div>
                       <div class="text-muted" style="font-size: 0.8rem;">
                         {entry.billableMinutes} min • Conversation: {entry.conversationId}
                       </div>
+                      {entry.voiceRecordings && (
+                        <div class="mt-1" style="font-size: 0.8rem;">
+                          {entry.voiceRecordings.user?.key && (
+                            <button
+                              class="btn btn-sm btn-outline-primary me-1"
+                              type="button"
+                              onClick={() => playRecording(entry.voiceRecordings.user.key)}
+                            >
+                              Play (You)
+                            </button>
+                          )}
+                          {entry.voiceRecordings.partner?.key && (
+                            <button
+                              class="btn btn-sm btn-outline-primary"
+                              type="button"
+                              onClick={() => playRecording(entry.voiceRecordings.partner.key)}
+                            >
+                              Play (Partner)
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div class="text-end">
                       <div class="fw-bold text-danger" style="font-size: 0.95rem;">
