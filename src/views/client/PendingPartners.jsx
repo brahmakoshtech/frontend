@@ -8,6 +8,11 @@ export default {
   setup() {
     const activeTab = ref('all'); // all | pending | rejected
     const partners = ref([]);
+    const totals = ref({
+      all: 0,
+      pending: 0,
+      rejected: 0,
+    });
     const loading = ref(true);
     const error = ref(null);
     const approving = ref(null);
@@ -16,6 +21,12 @@ export default {
 
     const extractPartners = (response) =>
       response?.data?.partners ?? response?.partners ?? response?.data?.data?.partners ?? [];
+
+    const extractTotal = (response) =>
+      response?.data?.total ??
+      response?.total ??
+      response?.data?.data?.total ??
+      (Array.isArray(extractPartners(response)) ? extractPartners(response).length : 0);
 
     const fetchPartners = async (tab = activeTab.value) => {
       loading.value = true;
@@ -27,7 +38,13 @@ export default {
         else if (tab === 'rejected') response = await api.getPartners({ status: 'rejected', limit: 100 });
         else response = await api.getPartners({ status: 'all', limit: 100 });
 
-        partners.value = extractPartners(response);
+        const list = extractPartners(response);
+        partners.value = list;
+
+        const total = extractTotal(response);
+        if (tab === 'all') totals.value.all = total;
+        else if (tab === 'pending') totals.value.pending = total;
+        else if (tab === 'rejected') totals.value.rejected = total;
       } catch (err) {
         error.value = err.message || 'Failed to fetch partners';
         partners.value = [];
@@ -133,7 +150,7 @@ export default {
                 class={activeTab.value === 'all' ? 'nav-link active' : 'nav-link'}
                 onClick={() => switchTab('all')}
               >
-                All Partners
+                All Partners {totals.value.all ? `(${totals.value.all})` : ''}
               </button>
             </li>
             <li class="nav-item">
@@ -142,7 +159,7 @@ export default {
                 class={activeTab.value === 'pending' ? 'nav-link active' : 'nav-link'}
                 onClick={() => switchTab('pending')}
               >
-                Approval Requests
+                Approval Requests {totals.value.pending ? `(${totals.value.pending})` : ''}
               </button>
             </li>
             <li class="nav-item">
@@ -151,7 +168,7 @@ export default {
                 class={activeTab.value === 'rejected' ? 'nav-link active' : 'nav-link'}
                 onClick={() => switchTab('rejected')}
               >
-                Rejected
+                Rejected {totals.value.rejected ? `(${totals.value.rejected})` : ''}
               </button>
             </li>
           </ul>
