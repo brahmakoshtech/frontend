@@ -474,6 +474,26 @@ class ApiService {
     return this.request(url);
   }
 
+  // ==================== VOICE CALL LOG HISTORY ====================
+
+  async getUserVoiceCallHistory(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.append('page', params.page);
+    if (params.limit) searchParams.append('limit', params.limit);
+    const qs = searchParams.toString();
+    const url = `/chat/voice/calls/history/user${qs ? `?${qs}` : ''}`;
+    return this.request(url);
+  }
+
+  async getPartnerVoiceCallHistory(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.append('page', params.page);
+    if (params.limit) searchParams.append('limit', params.limit);
+    const qs = searchParams.toString();
+    const url = `/chat/voice/calls/history/partner${qs ? `?${qs}` : ''}`;
+    return this.request(url);
+  }
+
   // ==================== EXISTING METHODS ====================
 
   // Super Admin Auth endpoints
@@ -892,6 +912,12 @@ class ApiService {
     });
   }
 
+  async deletePartner(partnerId) {
+    return this.request(`/client/partners/${partnerId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // User endpoints
   async getUserProfile() {
     return this.request('/users/profile');
@@ -1114,6 +1140,8 @@ const api = {
   getConversationUserCompleteDetails: apiService.getConversationUserCompleteDetails.bind(apiService),
   getUserChatCreditHistory: apiService.getUserChatCreditHistory.bind(apiService),
   getPartnerChatCreditHistory: apiService.getPartnerChatCreditHistory.bind(apiService),
+  getUserVoiceCallHistory: apiService.getUserVoiceCallHistory.bind(apiService),
+  getPartnerVoiceCallHistory: apiService.getPartnerVoiceCallHistory.bind(apiService),
   
   // All existing methods
   superAdminLogin: apiService.superAdminLogin.bind(apiService),
@@ -1178,6 +1206,7 @@ const api = {
   getPartners: apiService.getPartners.bind(apiService),
   approvePartner: apiService.approvePartner.bind(apiService),
   rejectPartner: apiService.rejectPartner.bind(apiService),
+  deletePartner: apiService.deletePartner.bind(apiService),
   getUserProfile: apiService.getUserProfile.bind(apiService),
   updateUserProfile: apiService.updateUserProfile.bind(apiService),
   getPresignedUrl: apiService.getPresignedUrl.bind(apiService),

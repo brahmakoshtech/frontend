@@ -205,7 +205,7 @@ export default {
       
       // Check if conversation already exists
       const existingConv = conversations.value.find(
-        c => c.partnerId._id === partner._id
+        c => c.otherUser?._id === partner._id
       );
       
       if (existingConv) {
@@ -753,7 +753,7 @@ export default {
                       <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="position: relative;">
                           <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
-                            {conv.partnerId?.name?.charAt(0) || 'P'}
+                            {conv.otherUser?.name?.charAt(0) || conv.otherUser?.email?.charAt(0) || 'P'}
                           </div>
                           {conv.status === 'pending' && (
                             <div style="position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background-color: #f59e0b; border-radius: 50%; border: 2px solid white;" />
@@ -767,7 +767,7 @@ export default {
                         <div style="flex: 1; min-width: 0;">
                           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <p style="font-weight: 600; color: #111827; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                              {conv.partnerId?.name}
+                              {conv.otherUser?.name || conv.otherUser?.email}
                             </p>
                             {conv.lastMessageAt && (
                               <span style="font-size: 12px; color: #6b7280;">
@@ -780,6 +780,9 @@ export default {
                               ? '⏳ Waiting for acceptance...'
                               : conv.lastMessage?.content || 'Start chatting'
                             }
+                          </p>
+                          <p style="font-size: 12px; color: #94a3b8; margin: 6px 0 0;">
+                            💬 {conv.messagesCount ?? 0} messages
                           </p>
                         </div>
                       </div>
@@ -798,13 +801,13 @@ export default {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <div style={{ position: 'relative' }}>
                         <div style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 18 }}>
-                          {selectedConversation.value.partnerId?.name?.charAt(0) || 'P'}
+                          {selectedConversation.value.otherUser?.name?.charAt(0) || selectedConversation.value.otherUser?.email?.charAt(0) || 'P'}
                         </div>
-                        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: '50%', border: '2px solid white', backgroundColor: getStatusColor(selectedConversation.value.partnerId?.onlineStatus) }} />
+                        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: '50%', border: '2px solid white', backgroundColor: getStatusColor(selectedConversation.value.otherUser?.onlineStatus) }} />
                       </div>
                       <div>
                         <p style={{ fontWeight: 700, color: '#111827', margin: 0, fontSize: 16 }}>
-                          {selectedConversation.value.partnerId?.name}
+                          {selectedConversation.value.otherUser?.name || selectedConversation.value.otherUser?.email}
                         </p>
                         {selectedConversation.value.status === 'pending' ? (
                           <p style={{ fontSize: 12, color: '#f59e0b', margin: 0 }}>Waiting for acceptance...</p>
@@ -813,12 +816,12 @@ export default {
                         ) : (
                           <>
                             <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-                              {Array.isArray(selectedConversation.value.partnerId?.specialization) ? selectedConversation.value.partnerId.specialization.join(', ') : (selectedConversation.value.partnerId?.specialization || 'Astrologer')}
+                              {Array.isArray(selectedConversation.value.otherUser?.specialization) ? selectedConversation.value.otherUser.specialization.join(', ') : (selectedConversation.value.otherUser?.specialization || 'Astrologer')}
                             </p>
                             <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12, color: '#9ca3af' }}>
-                              <span>⭐ {selectedConversation.value.partnerId?.rating?.toFixed?.(1) || '0.0'}</span>
-                              <span>📊 {selectedConversation.value.partnerId?.totalSessions || selectedConversation.value.partnerId?.completedSessions || 0} sessions</span>
-                              <span>📅 {selectedConversation.value.partnerId?.experience || 0}y exp</span>
+                              <span>⭐ {selectedConversation.value.otherUser?.rating?.toFixed?.(1) || '0.0'}</span>
+                              <span>📊 {selectedConversation.value.otherUser?.totalSessions || selectedConversation.value.otherUser?.completedSessions || 0} sessions</span>
+                              <span>📅 {selectedConversation.value.otherUser?.experience || 0}y exp</span>
                             </div>
                           </>
                         )}

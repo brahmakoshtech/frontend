@@ -6,20 +6,30 @@ import api from '../../services/api.js';
 export default {
   name: 'ClientPendingPartners',
   setup() {
+    const activeTab = ref('all'); // all | pending | rejected
     const partners = ref([]);
     const loading = ref(true);
     const error = ref(null);
     const approving = ref(null);
     const rejecting = ref(null);
+    const deleting = ref(null);
 
-    const fetchPartners = async () => {
+    const extractPartners = (response) =>
+      response?.data?.partners ?? response?.partners ?? response?.data?.data?.partners ?? [];
+
+    const fetchPartners = async (tab = activeTab.value) => {
       loading.value = true;
       error.value = null;
       try {
-        const response = await api.getPendingPartners();
-        partners.value = response?.data?.partners ?? response?.partners ?? [];
+        let response;
+        if (tab === 'all') response = await api.getPartners({ status: 'all', limit: 100 });
+        else if (tab === 'pending') response = await api.getPartners({ status: 'pending', limit: 100 });
+        else if (tab === 'rejected') response = await api.getPartners({ status: 'rejected', limit: 100 });
+        else response = await api.getPartners({ status: 'all', limit: 100 });
+
+        partners.value = extractPartners(response);
       } catch (err) {
-        error.value = err.message || 'Failed to fetch pending partners';
+        error.value = err.message || 'Failed to fetch partners';
         partners.value = [];
       } finally {
         loading.value = false;
@@ -30,7 +40,7 @@ export default {
       approving.value = partner._id;
       try {
         await api.approvePartner(partner._id);
-        partners.value = partners.value.filter((p) => p._id !== partner._id);
+        await fetchPartners(activeTab.value);
       } catch (err) {
         alert(err.message || 'Failed to approve partner');
       } finally {
@@ -44,11 +54,25 @@ export default {
       rejecting.value = partner._id;
       try {
         await api.rejectPartner(partner._id, reason);
-        partners.value = partners.value.filter((p) => p._id !== partner._id);
+        await fetchPartners(activeTab.value);
       } catch (err) {
         alert(err.message || 'Failed to reject partner');
       } finally {
         rejecting.value = null;
+      }
+    };
+
+    const handleDelete = async (partner) => {
+      const ok = window.confirm(`Delete partner "${partner?.name || partner?.email || 'Partner'}"?`);
+      if (!ok) return;
+      deleting.value = partner._id;
+      try {
+        await api.deletePartner(partner._id);
+        await fetchPartners(activeTab.value);
+      } catch (err) {
+        alert(err.message || 'Failed to delete partner');
+      } finally {
+        deleting.value = null;
       }
     };
 
@@ -61,25 +85,83 @@ export default {
       });
     };
 
+    const getPartnerStatus = (partner) => {
+      if (partner?.verificationStatus === 'rejected') return 'Rejected';
+      if (partner?.isActive) return 'Approved';
+      return 'Pending';
+    };
+
+    const renderStatusBadge = (partner) => {
+      const status = getPartnerStatus(partner);
+      const cls =
+        status === 'Approved'
+          ? 'badge bg-success'
+          : status === 'Rejected'
+            ? 'badge bg-danger'
+            : 'badge bg-warning text-dark';
+      return <span class={cls}>{status}</span>;
+    };
+
+    const switchTab = async (tab) => {
+      if (activeTab.value === tab) return;
+      activeTab.value = tab;
+      await fetchPartners(tab);
+    };
+
     onMounted(() => {
-      fetchPartners();
+      fetchPartners('all');
     });
 
     return () => (
       <div class="card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="card-title mb-0">Partners Pending Approval</h1>
+            <h1 class="card-title mb-0">Partners</h1>
             <button
-              onClick={fetchPartners}
+              onClick={() => fetchPartners(activeTab.value)}
               class="btn btn-outline-primary btn-sm"
               disabled={loading.value}
             >
               Refresh
             </button>
           </div>
+
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+              <button
+                type="button"
+                class={activeTab.value === 'all' ? 'nav-link active' : 'nav-link'}
+                onClick={() => switchTab('all')}
+              >
+                All Partners
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                type="button"
+                class={activeTab.value === 'pending' ? 'nav-link active' : 'nav-link'}
+                onClick={() => switchTab('pending')}
+              >
+                Approval Requests
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                type="button"
+                class={activeTab.value === 'rejected' ? 'nav-link active' : 'nav-link'}
+                onClick={() => switchTab('rejected')}
+              >
+                Rejected
+              </button>
+            </li>
+          </ul>
+
           <p class="text-muted mb-4">
-            Partners who have completed registration and are waiting for your approval to login.
+            {activeTab.value === 'pending'
+              ? 'Partners who completed registration and are waiting for your approval to login.'
+              : activeTab.value === 'rejected'
+                ? 'Partners you rejected (they cannot login). You can delete them from here.'
+                : 'All partners under your client account.'}
           </p>
 
           {loading.value && (
@@ -98,7 +180,11 @@ export default {
 
           {!loading.value && !error.value && partners.value.length === 0 && (
             <div class="alert alert-info" role="alert">
-              No partners pending approval. All registered partners have been reviewed.
+              {activeTab.value === 'pending'
+                ? 'No partners pending approval.'
+                : activeTab.value === 'rejected'
+                  ? 'No rejected partners.'
+                  : 'No partners found.'}
             </div>
           )}
 
@@ -111,6 +197,7 @@ export default {
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Expertise</th>
+                    <th>Status</th>
                     <th>Registered</th>
                     <th>Actions</th>
                   </tr>
@@ -122,28 +209,45 @@ export default {
                       <td>{partner.email || '-'}</td>
                       <td>{partner.phone || '-'}</td>
                       <td>{partner.expertiseCategory || partner.expertise?.[0] || '-'}</td>
+                      <td>{renderStatusBadge(partner)}</td>
                       <td>{formatDate(partner.createdAt)}</td>
                       <td>
+                        {getPartnerStatus(partner) === 'Pending' && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(partner)}
+                              class="btn btn-success btn-sm me-2"
+                              disabled={approving.value === partner._id}
+                            >
+                              {approving.value === partner._id ? (
+                                <span class="spinner-border spinner-border-sm" role="status" />
+                              ) : (
+                                'Approve'
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleReject(partner)}
+                              class="btn btn-outline-danger btn-sm me-2"
+                              disabled={rejecting.value === partner._id}
+                            >
+                              {rejecting.value === partner._id ? (
+                                <span class="spinner-border spinner-border-sm" role="status" />
+                              ) : (
+                                'Reject'
+                              )}
+                            </button>
+                          </>
+                        )}
+
                         <button
-                          onClick={() => handleApprove(partner)}
-                          class="btn btn-success btn-sm me-2"
-                          disabled={approving.value === partner._id}
+                          onClick={() => handleDelete(partner)}
+                          class="btn btn-outline-secondary btn-sm"
+                          disabled={deleting.value === partner._id}
                         >
-                          {approving.value === partner._id ? (
+                          {deleting.value === partner._id ? (
                             <span class="spinner-border spinner-border-sm" role="status" />
                           ) : (
-                            'Approve'
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleReject(partner)}
-                          class="btn btn-outline-danger btn-sm"
-                          disabled={rejecting.value === partner._id}
-                        >
-                          {rejecting.value === partner._id ? (
-                            <span class="spinner-border spinner-border-sm" role="status" />
-                          ) : (
-                            'Reject'
+                            'Delete'
                           )}
                         </button>
                       </td>

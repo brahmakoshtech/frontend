@@ -1110,6 +1110,9 @@ export default {
                             {conv.lastMessage?.content || 'Start the conversation'}
                           </p>
                         )}
+                        <p style="font-size: 12px; color: #94a3b8; margin: 6px 0 0;">
+                          💬 {conv.messagesCount ?? 0} messages
+                        </p>
                       </div>
                     </div>
                   </div>
