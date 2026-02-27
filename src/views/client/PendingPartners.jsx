@@ -6,7 +6,7 @@ import api from '../../services/api.js';
 export default {
   name: 'ClientPendingPartners',
   setup() {
-    const activeTab = ref('all'); // all | pending | rejected
+    const activeTab = ref('all');
     const partners = ref([]);
     const totals = ref({
       all: 0,
@@ -20,7 +20,10 @@ export default {
     const deleting = ref(null);
 
     const extractPartners = (response) =>
-      response?.data?.partners ?? response?.partners ?? response?.data?.data?.partners ?? [];
+      response?.data?.partners ??
+      response?.partners ??
+      response?.data?.data?.partners ??
+      [];
 
     const extractTotal = (response) =>
       response?.data?.total ??
@@ -28,23 +31,49 @@ export default {
       response?.data?.data?.total ??
       (Array.isArray(extractPartners(response)) ? extractPartners(response).length : 0);
 
+    // ✅ FIX: Load all tab counts on mount in parallel
+    onMounted(async () => {
+      loading.value = true;
+      error.value = null;
+      try {
+        const [allRes, pendingRes, rejectedRes] = await Promise.all([
+          api.getPartners({ status: 'all', limit: 100 }),
+          api.getPartners({ status: 'pending', limit: 100 }),
+          api.getPartners({ status: 'rejected', limit: 100 }),
+        ]);
+
+        totals.value.all = extractTotal(allRes);
+        totals.value.pending = extractTotal(pendingRes);
+        totals.value.rejected = extractTotal(rejectedRes);
+
+        // Default to showing 'all' tab
+        partners.value = extractPartners(allRes);
+      } catch (err) {
+        error.value = err.message || 'Failed to load partners';
+        partners.value = [];
+      } finally {
+        loading.value = false;
+      }
+    });
+
     const fetchPartners = async (tab = activeTab.value) => {
       loading.value = true;
       error.value = null;
       try {
         let response;
-        if (tab === 'all') response = await api.getPartners({ status: 'all', limit: 100 });
-        else if (tab === 'pending') response = await api.getPartners({ status: 'pending', limit: 100 });
-        else if (tab === 'rejected') response = await api.getPartners({ status: 'rejected', limit: 100 });
-        else response = await api.getPartners({ status: 'all', limit: 100 });
+        if (tab === 'pending') {
+          response = await api.getPartners({ status: 'pending', limit: 100 });
+        } else if (tab === 'rejected') {
+          response = await api.getPartners({ status: 'rejected', limit: 100 });
+        } else {
+          response = await api.getPartners({ status: 'all', limit: 100 });
+        }
 
         const list = extractPartners(response);
-        partners.value = list;
-
         const total = extractTotal(response);
-        if (tab === 'all') totals.value.all = total;
-        else if (tab === 'pending') totals.value.pending = total;
-        else if (tab === 'rejected') totals.value.rejected = total;
+
+        partners.value = list;
+        totals.value[tab] = total;
       } catch (err) {
         error.value = err.message || 'Failed to fetch partners';
         partners.value = [];
@@ -57,7 +86,17 @@ export default {
       approving.value = partner._id;
       try {
         await api.approvePartner(partner._id);
-        await fetchPartners(activeTab.value);
+        // Refresh all counts after approval
+        const [allRes, pendingRes] = await Promise.all([
+          api.getPartners({ status: 'all', limit: 100 }),
+          api.getPartners({ status: 'pending', limit: 100 }),
+        ]);
+        totals.value.all = extractTotal(allRes);
+        totals.value.pending = extractTotal(pendingRes);
+        partners.value = extractPartners(
+          activeTab.value === 'all' ? allRes :
+          activeTab.value === 'pending' ? pendingRes : allRes
+        );
       } catch (err) {
         alert(err.message || 'Failed to approve partner');
       } finally {
@@ -67,11 +106,23 @@ export default {
 
     const handleReject = async (partner) => {
       const reason = window.prompt('Rejection reason (optional):');
-      if (reason === null) return; // User cancelled
+      if (reason === null) return;
       rejecting.value = partner._id;
       try {
         await api.rejectPartner(partner._id, reason);
-        await fetchPartners(activeTab.value);
+        // Refresh all counts after rejection
+        const [allRes, pendingRes, rejectedRes] = await Promise.all([
+          api.getPartners({ status: 'all', limit: 100 }),
+          api.getPartners({ status: 'pending', limit: 100 }),
+          api.getPartners({ status: 'rejected', limit: 100 }),
+        ]);
+        totals.value.all = extractTotal(allRes);
+        totals.value.pending = extractTotal(pendingRes);
+        totals.value.rejected = extractTotal(rejectedRes);
+
+        if (activeTab.value === 'all') partners.value = extractPartners(allRes);
+        else if (activeTab.value === 'pending') partners.value = extractPartners(pendingRes);
+        else partners.value = extractPartners(rejectedRes);
       } catch (err) {
         alert(err.message || 'Failed to reject partner');
       } finally {
@@ -85,7 +136,19 @@ export default {
       deleting.value = partner._id;
       try {
         await api.deletePartner(partner._id);
-        await fetchPartners(activeTab.value);
+        // Refresh all counts after delete
+        const [allRes, pendingRes, rejectedRes] = await Promise.all([
+          api.getPartners({ status: 'all', limit: 100 }),
+          api.getPartners({ status: 'pending', limit: 100 }),
+          api.getPartners({ status: 'rejected', limit: 100 }),
+        ]);
+        totals.value.all = extractTotal(allRes);
+        totals.value.pending = extractTotal(pendingRes);
+        totals.value.rejected = extractTotal(rejectedRes);
+
+        if (activeTab.value === 'all') partners.value = extractPartners(allRes);
+        else if (activeTab.value === 'pending') partners.value = extractPartners(pendingRes);
+        else partners.value = extractPartners(rejectedRes);
       } catch (err) {
         alert(err.message || 'Failed to delete partner');
       } finally {
@@ -125,17 +188,34 @@ export default {
       await fetchPartners(tab);
     };
 
-    onMounted(() => {
-      fetchPartners('all');
-    });
-
     return () => (
       <div class="card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="card-title mb-0">Partners</h1>
             <button
-              onClick={() => fetchPartners(activeTab.value)}
+              onClick={async () => {
+                // Refresh all tabs on manual refresh
+                loading.value = true;
+                try {
+                  const [allRes, pendingRes, rejectedRes] = await Promise.all([
+                    api.getPartners({ status: 'all', limit: 100 }),
+                    api.getPartners({ status: 'pending', limit: 100 }),
+                    api.getPartners({ status: 'rejected', limit: 100 }),
+                  ]);
+                  totals.value.all = extractTotal(allRes);
+                  totals.value.pending = extractTotal(pendingRes);
+                  totals.value.rejected = extractTotal(rejectedRes);
+
+                  if (activeTab.value === 'all') partners.value = extractPartners(allRes);
+                  else if (activeTab.value === 'pending') partners.value = extractPartners(pendingRes);
+                  else partners.value = extractPartners(rejectedRes);
+                } catch (err) {
+                  error.value = err.message || 'Failed to refresh';
+                } finally {
+                  loading.value = false;
+                }
+              }}
               class="btn btn-outline-primary btn-sm"
               disabled={loading.value}
             >
@@ -150,7 +230,7 @@ export default {
                 class={activeTab.value === 'all' ? 'nav-link active' : 'nav-link'}
                 onClick={() => switchTab('all')}
               >
-                All Partners {totals.value.all ? `(${totals.value.all})` : ''}
+                All Partners ({totals.value.all})
               </button>
             </li>
             <li class="nav-item">
@@ -159,7 +239,7 @@ export default {
                 class={activeTab.value === 'pending' ? 'nav-link active' : 'nav-link'}
                 onClick={() => switchTab('pending')}
               >
-                Approval Requests {totals.value.pending ? `(${totals.value.pending})` : ''}
+                Approval Requests ({totals.value.pending})
               </button>
             </li>
             <li class="nav-item">
@@ -168,7 +248,7 @@ export default {
                 class={activeTab.value === 'rejected' ? 'nav-link active' : 'nav-link'}
                 onClick={() => switchTab('rejected')}
               >
-                Rejected {totals.value.rejected ? `(${totals.value.rejected})` : ''}
+                Rejected ({totals.value.rejected})
               </button>
             </li>
           </ul>
@@ -255,7 +335,6 @@ export default {
                             </button>
                           </>
                         )}
-
                         <button
                           onClick={() => handleDelete(partner)}
                           class="btn btn-outline-secondary btn-sm"

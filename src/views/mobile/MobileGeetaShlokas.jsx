@@ -14,7 +14,7 @@ export default {
     const loadChapters = async () => {
       try {
         loading.value = true;
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://prod.brahmakosh.com/api';
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const token = localStorage.getItem('token_user');
         const response = await fetch(`${API_BASE_URL}/chapters`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -33,7 +33,7 @@ export default {
     const loadShlokas = async (chapterNumber) => {
       try {
         loading.value = true;
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://prod.brahmakosh.com/api';
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const token = localStorage.getItem('token_user');
         const response = await fetch(`${API_BASE_URL}/shlokas/chapter/${chapterNumber}`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}

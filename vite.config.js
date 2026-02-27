@@ -9,12 +9,12 @@ export default defineConfig({
     proxy: {
       // API proxy - avoids CORS, requests go to same origin
       '/api': {
-        target: 'https://prod.brahmakosh.com',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
       // Socket.IO proxy - required for WebSocket to work in dev
       '/socket.io': {
-        target: 'https://prod.brahmakosh.com',
+        target: 'http://localhost:5000',
         ws: true,
         changeOrigin: true,
       },

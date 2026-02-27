@@ -49,7 +49,7 @@ export default {
       
       console.log('🔌 Connecting to WebSocket...');
       
-      socket.value = io(import.meta.env.VITE_WS_URL || 'https://prod.brahmakosh.com', {
+      socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
         path: '/socket.io/',
         auth: { token },
         transports: ['polling', 'websocket'],

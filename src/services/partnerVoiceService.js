@@ -102,7 +102,7 @@ export function ensurePartnerVoiceConnected() {
   if (!token) return;
   if (socketRef.value) return;
 
-  socketRef.value = io(import.meta.env.VITE_WS_URL || 'https://prod.brahmakosh.com', {
+  socketRef.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
     path: '/socket.io/',
     auth: { token },
     transports: ['polling', 'websocket'],
