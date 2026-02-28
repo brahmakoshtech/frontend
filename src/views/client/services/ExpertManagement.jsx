@@ -111,20 +111,8 @@ export default {
         console.log('Experts API response:', response);
         if (response.success) {
           console.log('Experts data:', response.data);
-          // Debug: Check review counts in expert data
-          response.data.forEach(expert => {
-            console.log(`Expert ${expert.name}: rating=${expert.rating}, reviews=${expert.reviews}, reviewCount=${expert.reviewCount}`);
-          });
-          
-          // Calculate average rating for debugging
-          const validRatings = response.data.filter(e => e.rating && e.rating > 0);
-          const avgRating = validRatings.length > 0 
-            ? (validRatings.reduce((sum, e) => sum + e.rating, 0) / validRatings.length).toFixed(1)
-            : '0.0';
-          console.log('Calculated average rating:', avgRating, 'from', validRatings.length, 'experts with ratings');
           
           experts.value = response.data || [];
-          // No need for client-side filtering anymore
           filteredExperts.value = experts.value;
         } else {
           console.error('Failed to load experts:', response);
@@ -729,7 +717,8 @@ export default {
                             <h6 class="fw-bold mb-1 text-truncate">{expert.name}</h6>
                             <div class="d-flex align-items-center gap-1 mb-1">
                               <StarIcon style={{ width: '0.875rem', height: '0.875rem', color: '#fbbf24' }} />
-                              <small class="text-muted">{expert.rating || 'N/A'} ({expert.reviews || expert.reviewCount || 0} reviews)</small>
+                              <small class="fw-semibold">{expert.rating || 0}</small>
+                              <small class="text-muted">({expert.reviews || expert.reviewCount || 0} reviews)</small>
                             </div>
                             <span 
                               class="badge rounded-pill px-2 py-1"

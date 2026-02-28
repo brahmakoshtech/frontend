@@ -493,8 +493,8 @@ export default {
             ) : expert.value ? (
               <>
                 {/* Header */}
-                <div class="bg-primary rounded-3 p-4 mb-4 text-white shadow">
-                  <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary rounded-3 p-3 p-md-4 mb-3 mb-md-4 text-white shadow">
+                  <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 gap-sm-3">
                     <button 
                       class="btn btn-light btn-sm rounded-pill px-3" 
                       onClick={goBack}
@@ -503,8 +503,8 @@ export default {
                       Back
                     </button>
                     <div>
-                      <h1 class="mb-1 fw-bold fs-2">Expert Details</h1>
-                      <p class="mb-0 opacity-75">Complete profile information</p>
+                      <h1 class="mb-1 fw-bold fs-3 fs-md-2">Expert Details</h1>
+                      <p class="mb-0 opacity-75 small">Complete profile information</p>
                     </div>
                   </div>
                 </div>
@@ -513,8 +513,8 @@ export default {
                 <div class="row g-4">
                   {/* Left Sidebar - Expert Profile */}
                   <div class="col-12 col-lg-4">
-                    <div class="card border-0 shadow-sm sticky-top" style={{ top: '20px' }}>
-                      <div class="card-body text-center p-4">
+                    <div class="card border-0 shadow-sm position-lg-sticky" style={{ top: '20px' }}>
+                      <div class="card-body text-center p-3 p-md-4">
                         <div class="mb-4 position-relative">
                           {/* Background Banner */}
                           {expert.value.backgroundBanner && (
@@ -588,20 +588,20 @@ export default {
                   {/* Right Content Area */}
                   <div class="col-12 col-lg-8">
                     {/* Tab Navigation */}
-                    <div class="card border-0 shadow-sm mb-4">
+                    <div class="card border-0 shadow-sm mb-3 mb-md-4">
                       <div class="card-body p-0">
-                        <ul class="nav nav-tabs border-0">
+                        <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto">
                           <li class="nav-item">
                             <button 
-                              class={`nav-link px-4 py-3 border-0 fw-semibold ${activeTab.value === 'profile' ? 'active text-primary bg-light' : 'text-muted'}`}
+                              class={`nav-link px-3 px-md-4 py-2 py-md-3 border-0 fw-semibold ${activeTab.value === 'profile' ? 'active text-primary bg-light' : 'text-muted'}`}
                               onClick={() => activeTab.value = 'profile'}
                             >
-                              Profile Details
+                              Profile
                             </button>
                           </li>
                           <li class="nav-item">
                             <button 
-                              class={`nav-link px-4 py-3 border-0 fw-semibold ${activeTab.value === 'reviews' ? 'active text-primary bg-light' : 'text-muted'}`}
+                              class={`nav-link px-3 px-md-4 py-2 py-md-3 border-0 fw-semibold ${activeTab.value === 'reviews' ? 'active text-primary bg-light' : 'text-muted'}`}
                               onClick={() => activeTab.value = 'reviews'}
                             >
                               Reviews ({reviews.value.length})
@@ -624,11 +624,11 @@ export default {
                                 </div>
                                 <div class="card-body">
                                   <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-12 col-md-6">
                                       <label class="form-label fw-semibold text-muted small">Full Name</label>
                                       <p class="mb-0 fw-medium">{expert.value.name}</p>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-12 col-md-6">
                                       <label class="form-label fw-semibold text-muted small">Experience</label>
                                       <p class="mb-0 fw-medium">{expert.value.experience}</p>
                                     </div>
@@ -678,9 +678,9 @@ export default {
                                   </h5>
                                 </div>
                                 <div class="card-body">
-                                  <div class="row g-3">
-                                    <div class="col-md-4">
-                                      <div class="card border-0 bg-primary text-white text-center p-3 h-100">
+                                  <div class="row g-2 g-md-3">
+                                    <div class="col-12 col-md-4">
+                                      <div class="card border-0 bg-primary text-white text-center p-2 p-md-3 h-100">
                                         <ChatBubbleLeftRightIcon style={{ width: '2rem', height: '2rem' }} class="mb-2" />
                                         <h4 class="fw-bold mb-1">₹{expert.value.chatCharge || 0}</h4>
                                         <small class="opacity-75">per minute</small>
@@ -689,8 +689,8 @@ export default {
                                         </div>
                                       </div>
                                     </div>
-                                    <div class="col-md-4">
-                                      <div class="card border-0 bg-success text-white text-center p-3 h-100">
+                                    <div class="col-12 col-md-4">
+                                      <div class="card border-0 bg-success text-white text-center p-2 p-md-3 h-100">
                                         <PhoneIcon style={{ width: '2rem', height: '2rem' }} class="mb-2" />
                                         <h4 class="fw-bold mb-1">₹{expert.value.voiceCharge || 0}</h4>
                                         <small class="opacity-75">per minute</small>
@@ -699,8 +699,8 @@ export default {
                                         </div>
                                       </div>
                                     </div>
-                                    <div class="col-md-4">
-                                      <div class="card border-0 bg-info text-white text-center p-3 h-100">
+                                    <div class="col-12 col-md-4">
+                                      <div class="card border-0 bg-info text-white text-center p-2 p-md-3 h-100">
                                         <VideoCameraIcon style={{ width: '2rem', height: '2rem' }} class="mb-2" />
                                         <h4 class="fw-bold mb-1">₹{expert.value.videoCharge || 0}</h4>
                                         <small class="opacity-75">per minute</small>
@@ -722,11 +722,11 @@ export default {
                       {activeTab.value === 'reviews' && (
                         <div class="tab-pane fade show active">
                           <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white border-bottom">
-                              <div class="d-flex justify-content-between align-items-center">
+                            <div class="card-header bg-white border-bottom p-3">
+                              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 gap-sm-0">
                                 <div>
                                   <h5 class="fw-bold mb-1 text-dark">User Reviews</h5>
-                                  <div class="d-flex align-items-center gap-2">
+                                  <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="d-flex align-items-center">
                                       {renderStars(Math.floor(expert.value?.rating || 4.5))}
                                     </div>
@@ -735,7 +735,7 @@ export default {
                                   </div>
                                 </div>
                                 <button 
-                                  class="btn btn-primary btn-sm px-3"
+                                  class="btn btn-primary btn-sm px-3 w-100 w-sm-auto"
                                   onClick={() => showAddReviewModal.value = true}
                                 >
                                   <PlusIcon style={{ width: '1rem', height: '1rem', marginRight: '0.5rem' }} />
@@ -743,9 +743,9 @@ export default {
                                 </button>
                               </div>
                             </div>
-                            <div class="card-body p-0">
+                            <div class="card-body p-2 p-md-3">
                               {reviews.value.length > 0 ? (
-                                <div class="row g-4">
+                                <div class="row g-3 g-md-4">
                                   {reviews.value.map(review => (
                                     <div key={review.id || review._id} class="col-12">
                                       <div class={`card border-0 shadow-sm h-100 position-relative overflow-hidden ${!review.isActive ? 'opacity-75' : ''}`} style={{ transition: 'all 0.3s ease' }}>
@@ -755,8 +755,8 @@ export default {
                                           </div>
                                         )}
                                         
-                                        <div class="card-body p-4">
-                                          <div class="d-flex gap-3">
+                                        <div class="card-body p-3 p-md-4">
+                                          <div class="d-flex flex-column flex-sm-row gap-3">
                                             <div class="position-relative">
                                               <img 
                                                 src={review.userImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(review.userName)}&background=007bff&color=fff&size=64`}
