@@ -295,6 +295,8 @@ export default {
           actualDuration: actualDuration,
           karmaPoints: karmaPoints,
           emotion: emotion,
+          videoUrl: selectedVideoUrl.value || '',
+          audioUrl: selectedAudioUrl.value || '',
           videoKey: selectedVideoKey.value || '',
           audioKey: selectedAudioKey.value || ''
         };

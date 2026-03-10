@@ -17,6 +17,8 @@ export default {
     const selectedEmotion = ref('happy');
     const selectedVideoUrl = ref('');
     const selectedAudioUrl = ref('');
+    const selectedVideoKey = ref('');
+    const selectedAudioKey = ref('');
     const enableVideo = ref(false);
     const enableAudio = ref(false);
     const tempVideoUrl = ref('');
@@ -194,6 +196,8 @@ export default {
           selectedConfig.value = config;
           selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
           selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
+          selectedVideoKey.value = clip.videoKey || '';
+          selectedAudioKey.value = clip.audioKey || '';
         } else {
           selectedClip.value = null;
           selectedConfig.value = null;
@@ -214,16 +218,20 @@ export default {
       
       const videoUrl = clip.videoUrl || clip.videoPresignedUrl || '';
       const audioUrl = clip.audioUrl || clip.audioPresignedUrl || '';
+      const videoKey = clip.videoKey || '';
+      const audioKey = clip.audioKey || '';
       
       if (videoUrl) {
         enableVideo.value = true;
         selectedVideoUrl.value = videoUrl;
         tempVideoUrl.value = videoUrl;
+        selectedVideoKey.value = videoKey;
       }
       if (audioUrl) {
         enableAudio.value = true;
         selectedAudioUrl.value = audioUrl;
         tempAudioUrl.value = audioUrl;
+        selectedAudioKey.value = audioKey;
       }
       
       showClipModal.value = false;
@@ -262,8 +270,10 @@ export default {
           actualDuration: actualDuration,
           karmaPoints: karmaPoints,
           emotion: emotion,
-          videoUrl: videoUrl,
-          audioUrl: audioUrl
+          videoUrl: videoUrl || '',
+          audioUrl: audioUrl || '',
+          videoKey: selectedVideoKey.value || '',
+          audioKey: selectedAudioKey.value || ''
         };
         
         const response = await spiritualStatsService.saveSession(sessionData);

@@ -239,6 +239,8 @@ export default {
           status: completionPercentage >= 100 ? 'completed' : 'incomplete',
           completionPercentage: Math.round(completionPercentage),
           chantCount: chantCount.value,
+          videoUrl: selectedVideoUrl.value || '',
+          audioUrl: selectedAudioUrl.value || '',
           videoKey: selectedVideoKey.value || '',
           audioKey: selectedAudioKey.value || ''
         };
@@ -875,115 +877,7 @@ export default {
                 <span>✨ Recommended</span>
               </div>
               
-              {availableClips.value.length > 0 && (
-                <div style={{ 
-                  marginTop: '0.75rem', 
-                  padding: '0.75rem', 
-                  background: '#fef3c7', 
-                  borderRadius: '6px',
-                  border: '1px solid #f59e0b'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '1rem' }}>🎬</span>
-                    <h6 style={{ color: '#92400e', margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>Available Clips ({availableClips.value.length})</h6>
-                  </div>
-                  
-                  {availableClips.value.map((clip, index) => (
-                    <div 
-                      key={clip._id}
-                      onClick={() => selectClip(clip)}
-                      style={{ 
-                        padding: '0.75rem',
-                        background: selectedClip.value?._id === clip._id ? '#f59e0b' : 'white',
-                        borderRadius: '6px',
-                        marginBottom: index < availableClips.value.length - 1 ? '0.5rem' : '0',
-                        cursor: 'pointer',
-                        border: selectedClip.value?._id === clip._id ? '2px solid #d97706' : '1px solid #e2e8f0',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ 
-                        color: selectedClip.value?._id === clip._id ? 'white' : '#d97706', 
-                        fontSize: '0.8rem', 
-                        fontWeight: '600', 
-                        marginBottom: '0.3rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}>
-                        <span>{clip.title}</span>
-                        {selectedClip.value?._id === clip._id && (
-                          <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.3)', padding: '0.2rem 0.4rem', borderRadius: '3px' }}>✓ Selected</span>
-                        )}
-                      </div>
-                      {clip.description && (
-                        <div style={{ 
-                          color: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.9)' : '#92400e', 
-                          fontSize: '0.7rem', 
-                          lineHeight: '1.3',
-                          marginBottom: '0.4rem'
-                        }}>
-                          {clip.description}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', flexWrap: 'wrap' }}>
-                        {(clip.videoUrl || clip.videoPresignedUrl) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              previewClip.value = clip;
-                              showClipPreview.value = true;
-                            }}
-                            style={{ 
-                              background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#f59e0b', 
-                              color: 'white', 
-                              padding: '0.3rem 0.5rem', 
-                              borderRadius: '3px',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '0.7rem',
-                              fontWeight: '500'
-                            }}
-                          >
-                            📹 Preview Video
-                          </button>
-                        )}
-                        {(clip.audioUrl || clip.audioPresignedUrl) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              previewClip.value = clip;
-                              showClipPreview.value = true;
-                            }}
-                            style={{ 
-                              background: selectedClip.value?._id === clip._id ? 'rgba(255,255,255,0.3)' : '#d97706', 
-                              color: 'white', 
-                              padding: '0.3rem 0.5rem', 
-                              borderRadius: '3px',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '0.7rem',
-                              fontWeight: '500'
-                            }}
-                          >
-                            🎵 Preview Audio
-                          </button>
-                        )}
-                        <span style={{ 
-                          background: '#10b981', 
-                          color: 'white', 
-                          padding: '0.3rem 0.5rem', 
-                          borderRadius: '3px',
-                          fontSize: '0.7rem',
-                          fontWeight: '500'
-                        }}>
-                          💎 {clip.karmaPoints} pts
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+
             </div>
           )}
           
