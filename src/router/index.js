@@ -572,6 +572,11 @@ const routes = [
         component: () => import('../views/client/AIAgents.jsx')
       },
       {
+        path: 'agents',
+        name: 'ClientAgents',
+        component: () => import('../views/client/Agents.jsx')
+      },
+      {
         path: 'avatar',
         name: 'ClientAvatar',
         component: () => import('../views/client/Avatar.jsx')
