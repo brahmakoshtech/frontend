@@ -111,6 +111,7 @@ class ApiService {
         token = getTokenForRole('admin');
         tokenSource = 'admin (endpoint match)';
       } else if (endpoint.includes('/client/') || endpoint.includes('/auth/client/') ||
+        endpoint.includes('/tts/') ||
         endpoint.includes('/testimonials') || endpoint.includes('/founder-messages') || 
         endpoint.includes('/brand-assets') || endpoint.includes('/meditations') || 
         endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars') ||
