@@ -41,12 +41,25 @@ export default {
       playingLogKey.value = null;
     };
 
+    const playFromUrl = (url, logKey = null) => {
+      if (!url) return;
+      stopAudio();
+      if (logKey) playingLogKey.value = logKey;
+      try {
+        currentAudio = new Audio(url);
+        currentAudio.onended = stopAudio;
+        currentAudio.onerror = stopAudio;
+        currentAudio.play();
+      } catch (e) {
+        stopAudio();
+        error.value = e.message || 'Failed to play audio';
+      }
+    };
+
     const playTTS = async (text, voiceName, agentId = null, isFormPreview = false, logKey = null) => {
       if (!text?.trim()) return;
 
-      // Stop any currently playing audio
       stopAudio();
-
       if (agentId) playingAgentId.value = agentId;
       if (isFormPreview) playingForm.value = true;
       if (logKey) playingLogKey.value = logKey;
@@ -57,13 +70,11 @@ export default {
           body: { text: text.trim(), voiceName },
         });
 
-        // Expect { audioUrl } or { audioContent (base64) }
         let audioSrc = res?.audioUrl || res?.data?.audioUrl;
         if (!audioSrc && (res?.audioContent || res?.data?.audioContent)) {
           const b64 = res?.audioContent || res?.data?.audioContent;
           audioSrc = `data:audio/mpeg;base64,${b64}`;
         }
-
         if (!audioSrc) throw new Error('No audio returned');
 
         currentAudio = new Audio(audioSrc);
@@ -776,20 +787,21 @@ export default {
                               <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                                 {msg.content}
                               </div>
-                              {msg.role === 'assistant' && (
+                              {(msg.audioUrl || (msg.role === 'assistant' && msg.content?.trim())) && (
                                 <button
                                   onClick={() => {
                                     const key = `${log._id}-${idx}`;
                                     if (playingLogKey.value === key) stopAudio();
+                                    else if (msg.audioUrl) playFromUrl(msg.audioUrl, key);
                                     else playTTS(msg.content, voiceName, null, false, key);
                                   }}
-                                  title={playingLogKey.value === `${log._id}-${idx}` ? 'Stop' : 'Play audio'}
+                                  title={playingLogKey.value === `${log._id}-${idx}` ? 'Stop' : (msg.audioUrl ? 'Play recorded audio' : 'Play (TTS)')}
                                   style={{
                                     marginTop: '0.35rem',
                                     padding: '0.25rem 0.5rem',
                                     borderRadius: '6px',
                                     border: 'none',
-                                    background: playingLogKey.value === `${log._id}-${idx}` ? '#0ea5e9' : '#0284c7',
+                                    background: playingLogKey.value === `${log._id}-${idx}` ? '#0ea5e9' : (msg.role === 'user' ? '#6b7280' : '#0284c7'),
                                     color: 'white',
                                     fontSize: '0.72rem',
                                     fontWeight: 600,

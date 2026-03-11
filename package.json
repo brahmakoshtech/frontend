@@ -14,6 +14,7 @@
     "@daily-co/daily-react": "^0.24.0",
     "@deepgram/sdk": "^4.11.3",
     "@heroicons/vue": "^2.2.0",
+    "@stripe/stripe-js": "^8.9.0",
     "axios": "^1.13.2",
     "bootstrap": "^5.3.2",
     "firebase": "^10.13.2",

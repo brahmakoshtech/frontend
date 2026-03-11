@@ -12,6 +12,7 @@ import {
   ShoppingBagIcon,
   CogIcon,
   UserIcon,
+  CreditCardIcon,
   MicrophoneIcon,
   CpuChipIcon,
   SparklesIcon,
@@ -71,6 +72,7 @@ export default {
       if (path.includes('/swapna-decoder')) return 'swapna-decoder';
       if (path.includes('/kundali')) return 'kundali';
       if (path.includes('/profile')) return 'profile';
+      if (path.includes('/payment')) return 'payment';
       if (path.includes('/user-chat')) return 'user-chat';
       if (path.includes('/voice-call')) return 'voice-call';
       if (path.includes('/dashboard')) return 'home';
@@ -111,6 +113,8 @@ export default {
         router.push('/mobile/user/kundali');
       } else if (page === 'profile') {
         router.push('/mobile/user/profile');
+      } else if (page === 'payment') {
+        router.push('/mobile/user/payment');
       } else if (page === 'user-chat') {
         router.push('/mobile/user/user-chat');
       } else if (page === 'voice-call') {
@@ -220,6 +224,7 @@ export default {
               { id: 'kundali', label: 'My Kundali', icon: StarIcon },
               { id: 'utility', label: 'Utility', icon: CogIcon },
               { id: 'profile', label: 'Profile', icon: UserIcon },
+              { id: 'payment', label: 'Payment', icon: CreditCardIcon },
               { id: 'chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
               { id: 'voice', label: 'Voice', icon: MicrophoneIcon },
               { id: 'realtime-agent', label: 'Real Time Agent', icon: CpuChipIcon },

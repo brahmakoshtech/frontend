@@ -290,6 +290,11 @@ const routes = [
         component: () => import('../views/mobile/MobileCreditsHistory.jsx')
       },
       {
+        path: 'payment',
+        name: 'UserPayment',
+        component: () => import('../views/user/Payment.jsx')
+      },
+      {
         path: 'user-chat',
         name: 'MobileUserChat',
         component: () => import('../views/mobile/UserChat.jsx')
@@ -799,6 +804,11 @@ const routes = [
         path: 'profile',
         name: 'UserProfile',
         component: () => import('../views/user/Profile.jsx')
+      },
+      {
+        path: 'payment',
+        name: 'UserPaymentWeb',
+        component: () => import('../views/user/Payment.jsx')
       }
     ]
   },
