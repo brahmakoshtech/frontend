@@ -28,6 +28,7 @@ export default {
     // TTS play state
     const playingAgentId = ref(null);  // which agent card is playing
     const playingForm = ref(false);    // is the form preview playing
+    const playingLogKey = ref(null);   // which log message is playing: 'chatId-msgIdx'
     let currentAudio = null;
 
     const stopAudio = () => {
@@ -37,9 +38,10 @@ export default {
       }
       playingAgentId.value = null;
       playingForm.value = false;
+      playingLogKey.value = null;
     };
 
-    const playTTS = async (text, voiceName, agentId = null, isFormPreview = false) => {
+    const playTTS = async (text, voiceName, agentId = null, isFormPreview = false, logKey = null) => {
       if (!text?.trim()) return;
 
       // Stop any currently playing audio
@@ -47,6 +49,7 @@ export default {
 
       if (agentId) playingAgentId.value = agentId;
       if (isFormPreview) playingForm.value = true;
+      if (logKey) playingLogKey.value = logKey;
 
       try {
         const res = await api.request('/tts/synthesize', {
@@ -104,11 +107,47 @@ export default {
       agents.value = res?.data || [];
     };
 
+    // ─── Conversation logs (voice agent sessions) ─────────────────────────────
+    const conversationLogs = ref([]);
+    const loadingLogs = ref(false);
+    const logsPage = ref(1);
+    const logsMeta = ref({ page: 1, limit: 20, total: 0, pages: 0 });
+    const selectedAgentFilter = ref('');  // '' = all agents
+    const expandedLogId = ref(null);
+
+    const loadConversationLogs = async () => {
+      loadingLogs.value = true;
+      try {
+        const params = { page: logsPage.value, limit: 20 };
+        if (selectedAgentFilter.value) params.agentId = selectedAgentFilter.value;
+        const res = await api.request('/client/agents/conversation-logs', {
+          method: 'GET',
+          params,
+        });
+        conversationLogs.value = res?.data || [];
+        logsMeta.value = res?.meta || logsMeta.value;
+      } catch (e) {
+        error.value = e.message || 'Failed to load conversation logs';
+      } finally {
+        loadingLogs.value = false;
+      }
+    };
+
+    const onLogsPageChange = (p) => {
+      logsPage.value = p;
+      loadConversationLogs();
+    };
+
+    const onAgentFilterChange = () => {
+      logsPage.value = 1;
+      loadConversationLogs();
+    };
+
     const refresh = async () => {
       loading.value = true;
       error.value = null;
       try {
-        await Promise.all([loadVoices(), loadAgents()]);
+        await Promise.all([loadVoices(), loadAgents(), loadConversationLogs()]);
       } catch (e) {
         error.value = e.message || 'Failed to load agents';
       } finally {
@@ -604,6 +643,201 @@ export default {
             </div>
           </div>
         )}
+
+        {/* ── Conversation Logs (voice agent sessions) ── */}
+        <div style={{ ...card, padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#111827' }}>
+              Conversation Logs
+              {logsMeta.value.total > 0 && (
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.78rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '999px', background: '#f3f4f6', color: '#6b7280' }}>
+                  {logsMeta.value.total} sessions
+                </span>
+              )}
+            </h2>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <select
+                value={selectedAgentFilter.value}
+                onChange={(e) => { selectedAgentFilter.value = e.target.value; onAgentFilterChange(); }}
+                style={{ ...inputStyle, padding: '0.5rem 0.75rem', width: 'auto', minWidth: '160px', cursor: 'pointer' }}
+              >
+                <option value="">All agents</option>
+                {agents.value.map((a) => (
+                  <option key={a._id} value={a._id}>{a.name}</option>
+                ))}
+              </select>
+              <button
+                disabled={loadingLogs.value}
+                onClick={loadConversationLogs}
+                style={{
+                  padding: '0.5rem 0.9rem',
+                  borderRadius: '10px',
+                  border: '1px solid #d1d5db',
+                  background: '#fff',
+                  color: '#374151',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: loadingLogs.value ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '0.35rem',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {loadingLogs.value ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.9rem' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ animation: 'spin 1s linear infinite', marginBottom: '0.5rem' }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+              <div>Loading conversation logs...</div>
+            </div>
+          ) : conversationLogs.value.length === 0 ? (
+            <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem' }}>
+              No voice agent conversations yet. Mobile users will appear here after they chat with an agent.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {conversationLogs.value.map((log) => {
+                const isExpanded = expandedLogId.value === log._id;
+                const voiceName = log.agent?.voiceName || 'krishna1';
+                return (
+                  <div
+                    key={log._id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      background: '#fff',
+                    }}
+                  >
+                    <button
+                      onClick={() => expandedLogId.value = isExpanded ? null : log._id}
+                      style={{
+                        width: '100%',
+                        padding: '0.9rem 1rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>
+                          {log.user?.name || log.user?.email || 'Unknown user'}
+                        </span>
+                        {log.user?.email && (
+                          <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                            {log.user.email}
+                          </span>
+                        )}
+                        {log.agent && (
+                          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px', background: '#eef2ff', color: '#4338ca' }}>
+                            {log.agent.name}
+                          </span>
+                        )}
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.2rem' }}>
+                          {log.messages?.length || 0} messages · {log.updatedAt ? new Date(log.updatedAt).toLocaleString() : ''}
+                        </div>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
+                    {isExpanded && log.messages?.length > 0 && (
+                      <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid #f3f4f6' }}>
+                        {log.messages.map((msg, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              marginTop: '0.75rem',
+                              padding: '0.65rem 0.85rem',
+                              borderRadius: '10px',
+                              background: msg.role === 'user' ? '#f9fafb' : '#f0f9ff',
+                              border: msg.role === 'user' ? '1px solid #f3f4f6' : '1px solid #bae6fd',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: msg.role === 'user' ? '#6b7280' : '#0284c7', textTransform: 'uppercase', flexShrink: 0 }}>
+                              {msg.role}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                {msg.content}
+                              </div>
+                              {msg.role === 'assistant' && (
+                                <button
+                                  onClick={() => {
+                                    const key = `${log._id}-${idx}`;
+                                    if (playingLogKey.value === key) stopAudio();
+                                    else playTTS(msg.content, voiceName, null, false, key);
+                                  }}
+                                  title={playingLogKey.value === `${log._id}-${idx}` ? 'Stop' : 'Play audio'}
+                                  style={{
+                                    marginTop: '0.35rem',
+                                    padding: '0.25rem 0.5rem',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: playingLogKey.value === `${log._id}-${idx}` ? '#0ea5e9' : '#0284c7',
+                                    color: 'white',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                  }}
+                                >
+                                  {playingLogKey.value === `${log._id}-${idx}` ? (
+                                    <><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Stop</>
+                                  ) : (
+                                    <><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play</>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {logsMeta.value.pages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginTop: '1rem' }}>
+              <button
+                disabled={logsPage.value <= 1}
+                onClick={() => onLogsPageChange(logsPage.value - 1)}
+                style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', fontSize: '0.8rem', cursor: logsPage.value <= 1 ? 'not-allowed' : 'pointer', opacity: logsPage.value <= 1 ? 0.5 : 1 }}
+              >
+                Prev
+              </button>
+              <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: '#6b7280' }}>
+                Page {logsPage.value} of {logsMeta.value.pages}
+              </span>
+              <button
+                disabled={logsPage.value >= logsMeta.value.pages}
+                onClick={() => onLogsPageChange(logsPage.value + 1)}
+                style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', fontSize: '0.8rem', cursor: logsPage.value >= logsMeta.value.pages ? 'not-allowed' : 'pointer', opacity: logsPage.value >= logsMeta.value.pages ? 0.5 : 1 }}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* ── Agents List ── */}
         <div style={{ ...card, padding: '1.25rem' }}>
