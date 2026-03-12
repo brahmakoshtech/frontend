@@ -1,4 +1,4 @@
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import api from '../../services/api.js';
 
 export default {
@@ -7,23 +7,48 @@ export default {
     const amount = ref('');
     const loading = ref(false);
     const paying = ref(false);
+    const elementReady = ref(false);
     const error = ref(null);
     const success = ref(null);
     const clientSecret = ref(null);
     const stripeInstance = ref(null);
     const elementsInstance = ref(null);
     const paymentElement = ref(null);
+    const paymentMountEl = ref(null);
     let stripePromise = null;
 
     const amountNum = computed(() => parseFloat(amount.value) || 0);
-    const creditsDisplay = computed(() => {
-      const amt = amountNum.value;
-      if (amt <= 0) return '—';
-      return Math.floor(amt * 10); // 10 credits per $1 (matches backend default)
-    });
-    const canPay = computed(() => amountNum.value >= 1 && !paying.value);
 
+    // Loaded from backend
     const publishableKey = ref('');
+    const minAmountUnits = ref(500);        // ₹500 default until config loads
+    const creditsPerUnit = ref(2);         // 1 rupee = 2 credits (default)
+    const plans = ref([]);                 // [{ amount, credits }]
+    const selectedPlanAmount = ref(null);  // rupees
+    const loadingPlans = ref(false);
+
+    const effectiveAmount = computed(() => {
+      if (selectedPlanAmount.value) return selectedPlanAmount.value;
+      return amountNum.value;
+    });
+
+    const creditsDisplay = computed(() => {
+      const amt = effectiveAmount.value;
+      if (!amt || amt <= 0) return '—';
+      return Math.floor(amt * creditsPerUnit.value);
+    });
+
+    const canPay = computed(() => effectiveAmount.value >= minAmountUnits.value && !paying.value);
+    const canSubmitPayment = computed(
+      () =>
+        !!clientSecret.value &&
+        !!stripeInstance.value &&
+        !!elementsInstance.value &&
+        !!paymentElement.value &&
+        !!paymentMountEl.value &&
+        elementReady.value &&
+        !paying.value
+    );
     const methodChoice = ref('auto'); // 'auto' | 'wallet' | 'card'
 
     const loadStripe = async (pk) => {
@@ -38,66 +63,105 @@ export default {
     const initPayment = async () => {
       if (!clientSecret.value) return;
       error.value = null;
+      elementReady.value = false;
       console.log('[Payment] initPayment', {
         clientSecret: !!clientSecret.value,
         methodChoice: methodChoice.value,
       });
-      const stripe = await loadStripe(publishableKey.value);
-      if (!stripe) {
-        error.value = 'Stripe not configured. Add STRIPE_PUBLISHABLE_KEY in backend .env.';
-        return;
-      }
-      stripeInstance.value = stripe;
 
-      const paymentElementOptsBase = {
-        layout: 'tabs',
-        defaultCollapsed: false,
-      };
-      let paymentMethodOrder;
-      if (methodChoice.value === 'wallet') {
-        paymentMethodOrder = ['apple_pay', 'google_pay', 'link', 'card'];
-      } else if (methodChoice.value === 'card') {
-        paymentMethodOrder = ['card', 'apple_pay', 'google_pay', 'link'];
-      }
+      try {
+        // Ensure DOM has rendered the payment mount container
+        await nextTick();
+        // Wait one frame in case the DOM node was replaced by re-render
+        await new Promise((r) => requestAnimationFrame(r));
 
-      const elements = stripe.elements({
-        clientSecret: clientSecret.value,
-        appearance: { theme: 'stripe' },
-      });
-      elementsInstance.value = elements;
-      const paymentElementOpts = paymentMethodOrder
-        ? { ...paymentElementOptsBase, paymentMethodOrder }
-        : paymentElementOptsBase;
-      const paymentEl = elements.create('payment', paymentElementOpts);
-      paymentEl.mount('#payment-element');
-      paymentElement.value = paymentEl;
+        if (!paymentMountEl.value) {
+          throw new Error('Payment form container not ready. Please try again.');
+        }
+
+        // If re-initializing, always unmount old element first
+        if (paymentElement.value) {
+          try { paymentElement.value.unmount(); } catch (_) {}
+          paymentElement.value = null;
+        }
+        elementsInstance.value = null;
+
+        const stripe = await loadStripe(publishableKey.value);
+        if (!stripe) {
+          error.value = 'Stripe not configured. Missing publishable key from backend.';
+          return;
+        }
+        stripeInstance.value = stripe;
+
+        const paymentElementOptsBase = {
+          layout: 'tabs',
+        };
+        let paymentMethodOrder;
+        if (methodChoice.value === 'wallet') {
+          paymentMethodOrder = ['apple_pay', 'google_pay', 'link', 'card'];
+        } else if (methodChoice.value === 'card') {
+          paymentMethodOrder = ['card', 'apple_pay', 'google_pay', 'link'];
+        }
+
+        const elements = stripe.elements({
+          clientSecret: clientSecret.value,
+          appearance: { theme: 'stripe' },
+        });
+        elementsInstance.value = elements;
+        const paymentElementOpts = paymentMethodOrder
+          ? { ...paymentElementOptsBase, paymentMethodOrder }
+          : paymentElementOptsBase;
+        const paymentEl = elements.create('payment', paymentElementOpts);
+        paymentEl.on('ready', () => {
+          elementReady.value = true;
+        });
+        paymentEl.on('loaderror', (evt) => {
+          console.error('[Payment] Payment Element loaderror', evt);
+          elementReady.value = false;
+          error.value = evt?.error?.message || 'Failed to load payment form (Stripe session error)';
+        });
+        paymentEl.mount(paymentMountEl.value);
+        paymentElement.value = paymentEl;
+      } catch (e) {
+        console.error('[Payment] initPayment error', e);
+        error.value = e?.message || 'Failed to initialize payment form';
+        elementReady.value = false;
+        // If element failed to mount, keep clientSecret but prevent submit
+      }
     };
 
     const createIntent = async () => {
       if (!canPay.value) return;
       console.log('[Payment] createIntent start', {
         amount: amountNum.value,
+        planAmount: selectedPlanAmount.value,
         methodChoice: methodChoice.value,
       });
       loading.value = true;
       error.value = null;
       success.value = null;
       clientSecret.value = null;
+      elementReady.value = false;
       if (paymentElement.value) {
         try {
           paymentElement.value.unmount();
         } catch (_) {}
         paymentElement.value = null;
       }
+      elementsInstance.value = null;
       try {
+        const body = selectedPlanAmount.value
+          ? { planAmount: selectedPlanAmount.value }
+          : { amount: amountNum.value };
+
         const res = await api.request('/user/payment/create-intent', {
           method: 'POST',
-          body: { amount: amountNum.value },
+          body,
         });
         if (!res?.success || !res?.clientSecret) throw new Error(res?.message || 'Failed to create payment');
         console.log('[Payment] createIntent success', {
           clientSecret: !!res.clientSecret,
-          amountCents: res.amountCents,
+          amountUnits: res.amountUnits,
           credits: res.credits,
         });
         clientSecret.value = res.clientSecret;
@@ -114,7 +178,10 @@ export default {
     };
 
     const handleSubmit = async () => {
-      if (!clientSecret.value || !stripeInstance.value || !elementsInstance.value) return;
+      if (!canSubmitPayment.value) {
+        error.value = 'Payment form is not ready yet. Please wait a moment and try again.';
+        return;
+      }
       paying.value = true;
       error.value = null;
       try {
@@ -175,7 +242,32 @@ export default {
       }
     };
 
+    const loadConfigAndPlans = async () => {
+      try {
+        loadingPlans.value = true;
+        const [configRes, plansRes] = await Promise.all([
+          api.request('/user/payment/config', { method: 'GET' }),
+          api.request('/user/payment/plans', { method: 'GET' }),
+        ]);
+
+        if (configRes?.success) {
+          if (configRes.minAmountUnits) minAmountUnits.value = configRes.minAmountUnits;
+          if (configRes.mode) console.log('[Payment] backend mode', configRes.mode);
+        }
+
+        if (plansRes?.success) {
+          creditsPerUnit.value = plansRes.data?.creditsPerUnit || creditsPerUnit.value;
+          plans.value = Array.isArray(plansRes.data?.plans) ? plansRes.data.plans : [];
+        }
+      } catch (e) {
+        console.error('[Payment] loadConfigAndPlans error', e);
+      } finally {
+        loadingPlans.value = false;
+      }
+    };
+
     onMounted(() => {
+      loadConfigAndPlans();
       processReturnFromStripe();
     });
 
@@ -248,16 +340,48 @@ export default {
               );
             })}
           </div>
+          {/* Static plans */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+            {plans.value.map((p) => {
+              const active = selectedPlanAmount.value === p.amount;
+              return (
+                <button
+                  key={p.amount}
+                  type="button"
+                  onClick={() => {
+                    selectedPlanAmount.value = p.amount;
+                    amount.value = String(p.amount);
+                    console.log('[Payment] plan selected', p);
+                  }}
+                  style={{
+                    padding: '0.75rem 0.9rem',
+                    borderRadius: '10px',
+                    border: active ? '1px solid #111827' : '1px solid #e5e7eb',
+                    background: active ? '#111827' : '#f9fafb',
+                    color: active ? '#ffffff' : '#111827',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>₹{p.amount}</div>
+                  <div style={{ fontSize: '0.75rem', color: active ? '#e5e7eb' : '#6b7280' }}>
+                    {p.credits} credits
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
           <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.5rem' }}>
-            Amount (USD)
+            Custom Amount (₹)
           </label>
           <input
             type="number"
-            min="1"
-            step="0.01"
+            min={minAmountUnits.value}
+            step="1"
             value={amount.value}
             onInput={(e) => (amount.value = e.target.value)}
-            placeholder="e.g. 10"
+            placeholder={`e.g. ${minAmountUnits.value}`}
             style={{
               width: '100%',
               padding: '0.75rem 1rem',
@@ -268,7 +392,8 @@ export default {
             }}
           />
           <p style={{ margin: '0.5rem 0 1rem', fontSize: '0.8rem', color: '#6b7280' }}>
-            You will receive <strong>{creditsDisplay.value}</strong> credits (10 per $1). Min $1.
+            1 ₹ = {creditsPerUnit.value} credits. You will receive <strong>{creditsDisplay.value}</strong> credits.
+            {' '}Min ₹{minAmountUnits.value}.
           </p>
 
           {!clientSecret.value ? (
@@ -291,14 +416,18 @@ export default {
             </button>
           ) : (
             <>
-              <div id="payment-element" style={{ marginBottom: '1rem' }} />
+              <div ref={paymentMountEl} style={{ marginBottom: '1rem' }} />
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button
                   onClick={() => {
                     clientSecret.value = null;
+                    elementReady.value = false;
                     if (paymentElement.value) {
                       try { paymentElement.value.unmount(); } catch (_) {}
                     }
+                    paymentElement.value = null;
+                    elementsInstance.value = null;
+                    error.value = null;
                   }}
                   style={{
                     flex: 1,
@@ -315,21 +444,21 @@ export default {
                   Cancel
                 </button>
                 <button
-                  disabled={paying.value}
+                  disabled={!canSubmitPayment.value}
                   onClick={handleSubmit}
                   style={{
                     flex: 1,
                     padding: '0.85rem 1.25rem',
                     borderRadius: '10px',
                     border: 'none',
-                    background: paying.value ? '#9ca3af' : '#111827',
+                    background: canSubmitPayment.value ? '#111827' : '#9ca3af',
                     color: 'white',
                     fontSize: '0.95rem',
                     fontWeight: 600,
-                    cursor: paying.value ? 'not-allowed' : 'pointer',
+                    cursor: canSubmitPayment.value ? 'pointer' : 'not-allowed',
                   }}
                 >
-                  {paying.value ? 'Processing...' : 'Pay $' + amountNum.value.toFixed(2)}
+                  {paying.value ? 'Processing...' : `Pay ₹${Number(effectiveAmount.value || 0).toFixed(0)}`}
                 </button>
               </div>
             </>
