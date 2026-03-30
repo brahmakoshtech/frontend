@@ -19,6 +19,11 @@ const notificationService = {
   getUnreadCount: async () => {
     const response = await api.get('/notifications/unread-count');
     return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/notifications/${id}`);
+    return response.data;
   }
 };
 

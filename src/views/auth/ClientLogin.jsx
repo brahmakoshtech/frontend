@@ -1,7 +1,8 @@
 import { ref } from 'vue';
-import { useRouter, RouterLink } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useAuth } from '../../store/auth.js';
 import api from '../../services/api.js';
+import logo from '../../assets/logo.jpeg';
 export default {
   name: 'ClientLogin',
   setup() {
@@ -31,9 +32,12 @@ export default {
     };
 
     return () => (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <div style={{ background: 'white', borderRadius: '12px', padding: '3rem', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
-          <h1 style={{ textAlign: 'center', marginBottom: '2rem', color: '#1f2937', fontSize: '2rem' }}>Client Login</h1>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: '#f3f4f6' }}>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '3rem', width: '100%', maxWidth: '420px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <img src={logo} alt="Brahmakosh Logo" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '1rem' }} />
+            <h1 style={{ color: '#1f2937', fontSize: '1.6rem', fontWeight: '700', margin: '0' }}>Welcome to Brahmakosh Dashboard</h1>
+          </div>
           {error.value && <div class="alert alert-danger">{error.value}</div>}
           <form onSubmit={handleLogin}>
             <div class="mb-3">
@@ -61,8 +65,8 @@ export default {
             <button type="submit" disabled={loading.value} class="btn btn-primary w-100">
               {loading.value ? 'Logging in...' : 'Login'}
             </button>
-            <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#6b7280' }}>
-              Don't have an account? <RouterLink to="/client/register" style={{ color: '#6366f1', textDecoration: 'none' }}>Register here</RouterLink>
+            <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#9ca3af', fontSize: '0.85rem' }}>
+              Need help? <a href="mailto:brahmakoshtech@gmail.com" style={{ color: '#6366f1', textDecoration: 'none' }}>brahmakoshtech@gmail.com</a>
             </p>
           </form>
         </div>
