@@ -612,6 +612,11 @@ const routes = [
         component: () => import('../views/client/services/BrahmaBazar.jsx')
       },
       {
+        path: 'post-notification',
+        name: 'ClientPostNotification',
+        component: () => import('../views/client/tools/PushNotification.jsx')
+      },
+      {
         path: 'tools',
         name: 'ClientTools',
         component: () => import('../views/client/Tools.jsx')
