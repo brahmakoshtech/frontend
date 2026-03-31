@@ -45,13 +45,7 @@ const notificationService = {
   createClientCampaign: async (payload) => {
     const response = await api.post('/notifications/client/campaigns', payload);
     return response.data;
-  },
-
-  delete: async (id) => {
-    const response = await api.delete(`/notifications/${id}`);
-    return response.data;
   }
 };
 
 export default notificationService;
-
