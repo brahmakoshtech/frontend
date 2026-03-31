@@ -68,10 +68,21 @@ export default {
 
     const languages = ['Hindi', 'English', 'Sanskrit', 'Tamil', 'Telugu', 'Bengali'];
 
+    const getClientId = () => {
+      try {
+        const token = localStorage.getItem('token_client');
+        if (!token) return null;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.clientId || payload.id || payload._id || null;
+      } catch (e) {
+        return null;
+      }
+    };
+
     const fetchPujas = async () => {
       loading.value = true;
       try {
-        const clientId = localStorage.getItem('user_client_id');
+        const clientId = getClientId();
         const data = await pujaPadhatiService.getAll({ clientId });
         pujaList.value = data;
       } catch (error) {
@@ -317,7 +328,7 @@ export default {
         return;
       }
       
-      const clientId = localStorage.getItem('user_client_id');
+      const clientId = getClientId();
       if (!clientId) {
         toast.error('Client ID not found. Please login again.');
         return;

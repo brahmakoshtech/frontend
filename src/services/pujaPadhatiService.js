@@ -2,6 +2,11 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token_client');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const pujaPadhatiService = {
   // Get all pujas
   getAll: async (filters = {}) => {
@@ -12,7 +17,7 @@ const pujaPadhatiService = {
       if (filters.category) params.append('category', filters.category);
       if (filters.subcategory) params.append('subcategory', filters.subcategory);
       
-      const response = await axios.get(`${API_URL}/puja-padhati?${params.toString()}`);
+      const response = await axios.get(`${API_URL}/puja-padhati?${params.toString()}`, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error fetching pujas:', error);
@@ -23,7 +28,7 @@ const pujaPadhatiService = {
   // Get single puja by ID
   getById: async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/puja-padhati/${id}`);
+      const response = await axios.get(`${API_URL}/puja-padhati/${id}`, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error fetching puja:', error);
@@ -37,7 +42,7 @@ const pujaPadhatiService = {
       const response = await axios.post(`${API_URL}/puja-padhati/upload-url`, {
         fileName,
         fileType
-      });
+      }, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error getting upload URL:', error);
@@ -68,7 +73,7 @@ const pujaPadhatiService = {
   // Create new puja
   create: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/puja-padhati`, data);
+      const response = await axios.post(`${API_URL}/puja-padhati`, data, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error creating puja:', error);
@@ -79,7 +84,7 @@ const pujaPadhatiService = {
   // Update puja
   update: async (id, data) => {
     try {
-      const response = await axios.put(`${API_URL}/puja-padhati/${id}`, data);
+      const response = await axios.put(`${API_URL}/puja-padhati/${id}`, data, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error updating puja:', error);
@@ -90,7 +95,7 @@ const pujaPadhatiService = {
   // Toggle status
   toggleStatus: async (id) => {
     try {
-      const response = await axios.patch(`${API_URL}/puja-padhati/${id}/toggle-status`);
+      const response = await axios.patch(`${API_URL}/puja-padhati/${id}/toggle-status`, {}, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error toggling status:', error);
@@ -101,7 +106,7 @@ const pujaPadhatiService = {
   // Delete puja
   delete: async (id) => {
     try {
-      const response = await axios.delete(`${API_URL}/puja-padhati/${id}`);
+      const response = await axios.delete(`${API_URL}/puja-padhati/${id}`, { headers: getAuthHeader() });
       return response.data;
     } catch (error) {
       console.error('Error deleting puja:', error);
