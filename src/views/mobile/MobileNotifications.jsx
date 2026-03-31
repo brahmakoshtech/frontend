@@ -1,7 +1,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import { BellIcon, CheckIcon, ArrowLeftIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, CheckIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline';
 import notificationService from '../../services/notificationService';
 
 export default {
@@ -50,17 +50,6 @@ export default {
       }
       if (notification.data?.sankalpId) {
         router.push(`/mobile/user/sankalp/${notification.data.sankalpId}`);
-      }
-    };
-
-    const deleteNotification = async (id, event) => {
-      event.stopPropagation();
-      try {
-        await notificationService.delete(id);
-        notifications.value = notifications.value.filter(n => n._id !== id);
-        toast.success('Notification deleted');
-      } catch (error) {
-        toast.error('Failed to delete notification');
       }
     };
 
@@ -116,12 +105,6 @@ export default {
                   <p>{notification.message}</p>
                   <span class="time">{formatDate(notification.sentAt)}</span>
                 </div>
-                <button 
-                  class="delete-btn"
-                  onClick={(e) => deleteNotification(notification._id, e)}
-                >
-                  <TrashIcon style={{ width: '1.25rem', height: '1.25rem' }} />
-                </button>
                 {!notification.isRead && <div class="unread-dot"></div>}
               </div>
             ))}
@@ -197,9 +180,6 @@ export default {
             position: relative;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
           }
 
           .notification-item:active {
@@ -209,10 +189,6 @@ export default {
           .notification-item.unread {
             background: #f0f9ff;
             border-left: 3px solid #9333ea;
-          }
-
-          .notification-content {
-            flex: 1;
           }
 
           .notification-content h3 {
@@ -232,27 +208,6 @@ export default {
           .notification-content .time {
             font-size: 0.75rem;
             color: #94a3b8;
-          }
-
-          .delete-btn {
-            background: #fee2e2;
-            border: none;
-            padding: 0.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            color: #dc2626;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-          }
-
-          .delete-btn:hover {
-            background: #fecaca;
-          }
-
-          .delete-btn:active {
-            transform: scale(0.95);
           }
 
           .unread-dot {
