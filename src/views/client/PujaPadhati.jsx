@@ -68,12 +68,37 @@ export default {
 
     const languages = ['Hindi', 'English', 'Sanskrit', 'Tamil', 'Telugu', 'Bengali'];
 
-    const getClientId = () => {
+    const resolvedClientId = ref(null);
+
+    const getClientId = async () => {
+      // Return cached value if already resolved
+      if (resolvedClientId.value) return resolvedClientId.value;
+
       try {
         const token = localStorage.getItem('token_client');
         if (!token) return null;
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.clientId || payload.id || payload._id || null;
+
+        // Try JWT payload first (works after re-login with new backend)
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.clientId) {
+            resolvedClientId.value = payload.clientId;
+            return payload.clientId;
+          }
+        } catch (e) { /* ignore */ }
+
+        // Fallback: fetch from /auth/client/me (works with old tokens too)
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const res = await fetch(`${API_URL}/auth/client/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const id = json?.data?.user?.clientId || json?.data?.user?._id || null;
+          resolvedClientId.value = id;
+          return id;
+        }
+        return null;
       } catch (e) {
         return null;
       }
@@ -82,7 +107,7 @@ export default {
     const fetchPujas = async () => {
       loading.value = true;
       try {
-        const clientId = getClientId();
+        const clientId = await getClientId();
         const data = await pujaPadhatiService.getAll({ clientId });
         pujaList.value = data;
       } catch (error) {
@@ -328,7 +353,7 @@ export default {
         return;
       }
       
-      const clientId = getClientId();
+      const clientId = await getClientId();
       if (!clientId) {
         toast.error('Client ID not found. Please login again.');
         return;
