@@ -85,9 +85,8 @@ export default {
       title: '',
       duration: '5 minutes',
       description: '',
-      emotion: '',
-      chantingType: '',
-      customChantingType: '',
+      category: '',
+      subcategory: '',
       karmaPoints: 10,
       type: currentCategory.value
     });
@@ -216,45 +215,147 @@ export default {
       }
     };
     
-    // Predefined options - these are always available
-    const PREDEFINED_OPTIONS = {
-      chanting: [
-        'Gayatri Mantra',
-        'Hanuman Chalisa',
-        'Mahamrityunjaya Mantra',
-        'Shri Ganesh Vandana',
-        'Shri Ram Stuti',
-        'Shiv Tandav Stotram',
-        'Durga Chalisa',
-        'Vishnu Sahasranama',
-        'Saraswati Vandana',
-        'Shanti Path',
-        'Om Namah Shivaya',
-        'Hare Krishna Mantra'
-      ],
-      prayer: [
-        'Morning Prayer',
-        'Evening Prayer',
-        'Gratitude Prayer',
-        'Peace Prayer',
-        'Healing Prayer',
-        'Protection Prayer'
-      ],
-      meditation: [
-        'Mindfulness Meditation',
-        'Breathing Meditation',
-        'Body Scan Meditation',
-        'Loving Kindness Meditation',
-        'Walking Meditation'
-      ]
+// Predefined Category → Subcategory hierarchy
+    const SPIRITUAL_HIERARCHY = {
+      chanting: {
+        '🟡 Daily Chanting': ['Morning Awakening Mantra', 'Guru Mantra'],
+        '🐘 Ganesh Mantras': ['Vakratunda Mahākāya', 'Om Gaṁ Gaṇapataye Namaḥ'],
+        '🔱 Shiva Mantras': ['Om Namaḥ Śivāya', 'Shiva Tandava Stotram'],
+        '🌸 Krishna / Mahamantra': ['Hare Krishna Mahā Mantra', 'Radha Radha'],
+        '☀️ Navagraha Mantras': [
+          '🌞 Surya — Om Hrāṁ Hrīṁ Hrauṁ Sūryāya Namaḥ',
+          '🌙 Chandra — Om Śrāṁ Śrīṁ Śrauṁ Chandrāya Namaḥ',
+          '🔴 Mangal — Om Krāṁ Krīṁ Krauṁ Maṅgalāya Namaḥ',
+          '🟢 Budh — Om Brāṁ Brīṁ Brauṁ Budhāya Namaḥ',
+          '🟡 Guru — Om Grāṁ Grīṁ Grauṁ Gurave Namaḥ',
+          '⚪ Shukra — Om Drāṁ Drīṁ Drauṁ Śukrāya Namaḥ',
+          '⚫ Shani — Om Prāṁ Prīṁ Prauṁ Śanaiścarāya Namaḥ',
+          '☊ Rahu — Om Bhraṁ Bhrīṁ Bhrauṁ Rāhave Namaḥ',
+          '☋ Ketu — Om Sraṁ Srīṁ Srauṁ Ketave Namaḥ'
+        ],
+        '📿 Advanced Chanting': [
+          'Lalitā Sahasranāma', 'Viṣṇu Sahasranāma', 'Śiva Sahasranāma',
+          'Gaṇeśa Atharvaśīrṣa', 'Śrī Sūktam', 'Siddha Kuñjikā Stotram'
+        ]
+      },
+      meditation: {
+        '🟡 Guided Meditation': [
+          'Stress Relief Meditation', 'Sleep Meditation', 'Emotional Healing Meditation',
+          'Focus Meditation', 'Relaxation Meditation'
+        ],
+        '🌬️ Breathwork (Mindfulness)': [
+          'Box Breathing', '4-7-8 Breathing', 'Deep Breathing Practice',
+          'Alternate Nostril Breathing (Anulom Vilom)'
+        ],
+        '🎶 Sound Meditation': [
+          'Nature Sound (Forest / Rain)', 'Water Sound (River / Ocean)',
+          'Birds Chirping', 'Flute Meditation', 'Tibetan Bowl Sound', 'Ambient Healing Music'
+        ],
+        '🌈 Visualization Meditation': [
+          'Chakra Meditation', 'Light Healing Meditation', 'Mandala Meditation',
+          'Nature Visualization', 'Energy Cleansing Meditation'
+        ],
+        '🕉️ Mantra-Based Meditation': [
+          'Om Meditation', 'Affirmation Meditation', 'Guided Mantra Meditation'
+        ]
+      },
+      prayer: {
+        '🪔 Daily Ritual Prayers': [
+          'Diya Prajwalit Mantra', 'Sankalp Mantra', 'Āvāhan Mantra', 'Kṣamā (Chhama) Mantra'
+        ],
+        '🌅 Daily Time-Based Prayers': ['Morning Prayer', 'Evening Prayer'],
+        '🕉️ Guru & Foundation Prayers': ['Guru Prayer'],
+        '🐘 Ganesh Prayers': ['Vakratunda Mahākāya (Prayer Form)', 'Ganesh Vandana'],
+        '🔱 Shiva Prayers': ['Shiva Prayer', 'Om Namaḥ Śivāya (Prayer Form)'],
+        '🌸 Vishnu / Krishna Prayers': ['Hare Krishna Prayer', 'Vishnu Prayer'],
+        '🪔 Pooja Flow': ['Sankalp (Intention)', 'Āvāhan (Invocation)', 'Main Prayer (Deity-based)', 'Kṣamā (Forgiveness)']
+      }
     };
-    
-    // Category-specific options with ref for dynamic updates
-    const categoryOptions = ref({
-      chanting: [...PREDEFINED_OPTIONS.chanting, 'Other'],
-      prayer: [...PREDEFINED_OPTIONS.prayer, 'Other'],
-      meditation: [...PREDEFINED_OPTIONS.meditation, 'Other']
+
+    const selectedCategory = ref('');
+    const customCategoryInput = ref('');
+    const customSubcategoryInput = ref('');
+    const showCustomCategoryInput = ref(false);
+    const showCustomSubcategoryInput = ref(false);
+
+    // Mutable hierarchy so custom entries can be added at runtime
+    const spiritualHierarchy = ref(JSON.parse(JSON.stringify(SPIRITUAL_HIERARCHY)));
+
+    const availableCategories = computed(() =>
+      Object.keys(spiritualHierarchy.value[currentCategory.value] || {})
+    );
+
+    const availableSubcategories = computed(() => {
+      const hierarchy = spiritualHierarchy.value[currentCategory.value] || {};
+      return selectedCategory.value ? (hierarchy[selectedCategory.value] || []) : [];
     });
+
+    // Edit form category state
+    const editSelectedCategory = ref('');
+    const editCustomCategoryInput = ref('');
+    const editCustomSubcategoryInput = ref('');
+    const showEditCustomCategoryInput = ref(false);
+    const showEditCustomSubcategoryInput = ref(false);
+
+    const editAvailableSubcategories = computed(() => {
+      const hierarchy = spiritualHierarchy.value[currentCategory.value] || {};
+      return editSelectedCategory.value ? (hierarchy[editSelectedCategory.value] || []) : [];
+    });
+
+    // Add custom category to hierarchy
+    const addCustomCategory = () => {
+      const name = customCategoryInput.value.trim();
+      if (!name) { toast.error('Category name required'); return; }
+      if (!spiritualHierarchy.value[currentCategory.value]) spiritualHierarchy.value[currentCategory.value] = {};
+      if (spiritualHierarchy.value[currentCategory.value][name]) { toast.error('Category already exists'); return; }
+      spiritualHierarchy.value[currentCategory.value][name] = [];
+      selectedCategory.value = name;
+      configForm.value.category = name;
+      configForm.value.subcategory = '';
+      customCategoryInput.value = '';
+      showCustomCategoryInput.value = false;
+      toast.success('Category added!');
+    };
+
+    const addCustomSubcategory = () => {
+      const name = customSubcategoryInput.value.trim();
+      if (!name) { toast.error('Subcategory name required'); return; }
+      if (!selectedCategory.value) { toast.error('Select a category first'); return; }
+      const list = spiritualHierarchy.value[currentCategory.value][selectedCategory.value];
+      if (list.includes(name)) { toast.error('Subcategory already exists'); return; }
+      list.push(name);
+      configForm.value.subcategory = name;
+      customSubcategoryInput.value = '';
+      showCustomSubcategoryInput.value = false;
+      toast.success('Subcategory added!');
+    };
+
+    const addEditCustomCategory = () => {
+      const name = editCustomCategoryInput.value.trim();
+      if (!name) { toast.error('Category name required'); return; }
+      if (!spiritualHierarchy.value[currentCategory.value]) spiritualHierarchy.value[currentCategory.value] = {};
+      if (spiritualHierarchy.value[currentCategory.value][name]) { toast.error('Category already exists'); return; }
+      spiritualHierarchy.value[currentCategory.value][name] = [];
+      editSelectedCategory.value = name;
+      editConfigForm.value.category = name;
+      editConfigForm.value.subcategory = '';
+      editCustomCategoryInput.value = '';
+      showEditCustomCategoryInput.value = false;
+      toast.success('Category added!');
+    };
+
+    const addEditCustomSubcategory = () => {
+      const name = editCustomSubcategoryInput.value.trim();
+      if (!name) { toast.error('Subcategory name required'); return; }
+      if (!editSelectedCategory.value) { toast.error('Select a category first'); return; }
+      const list = spiritualHierarchy.value[currentCategory.value][editSelectedCategory.value];
+      if (list.includes(name)) { toast.error('Subcategory already exists'); return; }
+      list.push(name);
+      editConfigForm.value.subcategory = name;
+      editCustomSubcategoryInput.value = '';
+      showEditCustomSubcategoryInput.value = false;
+      toast.success('Subcategory added!');
+    };
     
     // Load custom types from database via configurations
     const loadCustomTypesFromConfigs = async () => {
@@ -337,17 +438,26 @@ export default {
     // Watch for category changes and update form types
     watch(currentCategory, async (newCategory) => {
       configForm.value.type = newCategory;
+      configForm.value.category = '';
+      configForm.value.subcategory = '';
       addClipForm.value.type = newCategory;
       editClipForm.value.type = newCategory;
       editConfigForm.value.type = newCategory;
-      showCustomInput.value = false;
-      configForm.value.customChantingType = '';
+      editConfigForm.value.category = '';
+      editConfigForm.value.subcategory = '';
+      selectedCategory.value = '';
+      editSelectedCategory.value = '';
+      showCustomCategoryInput.value = false;
+      showCustomSubcategoryInput.value = false;
+      showEditCustomCategoryInput.value = false;
+      showEditCustomSubcategoryInput.value = false;
+      customCategoryInput.value = '';
+      customSubcategoryInput.value = '';
       
       // Reset stats pagination
       statsPage.value = 1;
       statsSearch.value = '';
       
-      // Fetch data sequentially to avoid race conditions
       try {
         await fetchUserStats();
         await fetchConfigurations();
@@ -411,11 +521,10 @@ export default {
       title: '',
       duration: '5 minutes',
       description: '',
-      emotion: '',
+      category: '',
+      subcategory: '',
       karmaPoints: 10,
-      type: currentCategory.value,
-      chantingType: '',
-      customChantingType: ''
+      type: currentCategory.value
     });
 
     const newActivity = ref({
@@ -789,49 +898,30 @@ export default {
         const submitData = {
           title: configForm.value.title,
           description: configForm.value.description,
-          emotion: configForm.value.emotion,
           karmaPoints: configForm.value.karmaPoints,
-          type: configForm.value.type
+          type: configForm.value.type,
+          category: configForm.value.category || '',
+          subcategory: configForm.value.subcategory || ''
         };
         
-        // Add duration only for categories that need it
         if (configForm.value.type !== 'chanting' && configForm.value.type !== 'prayer') {
           submitData.duration = configForm.value.duration;
-        }
-        
-        // Add category-specific type field
-        const typeValue = showCustomInput.value && configForm.value.customChantingType 
-          ? configForm.value.customChantingType 
-          : configForm.value.chantingType;
-        
-        if (typeValue) {
-          if (configForm.value.type === 'chanting') {
-            submitData.chantingType = typeValue;
-          } else if (configForm.value.type === 'meditation') {
-            submitData.meditationType = typeValue;
-          } else if (configForm.value.type === 'prayer') {
-            submitData.prayerType = typeValue;
-          }
         }
         
         const response = await spiritualConfigurationService.createConfiguration(submitData);
         if (response.success) {
           configurations.value.unshift(response.data);
-          
-          // Reload custom types from all configurations
           loadCustomTypesFromConfigs();
-          
           configForm.value = {
             title: '',
             duration: '5 minutes',
             description: '',
-            emotion: '',
+            category: '',
+            subcategory: '',
             karmaPoints: 10,
-            type: currentCategory.value,
-            chantingType: '',
-            customChantingType: ''
+            type: currentCategory.value
           };
-          showCustomInput.value = false;
+          selectedCategory.value = '';
           toast.success('Configuration saved successfully!');
         } else {
           toast.error(response.message || 'Failed to save configuration');
@@ -856,30 +946,15 @@ export default {
 
     const editConfig = (config) => {
       editingConfig.value = config;
-      
-      const predefinedOptions = currentCategoryOptions.value;
-      
-      // Get the correct type field based on category
-      let categoryTypeValue = '';
-      if (config.type === 'chanting') {
-        categoryTypeValue = config.chantingType || '';
-      } else if (config.type === 'meditation') {
-        categoryTypeValue = config.meditationType || '';
-      } else if (config.type === 'prayer') {
-        categoryTypeValue = config.prayerType || '';
-      }
-      
-      const isCustom = categoryTypeValue && predefinedOptions.length > 0 && !predefinedOptions.includes(categoryTypeValue);
-      
+      editSelectedCategory.value = config.category || '';
       editConfigForm.value = {
         title: config.title || '',
         duration: config.duration || '5 minutes',
         description: config.description || '',
-        emotion: config.emotion || '',
+        category: config.category || '',
+        subcategory: config.subcategory || '',
         karmaPoints: config.karmaPoints || 10,
-        type: config.type || '',
-        chantingType: isCustom ? 'Other' : (categoryTypeValue || ''),
-        customChantingType: isCustom ? categoryTypeValue : ''
+        type: config.type || ''
       };
       showEditConfigModal.value = true;
       activeConfigDropdown.value = null;
@@ -907,43 +982,24 @@ export default {
         const submitData = {
           title: editConfigForm.value.title,
           description: editConfigForm.value.description,
-          emotion: editConfigForm.value.emotion,
           karmaPoints: editConfigForm.value.karmaPoints,
-          type: editConfigForm.value.type
+          type: editConfigForm.value.type,
+          category: editConfigForm.value.category || '',
+          subcategory: editConfigForm.value.subcategory || ''
         };
         
-        // Add duration only for categories that need it
         if (editConfigForm.value.type !== 'chanting' && editConfigForm.value.type !== 'prayer') {
           submitData.duration = editConfigForm.value.duration;
-        }
-        
-        // Add category-specific type field
-        const typeValue = editConfigForm.value.chantingType === 'Other' && editConfigForm.value.customChantingType
-          ? editConfigForm.value.customChantingType
-          : editConfigForm.value.chantingType;
-        
-        if (typeValue) {
-          if (editConfigForm.value.type === 'chanting') {
-            submitData.chantingType = typeValue;
-          } else if (editConfigForm.value.type === 'meditation') {
-            submitData.meditationType = typeValue;
-          } else if (editConfigForm.value.type === 'prayer') {
-            submitData.prayerType = typeValue;
-          }
         }
         
         const response = await spiritualConfigurationService.updateConfiguration(editingConfig.value._id, submitData);
         if (response.success) {
           const index = configurations.value.findIndex(c => c._id === editingConfig.value._id);
-          if (index !== -1) {
-            configurations.value[index] = response.data;
-          }
-          
-          // Reload custom types from all configurations
+          if (index !== -1) configurations.value[index] = response.data;
           loadCustomTypesFromConfigs();
-          
           showEditConfigModal.value = false;
           editingConfig.value = null;
+          editSelectedCategory.value = '';
           toast.success('Configuration updated successfully!');
         }
       } catch (error) {
@@ -1659,34 +1715,69 @@ export default {
                             </div>
                           </div>
                           <div class="col-md-6">
-                            {currentCategoryOptions.value.length > 0 && (
+                            {availableCategories.value.length > 0 && (
                               <div class="mb-3">
-                                <label class="form-label fw-semibold">{currentCategoryInfo.value.name} Type</label>
+                                <label class="form-label fw-semibold">Category</label>
                                 <select 
-                                  class="form-select form-select-sm" 
-                                  style={{ fontSize: '0.85rem' }}
-                                  value={configForm.value.chantingType}
-                                  onChange={(e) => handleCategoryOptionChange(e.target.value)}
+                                  class="form-select"
+                                  value={selectedCategory.value}
+                                  onChange={(e) => {
+                                    if (e.target.value === '__add_new__') {
+                                      showCustomCategoryInput.value = true;
+                                      return;
+                                    }
+                                    selectedCategory.value = e.target.value;
+                                    configForm.value.category = e.target.value;
+                                    configForm.value.subcategory = '';
+                                    showCustomSubcategoryInput.value = false;
+                                  }}
                                 >
-                                  <option value="">Select type</option>
-                                  {currentCategoryOptions.value.map(option => (
-                                    <option key={option} value={option}>{option}</option>
+                                  <option value="">Select category</option>
+                                  {availableCategories.value.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
                                   ))}
+                                  <option value="__add_new__">+ Add New Category</option>
                                 </select>
-                                {showCustomInput.value && (
-                                  <div class="mt-2">
-                                    <input 
-                                      type="text" 
-                                      class="form-control" 
-                                      placeholder={`Enter custom ${currentCategoryInfo.value.name.toLowerCase()} type`}
-                                      v-model={configForm.value.customChantingType}
-                                    />
+                                {showCustomCategoryInput.value && (
+                                  <div class="d-flex gap-2 mt-2">
+                                    <input type="text" class="form-control form-control-sm" placeholder="New category name" v-model={customCategoryInput.value} />
+                                    <button type="button" class="btn btn-success btn-sm" onClick={addCustomCategory}>Add</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onClick={() => { showCustomCategoryInput.value = false; customCategoryInput.value = ''; }}>✕</button>
                                   </div>
                                 )}
                               </div>
                             )}
                           </div>
                         </div>
+                        {availableSubcategories.value.length > 0 || selectedCategory.value ? (
+                          <div class="mb-3">
+                            <label class="form-label fw-semibold">Subcategory</label>
+                            <select 
+                              class="form-select"
+                              value={configForm.value.subcategory}
+                              onChange={(e) => {
+                                if (e.target.value === '__add_new__') {
+                                  showCustomSubcategoryInput.value = true;
+                                  return;
+                                }
+                                configForm.value.subcategory = e.target.value;
+                              }}
+                            >
+                              <option value="">Select subcategory</option>
+                              {availableSubcategories.value.map(sub => (
+                                <option key={sub} value={sub}>{sub}</option>
+                              ))}
+                              <option value="__add_new__">+ Add New Subcategory</option>
+                            </select>
+                            {showCustomSubcategoryInput.value && (
+                              <div class="d-flex gap-2 mt-2">
+                                <input type="text" class="form-control form-control-sm" placeholder="New subcategory name" v-model={customSubcategoryInput.value} />
+                                <button type="button" class="btn btn-success btn-sm" onClick={addCustomSubcategory}>Add</button>
+                                <button type="button" class="btn btn-secondary btn-sm" onClick={() => { showCustomSubcategoryInput.value = false; customSubcategoryInput.value = ''; }}>✕</button>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
                         <div class="mb-3">
                           <label class="form-label fw-semibold">Description *</label>
                           <textarea 
@@ -1727,35 +1818,6 @@ export default {
                                 </div>
                               </div>
                             )}
-                          </div>
-                        </div>
-                        <div class="row">
-                          <div class="col-md-12">
-                            <div class="mb-3">
-                              <label class="form-label fw-semibold">Emotion</label>
-                              <div class="row g-2">
-                                {EMOTION_OPTIONS.map(emotion => (
-                                  <div key={emotion.value} class="col-3">
-                                    <div class="form-check">
-                                      <input 
-                                        class="form-check-input" 
-                                        type="radio" 
-                                        name="configEmotion"
-                                        id={`config-emotion-${emotion.value}`}
-                                        value={emotion.value}
-                                        checked={configForm.value.emotion === emotion.value}
-                                        onChange={(e) => {
-                                          configForm.value.emotion = e.target.value;
-                                        }}
-                                      />
-                                      <label class="form-check-label" for={`config-emotion-${emotion.value}`}>
-                                        {emotion.emoji} {emotion.label} {configForm.value.emotion === emotion.value ? '(Default)' : ''}
-                                      </label>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
                           </div>
                         </div>
                         <div class="mb-3">
@@ -1858,33 +1920,18 @@ export default {
                                       <span class="badge bg-secondary-subtle text-secondary px-2 py-1">{config.type || 'General'}</span>
                                     </div>
                                   </div>
-                                  {(config.chantingType || config.meditationType || config.prayerType) && (
+                                  {(config.category || config.subcategory) && (
                                     <div class="mb-2">
-                                      <small class="text-muted d-block">
-                                        {config.type === 'chanting' ? 'Chanting' : config.type === 'meditation' ? 'Meditation' : 'Prayer'} Type:
-                                      </small>
-                                      <span class="badge bg-info-subtle text-info px-2 py-1">
-                                        {config.chantingType || config.meditationType || config.prayerType}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {config.emotion && (
-                                    <div class="mb-2">
-                                      <small class="text-muted d-block">Emotion:</small>
-                                      <span class="badge bg-warning-subtle text-warning px-2 py-1">
-                                        {{
-                                          happy: '😊 Happy',
-                                          sad: '😢 Sad', 
-                                          angry: '😠 Angry',
-                                          afraid: '😨 Afraid',
-                                          loved: '🥰 Loved',
-                                          surprised: '😲 Surprised',
-                                          calm: '😌 Calm',
-                                          disgusted: '🤢 Disgusted',
-                                          neutral: '😐 Neutral',
-                                          stressed: '😰 Stressed'
-                                        }[config.emotion] || config.emotion}
-                                      </span>
+                                      {config.category && (
+                                        <span class="badge bg-info-subtle text-info px-2 py-1 me-1">
+                                          {config.category}
+                                        </span>
+                                      )}
+                                      {config.subcategory && (
+                                        <span class="badge bg-warning-subtle text-warning px-2 py-1">
+                                          {config.subcategory}
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                   {config.karmaPoints && (
@@ -3254,45 +3301,22 @@ export default {
                       <small class="text-muted d-block">Category</small>
                       <span class="badge bg-secondary">{selectedConfig.value.type || 'General'}</span>
                     </div>
-                    {(selectedConfig.value.chantingType || selectedConfig.value.meditationType || selectedConfig.value.prayerType) && (
+                    {selectedConfig.value.category && (
                       <div class="col-6">
-                        <small class="text-muted d-block">
-                          {selectedConfig.value.type === 'chanting' ? 'Chanting' : selectedConfig.value.type === 'meditation' ? 'Meditation' : 'Prayer'} Type
-                        </small>
-                        <span class="badge bg-info">
-                          {selectedConfig.value.chantingType || selectedConfig.value.meditationType || selectedConfig.value.prayerType}
-                        </span>
+                        <small class="text-muted d-block">Group</small>
+                        <span class="badge bg-info">{selectedConfig.value.category}</span>
                       </div>
                     )}
                   </div>
-                  {selectedConfig.value.emotion && (
+                  {selectedConfig.value.subcategory && (
                     <div class="row g-2 mt-2">
-                      <div class="col-6">
-                        <small class="text-muted d-block">Emotion</small>
-                        <span class="badge bg-warning">
-                          {{
-                            happy: '😊 Happy',
-                            sad: '😢 Sad',
-                            angry: '😠 Angry',
-                            afraid: '😨 Afraid',
-                            loved: '🥰 Loved',
-                            surprised: '😲 Surprised',
-                            calm: '😌 Calm',
-                            disgusted: '🤢 Disgusted',
-                            neutral: '😐 Neutral',
-                            stressed: '😰 Stressed'
-                          }[selectedConfig.value.emotion] || selectedConfig.value.emotion}
-                        </span>
+                      <div class="col-12">
+                        <small class="text-muted d-block">Subcategory</small>
+                        <span class="badge bg-warning text-dark">{selectedConfig.value.subcategory}</span>
                       </div>
-                      {selectedConfig.value.karmaPoints && (
-                        <div class="col-6">
-                          <small class="text-muted d-block">Karma Points</small>
-                          <span class="badge bg-success">{selectedConfig.value.karmaPoints} points</span>
-                        </div>
-                      )}
                     </div>
                   )}
-                  {!selectedConfig.value.emotion && selectedConfig.value.karmaPoints && (
+                  {selectedConfig.value.karmaPoints && (
                     <div class="row g-2 mt-2">
                       <div class="col-6">
                         <small class="text-muted d-block">Karma Points</small>
@@ -3347,52 +3371,77 @@ export default {
                       </div>
                     </div>
                     <div class="col-md-6">
-                      {currentCategoryOptions.value.length > 0 ? (
+                      {availableCategories.value.length > 0 && (
                         <div class="mb-3">
-                          <label class="form-label fw-semibold">{currentCategoryInfo.value.name} Type</label>
+                          <label class="form-label fw-semibold">Category</label>
                           <select 
-                            class="form-select" 
-                            value={editConfigForm.value.chantingType}
+                            class="form-select"
+                            value={editSelectedCategory.value}
                             onChange={(e) => {
-                              editConfigForm.value.chantingType = e.target.value;
-                              if (e.target.value === 'Other') {
-                                editConfigForm.value.customChantingType = editingConfig.value?.customChantingType || '';
-                              } else {
-                                editConfigForm.value.customChantingType = '';
+                              if (e.target.value === '__add_new__') {
+                                showEditCustomCategoryInput.value = true;
+                                return;
                               }
+                              editSelectedCategory.value = e.target.value;
+                              editConfigForm.value.category = e.target.value;
+                              editConfigForm.value.subcategory = '';
+                              showEditCustomSubcategoryInput.value = false;
                             }}
                           >
-                            <option value="">Select {currentCategoryInfo.value.name.toLowerCase()} type</option>
-                            {currentCategoryOptions.value.map(option => (
-                              <option key={option} value={option}>{option}</option>
+                            <option value="">Select category</option>
+                            {availableCategories.value.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
                             ))}
+                            <option value="__add_new__">+ Add New Category</option>
                           </select>
-                          {editConfigForm.value.chantingType === 'Other' && (
-                            <div class="mt-2">
-                              <input 
-                                type="text" 
-                                class="form-control" 
-                                placeholder={`Enter custom ${currentCategoryInfo.value.name.toLowerCase()} type`}
-                                v-model={editConfigForm.value.customChantingType}
-                              />
+                          {showEditCustomCategoryInput.value && (
+                            <div class="d-flex gap-2 mt-2">
+                              <input type="text" class="form-control form-control-sm" placeholder="New category name" v-model={editCustomCategoryInput.value} />
+                              <button type="button" class="btn btn-success btn-sm" onClick={addEditCustomCategory}>Add</button>
+                              <button type="button" class="btn btn-secondary btn-sm" onClick={() => { showEditCustomCategoryInput.value = false; editCustomCategoryInput.value = ''; }}>✕</button>
                             </div>
                           )}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
-                  {currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' && (
-                    <div class="row">
-                      <div class="col-md-12">
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold">Duration</label>
-                          <select class="form-select" v-model={editConfigForm.value.duration}>
-                            {DURATION_OPTIONS.map(duration => (
-                              <option key={duration} value={duration}>{duration}</option>
-                            ))}
-                          </select>
+                  {editAvailableSubcategories.value.length > 0 || editSelectedCategory.value ? (
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Subcategory</label>
+                      <select 
+                        class="form-select"
+                        value={editConfigForm.value.subcategory}
+                        onChange={(e) => {
+                          if (e.target.value === '__add_new__') {
+                            showEditCustomSubcategoryInput.value = true;
+                            return;
+                          }
+                          editConfigForm.value.subcategory = e.target.value;
+                        }}
+                      >
+                        <option value="">Select subcategory</option>
+                        {editAvailableSubcategories.value.map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                        <option value="__add_new__">+ Add New Subcategory</option>
+                      </select>
+                      {showEditCustomSubcategoryInput.value && (
+                        <div class="d-flex gap-2 mt-2">
+                          <input type="text" class="form-control form-control-sm" placeholder="New subcategory name" v-model={editCustomSubcategoryInput.value} />
+                          <button type="button" class="btn btn-success btn-sm" onClick={addEditCustomSubcategory}>Add</button>
+                          <button type="button" class="btn btn-secondary btn-sm" onClick={() => { showEditCustomSubcategoryInput.value = false; editCustomSubcategoryInput.value = ''; }}>✕</button>
                         </div>
-                      </div>
+                      )}
+                    </div>
+                  ) : null}
+                  {currentCategory.value !== 'chanting' && currentCategory.value !== 'prayer' && (
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Duration</label>
+                      <select class="form-select" v-model={editConfigForm.value.duration}>
+                        {DURATION_OPTIONS.map(duration => (
+                          <option key={duration} value={duration}>{duration}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                   <div class="mb-3">
@@ -3406,34 +3455,17 @@ export default {
                     ></textarea>
                     <small class="form-text text-muted">{editConfigForm.value.description.length}/500 characters</small>
                   </div>
-                  <div class="row">
-                    <div class="col-md-6">
-                      <div class="mb-3">
-                        <label class="form-label fw-semibold">Emotion</label>
-                        <select class="form-select" v-model={editConfigForm.value.emotion}>
-                          <option value="">Select emotion</option>
-                          {EMOTION_OPTIONS.map(emotion => (
-                            <option key={emotion.value} value={emotion.value}>
-                              {emotion.emoji} {emotion.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="mb-3">
-                        <label class="form-label fw-semibold">Karma Points</label>
-                        <input 
-                          type="number" 
-                          class="form-control" 
-                          placeholder="Enter karma points (1-100)"
-                          min="1"
-                          max="100"
-                          v-model={editConfigForm.value.karmaPoints}
-                        />
-                        <small class="form-text text-muted">Points awarded for completing this activity</small>
-                      </div>
-                    </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Karma Points</label>
+                    <input 
+                      type="number" 
+                      class="form-control" 
+                      placeholder="Enter karma points (1-100)"
+                      min="1"
+                      max="100"
+                      v-model={editConfigForm.value.karmaPoints}
+                    />
+                    <small class="form-text text-muted">Points awarded for completing this activity</small>
                   </div>
                 </div>
                 <div class="modal-footer">
