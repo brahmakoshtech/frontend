@@ -7,6 +7,8 @@ import { useAuth } from '../../store/auth';
 import AstroDetails from '../../components/kundali/AstroDetails.jsx';
 import NumerologyView from '../../components/kundali/NumerologyView.jsx';
 import PanchangView from '../../components/kundali/PanchangView.jsx';
+import HoroscopeView from '../../components/kundali/HoroscopeView.jsx';
+import ReportsView from '../../components/kundali/ReportsView.jsx';
 
 export default {
   name: 'MobileKundali',
@@ -250,6 +252,18 @@ export default {
           >
             📅 Panchang
           </button>
+          <button 
+            class={`tab ${activeTab.value === 'horoscope' ? 'active' : ''}`}
+            onClick={() => activeTab.value = 'horoscope'}
+          >
+            ♈ Horoscope
+          </button>
+          <button 
+            class={`tab ${activeTab.value === 'reports' ? 'active' : ''}`}
+            onClick={() => activeTab.value = 'reports'}
+          >
+            📄 Report
+          </button>
         </div>
 
         {/* Content */}
@@ -297,6 +311,32 @@ export default {
                     <div class="spinner"></div>
                     <p style={{ color: '#64748b', marginTop: '1rem' }}>Loading panchang...</p>
                   </div>
+                )
+              )}
+
+              {/* Horoscope Tab */}
+              {activeTab.value === 'horoscope' && (
+                user.value?._id ? (
+                  <HoroscopeView
+                    userId={user.value._id}
+                    api={api}
+                    token={localStorage.getItem('token_user')}
+                  />
+                ) : (
+                  <div class="error-message">♈ User not authenticated</div>
+                )
+              )}
+
+              {/* Reports Tab */}
+              {activeTab.value === 'reports' && (
+                user.value?._id ? (
+                  <ReportsView
+                    userId={user.value._id}
+                    api={api}
+                    token={localStorage.getItem('token_user')}
+                  />
+                ) : (
+                  <div class="error-message">📄 User not authenticated</div>
                 )
               )}
             </>
