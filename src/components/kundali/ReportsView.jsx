@@ -24,7 +24,9 @@ export default {
   props: {
     userId: { type: String, required: true },
     api: { type: Object, required: true },
-    token: { type: String, required: true }
+    token: { type: String, required: true },
+    pricing: { type: Object, default: () => ({ kundaliMini: 199, kundaliBasic: 499, kundaliPro: 699, matchMaking: 499 }) },
+    currency: { type: String, default: 'INR' }
   },
   setup(props) {
     const active = ref('kundali'); // kundali | match
@@ -154,6 +156,15 @@ export default {
 
         {active.value === 'kundali' && (
           <div>
+            <div style={{ marginBottom: '0.9rem', padding: '0.75rem', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '0.45rem' }}>Plan Charges</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '0.35rem', fontSize: '0.85rem', color: '#334155' }}>
+                <div>Mini: {props.currency} {props.pricing?.kundaliMini ?? 199}</div>
+                <div>Basic: {props.currency} {props.pricing?.kundaliBasic ?? 499}</div>
+                <div>Pro: {props.currency} {props.pricing?.kundaliPro ?? 699}</div>
+                <div>Match Making: {props.currency} {props.pricing?.matchMaking ?? 499}</div>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               {['mini', 'basic', 'pro'].map(rt => (
                 <button
@@ -260,6 +271,9 @@ export default {
 
         {active.value === 'match' && (
           <div>
+            <div style={{ marginBottom: '0.75rem', color: '#334155', fontSize: '0.9rem', fontWeight: 700 }}>
+              Match Making Charge: {props.currency} {props.pricing?.matchMaking ?? 499}
+            </div>
             <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 700, marginBottom: '0.5rem' }}>
               Paste payload JSON
             </div>

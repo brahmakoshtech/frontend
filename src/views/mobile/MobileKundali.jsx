@@ -22,6 +22,11 @@ export default {
     const userData = ref(null);
     const numerologyData = ref(null);
     const panchangData = ref(null);
+    const astrologyToolsConfig = ref({
+      enabled: false,
+      currency: 'INR',
+      pricing: { kundaliMini: 199, kundaliBasic: 499, kundaliPro: 699, matchMaking: 499 }
+    });
     const error = ref(null);
 
     const goBack = () => {
@@ -100,8 +105,22 @@ export default {
       }
     };
 
+    const fetchAstrologyToolsConfig = async () => {
+      try {
+        const token = localStorage.getItem('token_user');
+        if (!token || !user.value?._id) return;
+        const response = await api.request(`/client/users/${user.value._id}/astrology-tools/config`, { token });
+        if (response?.data) {
+          astrologyToolsConfig.value = response.data;
+        }
+      } catch (err) {
+        // Keep defaults; don't block page
+      }
+    };
+
     onMounted(() => {
       fetchKundaliData();
+      fetchAstrologyToolsConfig();
     });
 
     return () => (
@@ -252,18 +271,22 @@ export default {
           >
             📅 Panchang
           </button>
-          <button 
-            class={`tab ${activeTab.value === 'horoscope' ? 'active' : ''}`}
-            onClick={() => activeTab.value = 'horoscope'}
-          >
-            ♈ Horoscope
-          </button>
-          <button 
-            class={`tab ${activeTab.value === 'reports' ? 'active' : ''}`}
-            onClick={() => activeTab.value = 'reports'}
-          >
-            📄 Report
-          </button>
+          {astrologyToolsConfig.value.enabled && (
+            <button 
+              class={`tab ${activeTab.value === 'horoscope' ? 'active' : ''}`}
+              onClick={() => activeTab.value = 'horoscope'}
+            >
+              ♈ Horoscope
+            </button>
+          )}
+          {astrologyToolsConfig.value.enabled && (
+            <button 
+              class={`tab ${activeTab.value === 'reports' ? 'active' : ''}`}
+              onClick={() => activeTab.value = 'reports'}
+            >
+              📄 Report
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -334,6 +357,8 @@ export default {
                     userId={user.value._id}
                     api={api}
                     token={localStorage.getItem('token_user')}
+                    pricing={astrologyToolsConfig.value.pricing}
+                    currency={astrologyToolsConfig.value.currency}
                   />
                 ) : (
                   <div class="error-message">📄 User not authenticated</div>
