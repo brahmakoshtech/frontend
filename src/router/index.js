@@ -522,6 +522,11 @@ const routes = [
         component: () => import('../views/client/Credits.jsx')
       },
       {
+        path: 'subscription-plans',
+        name: 'ClientSubscriptionPlans',
+        component: () => import('../views/client/SubscriptionPlans.jsx')
+      },
+      {
         path: 'users/:userId/kundali',
         name: 'UserKundali',
         component: () => import('../views/client/UserKundali.jsx')

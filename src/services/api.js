@@ -1085,6 +1085,50 @@ class ApiService {
       return data;
     });
   }
+
+  // ─── Subscription plans (per-client catalog + Stripe) ─────────────────────
+  async getClientSubscriptionPlans(params = {}) {
+    return this.request('/client/subscription-plans', { method: 'GET', params });
+  }
+
+  async createClientSubscriptionPlan(body) {
+    return this.request('/client/subscription-plans', { method: 'POST', body });
+  }
+
+  async updateClientSubscriptionPlan(planId, body) {
+    return this.request(`/client/subscription-plans/${planId}`, { method: 'PATCH', body });
+  }
+
+  async deleteClientSubscriptionPlan(planId) {
+    return this.request(`/client/subscription-plans/${planId}`, { method: 'DELETE' });
+  }
+
+  async getUserSubscriptionPlansCatalog() {
+    return this.request('/user/subscription-plans', { method: 'GET' });
+  }
+
+  async getUserSubscriptionsList() {
+    return this.request('/user/subscriptions', { method: 'GET' });
+  }
+
+  async createUserPlanPaymentIntent(planId) {
+    return this.request('/user/payment/by-plan/intent', { method: 'POST', body: { planId } });
+  }
+
+  async confirmUserPlanPayment(paymentIntentId) {
+    return this.request('/user/payment/by-plan/confirm', { method: 'POST', body: { paymentIntentId } });
+  }
+
+  async createUserSubscriptionCheckout(planId, successUrl, cancelUrl) {
+    return this.request('/user/payment/by-plan/subscription-checkout', {
+      method: 'POST',
+      body: { planId, successUrl, cancelUrl },
+    });
+  }
+
+  async claimFreeUserPlan(planId) {
+    return this.request('/user/plans/claim-free', { method: 'POST', body: { planId } });
+  }
 }
 
 const apiService = new ApiService();
@@ -1232,7 +1276,17 @@ const api = {
   getUserOwnAstrology: apiService.getUserOwnAstrology.bind(apiService),
   getUserCompleteDetails: apiService.getUserCompleteDetails.bind(apiService),
   getUserAstrology: apiService.getUserAstrology.bind(apiService),
-  getUserDoshas: apiService.getUserDoshas.bind(apiService)
+  getUserDoshas: apiService.getUserDoshas.bind(apiService),
+  getClientSubscriptionPlans: apiService.getClientSubscriptionPlans.bind(apiService),
+  createClientSubscriptionPlan: apiService.createClientSubscriptionPlan.bind(apiService),
+  updateClientSubscriptionPlan: apiService.updateClientSubscriptionPlan.bind(apiService),
+  deleteClientSubscriptionPlan: apiService.deleteClientSubscriptionPlan.bind(apiService),
+  getUserSubscriptionPlansCatalog: apiService.getUserSubscriptionPlansCatalog.bind(apiService),
+  getUserSubscriptionsList: apiService.getUserSubscriptionsList.bind(apiService),
+  createUserPlanPaymentIntent: apiService.createUserPlanPaymentIntent.bind(apiService),
+  confirmUserPlanPayment: apiService.confirmUserPlanPayment.bind(apiService),
+  createUserSubscriptionCheckout: apiService.createUserSubscriptionCheckout.bind(apiService),
+  claimFreeUserPlan: apiService.claimFreeUserPlan.bind(apiService)
 };
 
 
