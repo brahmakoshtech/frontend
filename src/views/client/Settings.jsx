@@ -8,6 +8,9 @@ export default {
     const toast = useToast();
     const loading = ref(false);
     const saving = ref(false);
+    const ccrLoading = ref(false);
+    const ccrSaving = ref(false);
+    const ccr = ref({ chatCCR: 0.5, voiceCCR: 0.5 });
     const config = ref({
       enabled: false,
       currency: 'INR',
@@ -46,7 +49,34 @@ export default {
       }
     };
 
-    onMounted(fetchConfig);
+    const fetchCCR = async () => {
+      try {
+        ccrLoading.value = true;
+        const res = await api.request('/client/settings/ccr-rates');
+        if (res?.data) ccr.value = res.data;
+      } catch (e) {
+        toast.error(e?.message || 'Failed to load CCR rates');
+      } finally {
+        ccrLoading.value = false;
+      }
+    };
+
+    const saveCCR = async () => {
+      try {
+        ccrSaving.value = true;
+        await api.request('/client/settings/ccr-rates', {
+          method: 'PUT',
+          body: ccr.value
+        });
+        toast.success('CCR rates updated successfully');
+      } catch (e) {
+        toast.error(e?.message || 'Failed to save CCR rates');
+      } finally {
+        ccrSaving.value = false;
+      }
+    };
+
+    onMounted(() => { fetchConfig(); fetchCCR(); });
 
     const priceField = (label, key) => (
       <div class="col-md-6">
@@ -66,7 +96,65 @@ export default {
 
     return () => (
       <div class="container-fluid">
-        <div class="row">
+        <div class="row g-4">
+          {/* CCR Rates Card */}
+          <div class="col-12 col-xl-9">
+            <div class="card shadow-sm border-0">
+              <div class="card-header bg-white border-0 pt-4">
+                <h4 class="mb-1 fw-bold">Credit Charge Rates (CCR)</h4>
+                <p class="text-muted mb-0">Set how many credits are deducted per chat message and per second of voice call.</p>
+              </div>
+              <div class="card-body">
+                {ccrLoading.value ? (
+                  <div class="text-muted">Loading CCR rates...</div>
+                ) : (
+                  <>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">Chat CCR <span class="text-muted fw-normal">(credits per message)</span></label>
+                        <div class="input-group">
+                          <span class="input-group-text">💬</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            class="form-control"
+                            value={ccr.value.chatCCR}
+                            onInput={(e) => { ccr.value.chatCCR = Number(e.target.value || 0); }}
+                          />
+                          <span class="input-group-text">credits</span>
+                        </div>
+                        <div class="form-text">Deducted from user on every chat message sent.</div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">Voice CCR <span class="text-muted fw-normal">(credits per second)</span></label>
+                        <div class="input-group">
+                          <span class="input-group-text">🎙️</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            class="form-control"
+                            value={ccr.value.voiceCCR}
+                            onInput={(e) => { ccr.value.voiceCCR = Number(e.target.value || 0); }}
+                          />
+                          <span class="input-group-text">credits/sec</span>
+                        </div>
+                        <div class="form-text">Deducted from user every second during voice call.</div>
+                      </div>
+                    </div>
+                    <div class="mt-4 d-flex justify-content-end">
+                      <button class="btn btn-primary px-4" onClick={saveCCR} disabled={ccrSaving.value}>
+                        {ccrSaving.value ? 'Saving...' : 'Save CCR Rates'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Astrology Tools Card */}
           <div class="col-12 col-xl-9">
             <div class="card shadow-sm border-0">
               <div class="card-header bg-white border-0 pt-4">
