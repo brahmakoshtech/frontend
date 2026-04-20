@@ -24,6 +24,7 @@ export default {
     let isPlayingAudio = ref(false);
     let audioWorkletNode = null;
     let scriptProcessorNode = null;
+    let currentAudioSource = null; // track current playing source for interrupt
 
     // Helper to add debug messages
     const addDebugLog = (message) => {
@@ -208,9 +209,20 @@ export default {
                 transcript.value = data.text;
                 interimTranscript.value = '';
                 addDebugLog(`Final transcript: ${data.text}`);
+                // User spoke - stop AI audio immediately
+                stopCurrentAudio();
               } else {
                 interimTranscript.value = data.text;
+                // Interim transcript means user is speaking - stop AI audio
+                if (isPlayingAudio.value) {
+                  stopCurrentAudio();
+                }
               }
+              break;
+
+            case 'audio_interrupted':
+              addDebugLog('Audio interrupted by user');
+              stopCurrentAudio();
               break;
 
             case 'user_message':
@@ -236,17 +248,15 @@ export default {
               break;
 
             case 'audio_chunk':
-              const audioData = base64ToArrayBuffer(data.audio);
-              audioQueue.push(audioData);
-              
-              if (!isPlayingAudio.value) {
-                playAudioQueue();
-              }
+              audioQueue.push(base64ToArrayBuffer(data.audio));
               break;
 
             case 'audio_complete':
               addDebugLog(`Audio complete: ${data.totalChunks} chunks`);
               console.log('[VoiceAgent] Audio complete:', data.totalChunks, 'chunks');
+              if (!isPlayingAudio.value && audioQueue.length > 0) {
+                playAudioQueue();
+              }
               break;
 
             case 'stopped':
@@ -314,6 +324,8 @@ export default {
       isProcessing.value = false;
       connectionStatus.value = 'disconnected';
 
+      stopCurrentAudio();
+
       if (scriptProcessorNode) {
         scriptProcessorNode.disconnect();
         scriptProcessorNode = null;
@@ -338,26 +350,40 @@ export default {
       isPlayingAudio.value = false;
     };
 
+    // Stop currently playing audio immediately (for interrupt)
+    const stopCurrentAudio = () => {
+      if (currentAudioSource) {
+        try {
+          currentAudioSource.onended = null;
+          currentAudioSource.stop();
+        } catch (_) {}
+        currentAudioSource = null;
+      }
+      audioQueue = [];
+      isPlayingAudio.value = false;
+    };
+
     // Play queued audio chunks
     const playAudioQueue = async () => {
-      if (isPlayingAudio.value || audioQueue.length === 0) {
-        return;
-      }
+      if (isPlayingAudio.value || audioQueue.length === 0) return;
 
       isPlayingAudio.value = true;
-
       try {
-        // Create audio context for playback if needed
         if (!audioContext || audioContext.state === 'closed') {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)({
-            sampleRate: 24000
-          });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
         }
 
-        while (audioQueue.length > 0) {
-          const audioData = audioQueue.shift();
-          await playAudioChunk(audioData);
+        // Merge all chunks into one ArrayBuffer and decode once
+        const totalLength = audioQueue.reduce((sum, buf) => sum + buf.byteLength, 0);
+        const merged = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const buf of audioQueue) {
+          merged.set(new Uint8Array(buf), offset);
+          offset += buf.byteLength;
         }
+        audioQueue = [];
+
+        await playAudioChunk(merged.buffer);
       } catch (error) {
         console.error('[VoiceAgent] Audio playback error:', error);
       } finally {
@@ -379,8 +405,11 @@ export default {
             const source = audioContext.createBufferSource();
             source.buffer = buffer;
             source.connect(audioContext.destination);
-            
-            source.onended = () => resolve();
+            currentAudioSource = source;
+            source.onended = () => {
+              if (currentAudioSource === source) currentAudioSource = null;
+              resolve();
+            };
             source.start(0);
           },
           (error) => {
