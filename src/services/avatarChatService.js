@@ -40,11 +40,22 @@ class AvatarChatService {
       return {
         success: true,
         data: {
-          response: response.data?.data?.assistantMessage?.content || 'No response',
-          chatId: response.data?.data?.chatId || this.currentChatId
+          response: response.data?.data?.assistantMessage?.content || response.data?.data?.response || 'No response',
+          chatId: response.data?.data?.chatId || this.currentChatId,
+          remainingBalance: response.data?.data?.remainingBalance,
+          creditsDeducted: response.data?.data?.creditsDeducted
         }
       };
     } catch (error) {
+      // Handle insufficient credits (402)
+      if (error.response?.status === 402) {
+        return {
+          success: false,
+          insufficientCredits: true,
+          remainingBalance: error.response?.data?.remainingBalance ?? 0,
+          message: 'Insufficient credits'
+        };
+      }
       this.currentChatId = null;
       return {
         success: false,

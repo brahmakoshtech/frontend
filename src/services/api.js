@@ -303,6 +303,7 @@ class ApiService {
           
           const error = new Error(errorMessage);
           error.status = response.status;
+          error.response = { status: response.status, data };
           error.responseData = data;
           throw error;
         }

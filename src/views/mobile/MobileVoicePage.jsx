@@ -1,10 +1,12 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuth } from '../../store/auth.js';
+import { useRoute } from 'vue-router';
 
 export default {
   name: 'VoiceAgentPage',
   setup() {
     const { token, user } = useAuth();
+    const route = useRoute();
     const chatId = ref(null);
     const isActive = ref(false);
     const transcript = ref('');
@@ -14,6 +16,12 @@ export default {
     const connectionStatus = ref('disconnected');
     const conversationHistory = ref([]);
     const debugLog = ref([]);
+    const credits = ref(null);
+
+    // Agent info from query params (passed from MobileAskBI)
+    const agentId = route.query.agentId || null;
+    const agentName = route.query.name || 'AI Guide';
+    const voiceName = route.query.voiceName || 'krishna1';
     
     // WebSocket and media
     let ws = null;
@@ -168,7 +176,9 @@ export default {
               type: 'start',
               chatId: chatId.value,
               userId: user.value?._id,
-              token: token.value
+              token: token.value,
+              agentId: agentId,
+              voiceName: voiceName
             };
             addDebugLog(`Sending start command (userId: ${user.value?._id})`);
             console.log('[VoiceAgent] Sending start command to backend:', startCommand);
@@ -267,7 +277,17 @@ export default {
             case 'error':
               addDebugLog(`ERROR: ${data.message}`);
               console.error('[VoiceAgent] Error:', data.message);
-              alert(data.message);
+              if (data.error === 'INSUFFICIENT_CREDITS') {
+                alert('Your credits have been exhausted. Please recharge your account to continue your spiritual journey.');
+                cleanup();
+              } else {
+                alert(data.message);
+              }
+              break;
+
+            case 'credit:update':
+              credits.value = data.remainingBalance;
+              addDebugLog(`Credits: ${data.remainingBalance} (deducted: ${data.creditsDeducted})`);
               break;
           }
         };
@@ -451,10 +471,15 @@ export default {
 
     return () => (
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
-        <h1 style={{ marginBottom: '10px' }}>🎙️ Voice Agent</h1>
-        <p style={{ color: '#666', marginBottom: '30px' }}>
-          Powered by Deepgram + OpenAI + ElevenLabs
+        <h1 style={{ marginBottom: '10px' }}>🎙️ {agentName}</h1>
+        <p style={{ color: '#666', marginBottom: '10px' }}>
+          Voice Agent · {voiceName}
         </p>
+        {credits.value !== null && (
+          <div style={{ marginBottom: '20px', padding: '8px 14px', background: '#fef3c7', borderRadius: '8px', display: 'inline-block', fontSize: '0.9rem', fontWeight: '600', color: '#92400e' }}>
+            💰 Credits: {credits.value.toFixed(1)}
+          </div>
+        )}
 
         {/* Status Bar */}
         <div style={{

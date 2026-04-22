@@ -21,9 +21,10 @@ export default {
     const avatarId = route.query.avatarId;
     const avatarName = route.query.name || 'AI Guide';
     const avatarImage = route.query.image;
-    const agentId = route.query.agentId || 'agent_f401294bbade2806';
+    const agentId = route.query.agentId || route.query.avatarId || 'agent_f401294bbade2806';
 
     const copiedMessageId = ref(null);
+    const credits = ref(null);
 
     const copyMessage = (text, messageId) => {
       navigator.clipboard.writeText(text).then(() => {
@@ -148,9 +149,25 @@ export default {
           avatarName
         );
 
+        if (response.insufficientCredits) {
+          loading.value = false;
+          credits.value = response.remainingBalance;
+          messages.value.push({
+            id: Date.now() + 1,
+            text: `Your credits have been exhausted. Please recharge your account to continue your spiritual journey.`,
+            sender: 'ai',
+            timestamp: new Date()
+          });
+          scrollToBottom();
+          return;
+        }
+
         if (response.success && response.data) {
           if (response.data.chatId) {
             chatId.value = response.data.chatId;
+          }
+          if (response.data.remainingBalance !== undefined) {
+            credits.value = response.data.remainingBalance;
           }
 
           loading.value = false;
@@ -170,23 +187,23 @@ export default {
           
           await fetchChatHistory();
         } else {
-          const errorMsg = {
+          loading.value = false;
+          messages.value.push({
             id: Date.now() + 1,
-            text: 'I apologize, I am having trouble connecting right now. Please try again.',
+            text: 'Something went wrong. Please try again.',
             sender: 'ai',
             timestamp: new Date()
-          };
-          messages.value.push(errorMsg);
+          });
         }
         scrollToBottom();
       } catch (error) {
-        const errorMsg = {
+        loading.value = false;
+        messages.value.push({
           id: Date.now() + 1,
-          text: 'I apologize, something went wrong. Please try again.',
+          text: 'Something went wrong. Please try again.',
           sender: 'ai',
           timestamp: new Date()
-        };
-        messages.value.push(errorMsg);
+        });
         scrollToBottom();
       } finally {
         loading.value = false;
@@ -270,6 +287,15 @@ export default {
       router.push('/mobile/user/geeta-shlokas');
     };
 
+    const fetchInitialCredits = async () => {
+      try {
+        const token = localStorage.getItem('token_user');
+        const res = await api.get('/mobile/user/profile', { headers: { Authorization: `Bearer ${token}` } });
+        const balance = res.data?.data?.credits ?? res.data?.credits;
+        if (balance !== undefined) credits.value = balance;
+      } catch (_) {}
+    };
+
     onMounted(() => {
       const existingChatId = route.query.chatId;
       
@@ -299,6 +325,7 @@ export default {
       }
       
       fetchChatHistory();
+      fetchInitialCredits();
       nextTick(() => scrollToBottom());
     });
 
@@ -452,6 +479,11 @@ export default {
               {loading.value ? `${avatarName} is typing...` : 'AI Spiritual Guide'}
             </p>
           </div>
+          {credits.value !== null && (
+            <div style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '12px', fontWeight: '600' }}>
+              💰 {credits.value.toFixed(1)}
+            </div>
+          )}
           <button
             onClick={() => showHistoryPanel.value = !showHistoryPanel.value}
             style={{
