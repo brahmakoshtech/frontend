@@ -183,7 +183,9 @@ class ApiService {
         endpoint.includes('/reward-redemptions') || endpoint.includes('/karma-points') ||
         endpoint.includes('/user-sankalp') || endpoint.includes('/notifications') ||
         endpoint.includes('/analytics') || endpoint.includes('/leaderboard') ||
-        endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards')) {
+        endpoint.includes('/spiritual-stats') || endpoint.includes('/spiritual-rewards') ||
+        endpoint.includes('/mobile/agents') || endpoint.includes('/mobile/panchang') ||
+        endpoint.includes('/mobile/avatar-chat') || endpoint.includes('/mobile/spiritual-checkin')) {
         // USER ENDPOINTS - Try user token first, then client token as fallback
         token = getTokenForRole('user') || getTokenForRole('client');
         tokenSource = token ? (getTokenForRole('user') ? 'user (authenticated endpoint)' : 'client (fallback)') : 'none';
