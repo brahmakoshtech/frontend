@@ -32,7 +32,26 @@ export default {
     let isPlayingAudio = ref(false);
     let audioWorkletNode = null;
     let scriptProcessorNode = null;
-    let currentAudioSource = null; // track current playing source for interrupt
+    let currentAudioSource = null;
+
+    // ── Interruption state (server-driven) ───────────────────────────────────
+    let agentState = 'listening';   // 'listening' | 'processing' | 'speaking'
+    let activeTurnId = null;
+    let isDraining = false;
+    let speakingTimeoutId = null;
+    const SPEAKING_SAFETY_TIMEOUT_MS = 15000;
+
+    const transitionAgentState = (newState) => {
+      clearTimeout(speakingTimeoutId);
+      agentState = newState;
+      isProcessing.value = newState === 'processing';
+      if (newState === 'speaking') {
+        // Safety net: if backend never sends listening state, self-recover
+        speakingTimeoutId = setTimeout(() => {
+          transitionAgentState('listening');
+        }, SPEAKING_SAFETY_TIMEOUT_MS);
+      }
+    };
 
     // Helper to add debug messages
     const addDebugLog = (message) => {
@@ -141,9 +160,9 @@ export default {
             let audioChunksSent = 0;
 
             scriptProcessorNode.onaudioprocess = (e) => {
-              if (!ws || ws.readyState !== WebSocket.OPEN || !isActive.value) {
-                return;
-              }
+              if (!ws || ws.readyState !== WebSocket.OPEN || !isActive.value) return;
+              // Fix 1: Do NOT send mic audio while AI is speaking — prevents echo self-interruption
+              if (agentState === 'speaking') return;
 
               const inputData = e.inputBuffer.getChannelData(0);
               
@@ -219,13 +238,14 @@ export default {
                 transcript.value = data.text;
                 interimTranscript.value = '';
                 addDebugLog(`Final transcript: ${data.text}`);
-                // User spoke - stop AI audio immediately
-                stopCurrentAudio();
               } else {
                 interimTranscript.value = data.text;
-                // Interim transcript means user is speaking - stop AI audio
-                if (isPlayingAudio.value) {
+                // Barge-in: user spoke while AI was speaking — send interrupt
+                if (agentState === 'speaking' && ws && ws.readyState === WebSocket.OPEN) {
+                  isDraining = true;
                   stopCurrentAudio();
+                  ws.send(JSON.stringify({ type: 'interrupt', turnId: activeTurnId }));
+                  addDebugLog(`Interrupt sent | turnId: ${activeTurnId}`);
                 }
               }
               break;
@@ -257,13 +277,32 @@ export default {
               isProcessing.value = false;
               break;
 
+            // Fix 2: agent_state drives all state transitions (server-driven)
+            case 'agent_state':
+              addDebugLog(`Agent state: ${data.state}`);
+              transitionAgentState(data.state);
+              if (data.state === 'speaking' && data.turnId) activeTurnId = data.turnId;
+              break;
+
+            // Fix 2: interruption_acknowledged — pipeline is clean, use newTurnId
+            case 'interruption_acknowledged':
+              isDraining = false;
+              activeTurnId = data.newTurnId || null;
+              transitionAgentState('listening');
+              addDebugLog(`Interruption ACK | newTurnId: ${data.newTurnId}`);
+              break;
+
             case 'audio_chunk':
+              // Fix 2: Drop stale chunks while draining after interrupt
+              if (isDraining || data.turnId !== activeTurnId) {
+                addDebugLog(`Chunk dropped | turnId: ${data.turnId} | active: ${activeTurnId}`);
+                break;
+              }
               audioQueue.push(base64ToArrayBuffer(data.audio));
               break;
 
             case 'audio_complete':
               addDebugLog(`Audio complete: ${data.totalChunks} chunks`);
-              console.log('[VoiceAgent] Audio complete:', data.totalChunks, 'chunks');
               if (!isPlayingAudio.value && audioQueue.length > 0) {
                 playAudioQueue();
               }
@@ -296,17 +335,26 @@ export default {
           addDebugLog(`WebSocket error: ${error.message || 'Unknown error'}`);
           console.error('[VoiceAgent] WebSocket error:', error);
           connectionStatus.value = 'error';
-          alert('Failed to connect to voice agent. Please check if the server is running.');
+          // Don't alert here - onclose will handle it
         };
+
+        // Handle ping from server to keep connection alive
+        ws.addEventListener('ping', () => {
+          if (ws.readyState === WebSocket.OPEN) ws.pong?.();
+        });
 
         ws.onclose = (event) => {
           addDebugLog(`WebSocket closed (code: ${event.code}, reason: ${event.reason || 'None'})`);
           console.log('[VoiceAgent] WebSocket closed', event);
-          connectionStatus.value = 'disconnected';
-          if (isActive.value) {
-            alert('Connection lost. Please try again.');
-          }
+          const wasActive = isActive.value;
           cleanup();
+          connectionStatus.value = 'disconnected';
+          // Only show alert on unexpected disconnect (not manual stop)
+          if (wasActive && event.code !== 1000 && event.code !== 1005) {
+            setTimeout(() => {
+              alert('Connection lost. Please try again.');
+            }, 100);
+          }
         };
 
         addDebugLog('Session initialization complete, waiting for backend...');
