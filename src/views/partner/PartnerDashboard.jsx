@@ -2,6 +2,8 @@ import { ref, onMounted, computed } from 'vue';
 import logo from '../../assets/logo.jpeg';
 import PartnerChat from './PartnerChat.jsx';
 import PartnerVoiceCall from './PartnerVoiceCall.jsx';
+import PartnerEarningsHistory from './PartnerEarningsHistory.jsx';
+import api from '../../services/api.js';
 import {
   ensurePartnerVoiceConnected,
   getPartnerVoiceState,
@@ -17,19 +19,10 @@ export default {
     const sidebarCollapsed = ref(false);
     const loading = ref(false);
     
-    const partner = ref({ name: 'John Doe', specialization: 'Vedic Astrologer', email: 'john.doe@example.com' });
-    const stats = computed(() => ({
-      totalSessions: 156,
-      completed: 142,
-      totalEarning: 45200,
-      pendingEarning: 3800
-    }));
-
-    const sessions = ref([
-      { id: 1, client: 'Rahul Kumar', type: 'Chat', amount: 500, date: '2024-01-15', status: 'completed' },
-      { id: 2, client: 'Priya Sharma', type: 'Voice', amount: 750, date: '2024-01-16', status: 'pending' },
-      { id: 3, client: 'Amit Singh', type: 'Video', amount: 1200, date: '2024-01-17', status: 'completed' }
-    ]);
+    const partner = ref({ name: '', specialization: '', email: '' });
+    const statsData = ref({ totalSessions: 0, completedSessions: 0, totalEarning: 0, creditsEarnedBalance: 0 });
+    const sessions = ref([]);
+    const statsLoading = ref(true);
 
     const toggleSidebar = () => {
       sidebarCollapsed.value = !sidebarCollapsed.value;
@@ -43,23 +36,68 @@ export default {
       window.location.href = '/partner/login';
     };
 
-    onMounted(() => {
-      // Only connect voice socket while on partner dashboard
-      ensurePartnerVoiceConnected();
-
-      const partnerData = localStorage.getItem('partner_data');
-      if (partnerData) {
-        try {
-          const parsedData = JSON.parse(partnerData);
+    const loadPartnerData = async () => {
+      try {
+        statsLoading.value = true;
+        const token = localStorage.getItem('partner_token');
+        const res = await api.request('/mobile/partner/profile', { token });
+        if (res?.success && res.data?.partner) {
+          const p = res.data.partner;
           partner.value = {
-            name: parsedData.name || 'Partner',
-            email: parsedData.email || 'partner@example.com',
-            specialization: parsedData.specialization || 'Astrologer'
+            name: p.name || 'Partner',
+            email: p.email || '',
+            specialization: Array.isArray(p.specialization) ? p.specialization.join(', ') : (p.specialization || 'Astrologer')
           };
-        } catch (error) {
-          console.error('Error parsing partner data:', error);
+          statsData.value = {
+            totalSessions: p.totalSessions || 0,
+            completedSessions: p.completedSessions || 0,
+            totalEarning: p.stats?.totalEarnings || p.creditsEarnedTotal || 0,
+            creditsEarnedBalance: p.creditsEarnedBalance || 0
+          };
+          // Save to localStorage as fallback
+          localStorage.setItem('partner_data', JSON.stringify(p));
         }
+      } catch (err) {
+        console.error('Failed to load partner profile:', err);
+        // Fallback to localStorage
+        const partnerData = localStorage.getItem('partner_data');
+        if (partnerData) {
+          try {
+            const p = JSON.parse(partnerData);
+            partner.value = {
+              name: p.name || 'Partner',
+              email: p.email || '',
+              specialization: Array.isArray(p.specialization) ? p.specialization.join(', ') : (p.specialization || 'Astrologer')
+            };
+          } catch (e) { /* ignore */ }
+        }
+      } finally {
+        statsLoading.value = false;
       }
+    };
+
+    const loadRecentSessions = async () => {
+      try {
+        const res = await api.getPartnerChatCreditHistory({ page: 1, limit: 5 });
+        if (res?.success && res.data) {
+          sessions.value = res.data.map((entry, idx) => ({
+            id: entry.conversationId || idx,
+            client: entry.user?.profile?.name || entry.user?.email || 'User',
+            type: (entry.serviceType || 'chat').charAt(0).toUpperCase() + (entry.serviceType || 'chat').slice(1),
+            amount: entry.creditsEarned || 0,
+            date: entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : '',
+            status: 'completed'
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load recent sessions:', err);
+      }
+    };
+
+    onMounted(() => {
+      ensurePartnerVoiceConnected();
+      loadPartnerData();
+      loadRecentSessions();
     });
 
     const { incomingCalls, isConnected } = getPartnerVoiceState();
@@ -160,10 +198,16 @@ export default {
         )}
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
-          <StatsCard title="Total Sessions" value={stats.value.totalSessions} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>} color="blue" />
-          <StatsCard title="Completed" value={stats.value.completed} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>} color="green" />
-          <StatsCard title="Total Earning" value={`₹${stats.value.totalEarning.toLocaleString()}`} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd"/></svg>} color="yellow" />
-          <StatsCard title="Pending" value={`₹${stats.value.pendingEarning.toLocaleString()}`} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/></svg>} color="orange" />
+          {statsLoading.value ? (
+            <div style="grid-column: 1/-1; text-align: center; padding: 24px; color: #6b7280;">Loading stats…</div>
+          ) : (
+            <>
+              <StatsCard title="Total Sessions" value={statsData.value.totalSessions} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>} color="blue" />
+              <StatsCard title="Completed" value={statsData.value.completedSessions} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>} color="green" />
+              <StatsCard title="Total Earned" value={`${statsData.value.totalEarning.toFixed(1)} cr`} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd"/></svg>} color="yellow" />
+              <StatsCard title="Balance" value={`${statsData.value.creditsEarnedBalance.toFixed(1)} cr`} icon={<svg style="width: 24px; height: 24px;" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/></svg>} color="orange" />
+            </>
+          )}
         </div>
         
         <div style="background-color: white; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6;">
@@ -172,14 +216,16 @@ export default {
           </div>
           <div style="padding: 24px;">
             <div style="display: flex; flex-direction: column; gap: 16px;">
-              {sessions.value.slice(0, 3).map(session => (
+              {sessions.value.length === 0 ? (
+                <p style="color: #9ca3af; font-size: 14px; text-align: center; padding: 16px;">No sessions yet.</p>
+              ) : sessions.value.slice(0, 5).map(session => (
                 <div key={session.id} style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
                   <div>
                     <p style="font-weight: 500; color: #111827;">{session.client}</p>
-                    <p style="font-size: 14px; color: #6b7280;">{session.type} Session</p>
+                    <p style="font-size: 14px; color: #6b7280;">{session.type} Session • {session.date}</p>
                   </div>
                   <div style="text-align: right;">
-                    <p style="font-weight: 600; color: #111827;">₹{session.amount}</p>
+                    <p style="font-weight: 600; color: #16a34a;">+{session.amount} cr</p>
                     <Badge status={session.status} />
                   </div>
                 </div>
@@ -217,13 +263,7 @@ export default {
         case 'video':
           return renderPlaceholder('Video Sessions');
         case 'payments':
-          return (
-            <iframe
-              src="/partner/earnings"
-              style="border: none; width: 100%; height: calc(100vh - 140px);"
-              title="Earnings History"
-            />
-          );
+          return <PartnerEarningsHistory />;
         case 'profile':
           return renderPlaceholder('Profile Settings');
         default:
