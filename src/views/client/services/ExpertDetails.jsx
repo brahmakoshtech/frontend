@@ -133,7 +133,7 @@ export default {
             let imageUrl = review.signedImageUrl || review.userImage || null;
             
             // If it's an S3 URL, try to get presigned URL
-            if (imageUrl && (imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com'))) {
+            if (imageUrl && ((imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com') || imageUrl.includes('r2.cloudflarestorage.com') || (!imageUrl.startsWith('http') && imageUrl.length > 0)))) {
               try {
                 console.log('Getting presigned URL for:', imageUrl);
                 const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);

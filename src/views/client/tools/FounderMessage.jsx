@@ -225,7 +225,7 @@ export default {
       let messageToShow = { ...message };
       
       // Get fresh presigned URL for image if exists
-      if (message.founderImage && message.founderImage.includes('amazonaws.com')) {
+      if (message.founderImage && (message.founderImage.includes('amazonaws.com') || message.founderImage.includes('r2.cloudflarestorage.com') || !message.founderImage.startsWith('http'))) {
         try {
           const presignedUrl = await founderMessageService.getPresignedImageUrl(message.founderImage);
           messageToShow.founderImage = presignedUrl;

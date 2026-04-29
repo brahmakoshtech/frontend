@@ -108,7 +108,7 @@ const sponsorService = {
     }
     
     // Check if it's an S3 URL
-    const isS3Url = logoUrl.includes('s3.amazonaws.com') || logoUrl.includes('amazonaws.com');
+    const isS3Url = (logoUrl.includes('s3.amazonaws.com') || logoUrl.includes('amazonaws.com') || logoUrl.includes('r2.cloudflarestorage.com') || (!logoUrl.startsWith('http') && logoUrl.length > 0));
     if (!isS3Url) {
       return logoUrl; // Return as-is for non-S3 URLs
     }

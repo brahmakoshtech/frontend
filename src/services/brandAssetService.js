@@ -204,7 +204,7 @@ const brandAssetService = {
       }
       
       // Fallback: Extract key from URL if no key provided
-      if (!imageUrl || !imageUrl.includes('amazonaws.com')) {
+      if (!imageUrl || (!imageUrl.includes('amazonaws.com') && !imageUrl.includes('r2.cloudflarestorage.com') && imageUrl.startsWith('http'))) {
         return imageUrl;
       }
 

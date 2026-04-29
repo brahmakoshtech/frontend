@@ -441,7 +441,7 @@ export default {
                               onError={(e) => {
                                 const currentSrc = e.target.src;
                                 const isLocalUrl = currentSrc.includes('localhost') || currentSrc.includes('127.0.0.1') || currentSrc.startsWith('/uploads/');
-                                const isS3Url = currentSrc.includes('s3.amazonaws.com') || currentSrc.includes('amazonaws.com');
+                                const isS3Url = (currentSrc.includes('s3.amazonaws.com') || currentSrc.includes('r2.cloudflarestorage.com')) || currentSrc.includes('amazonaws.com');
                                 
                                 if (isLocalUrl) {
                                   e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&background=6c757d&color=fff&size=70&font-size=0.33`;

@@ -220,7 +220,7 @@ const founderMessageService = {
       }
       
       // Check if it's an S3 URL
-      const isS3Url = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com');
+      const isS3Url = (imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com') || imageUrl.includes('r2.cloudflarestorage.com') || (!imageUrl.startsWith('http') && imageUrl.length > 0));
       if (!isS3Url) {
         return imageUrl; // Return as-is for non-S3 URLs
       }

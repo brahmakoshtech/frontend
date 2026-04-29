@@ -57,7 +57,7 @@ export const getPresignedUrlFromUrl = async (urlOrKey, expiresIn = 86400) => {
       key = url.pathname.substring(1); // Remove leading slash
     } catch (error) {
       // If URL parsing fails, try to extract manually
-      const match = urlOrKey.match(/s3[.-]([^.]+)\.amazonaws\.com\/(.+)$/);
+      const match = urlOrKey.match(/s3[.-]([^.]+)\.amazonaws\.com\/(.+)$/) || urlOrKey.match(/r2\.cloudflarestorage\.com\/[^/]+\/(.+)$/);
       if (match && match[2]) {
         key = decodeURIComponent(match[2]);
       } else {

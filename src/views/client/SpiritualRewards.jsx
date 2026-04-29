@@ -416,8 +416,8 @@ export default {
           greetings: newReward.value.greetings,
           photoUrl,
           bannerUrl,
-          photoKey: photoUrl ? photoUrl.split('.amazonaws.com/')[1]?.split('?')[0] : null,
-          bannerKey: bannerUrl ? bannerUrl.split('.amazonaws.com/')[1]?.split('?')[0] : null
+          photoKey: photoUrl ? photoUrl : null,
+          bannerKey: bannerUrl ? bannerUrl : null
         };
         
         const response = await spiritualRewardsService.createReward(rewardData);
@@ -528,11 +528,11 @@ export default {
         // Add URLs if files were uploaded
         if (photoUrl) {
           updateData.photoUrl = photoUrl;
-          updateData.photoKey = photoUrl.split('.amazonaws.com/')[1]?.split('?')[0];
+          updateData.photoKey = photoUrl;
         }
         if (bannerUrl) {
           updateData.bannerUrl = bannerUrl;
-          updateData.bannerKey = bannerUrl.split('.amazonaws.com/')[1]?.split('?')[0];
+          updateData.bannerKey = bannerUrl;
         }
         
         const response = await spiritualRewardsService.updateReward(editingReward.value._id, updateData);
@@ -558,7 +558,7 @@ export default {
     const cleanS3Url = (url) => {
       if (!url) return null;
       // Fix double slashes in S3 URLs
-      if (url.includes('amazonaws.com/') && url.split('/').length > 5) {
+      if ((url.includes('amazonaws.com/') || url.includes('r2.cloudflarestorage.com/')) && url.split('/').length > 5) {
         const parts = url.split('/');
         const bucketIndex = parts.findIndex(part => part.includes('.s3.'));
         if (bucketIndex > 0) {
