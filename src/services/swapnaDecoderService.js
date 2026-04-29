@@ -35,7 +35,7 @@ const swapnaDecoderService = {
   },
 
   // Upload file to S3 (direct axios call, no auth needed)
-  uploadToS3: async (uploadUrl, file, onProgress) => {
+  uploadToStorage: async (uploadUrl, file, onProgress) => {
     await axios.put(uploadUrl, file, {
       headers: { 'Content-Type': file.type },
       onUploadProgress: (progressEvent) => {

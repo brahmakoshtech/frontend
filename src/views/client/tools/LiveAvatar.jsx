@@ -161,17 +161,19 @@ export default {
         
         let videoUrl = null;
         let imageUrl = null;
+        let videoKey = null;
+        let imageKey = null;
         
         // Upload video directly to S3 if provided
         if (newAvatar.value.videos) {
           try {
-            const { uploadUrl, fileUrl } = await liveAvatarService.getUploadUrl(
+            const { uploadUrl, fileUrl: vFileUrl, key: vKey } = await liveAvatarService.getUploadUrl(
               newAvatar.value.videos.name,
               newAvatar.value.videos.type,
               'video'
             );
             
-            await liveAvatarService.uploadToS3(
+            await liveAvatarService.uploadToStorage(
               uploadUrl,
               newAvatar.value.videos,
               (progress) => {
@@ -179,7 +181,8 @@ export default {
               }
             );
             
-            videoUrl = fileUrl;
+            videoUrl = vFileUrl;
+            videoKey = vKey;
           } catch (error) {
             console.error('Video upload failed:', error);
             toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
@@ -191,13 +194,13 @@ export default {
         // Upload image directly to S3 if provided
         if (newAvatar.value.image) {
           try {
-            const { uploadUrl, fileUrl } = await liveAvatarService.getUploadUrl(
+            const { uploadUrl, fileUrl: iFileUrl, key: iKey } = await liveAvatarService.getUploadUrl(
               newAvatar.value.image.name,
               newAvatar.value.image.type,
               'image'
             );
             
-            await liveAvatarService.uploadToS3(
+            await liveAvatarService.uploadToStorage(
               uploadUrl,
               newAvatar.value.image,
               (progress) => {
@@ -205,7 +208,8 @@ export default {
               }
             );
             
-            imageUrl = fileUrl;
+            imageUrl = iFileUrl;
+            imageKey = iKey;
           } catch (error) {
             console.error('Image upload failed:', error);
             toast.error('Image upload failed: ' + (error.message || 'Unknown error'));
@@ -223,7 +227,9 @@ export default {
           category: newAvatar.value.category,
           link: newAvatar.value.link,
           videoUrl,
-          imageUrl
+          videoKey,
+          imageUrl,
+          imageKey
         });
         
         // Add new avatar to list without reloading
@@ -275,13 +281,13 @@ export default {
         // Upload new video if provided
         if (editingAvatar.value.videos) {
           try {
-            const { uploadUrl, fileUrl } = await liveAvatarService.getUploadUrl(
+            const { uploadUrl, fileUrl: uvFileUrl, key: uvKey } = await liveAvatarService.getUploadUrl(
               editingAvatar.value.videos.name,
               editingAvatar.value.videos.type,
               'video'
             );
             
-            await liveAvatarService.uploadToS3(
+            await liveAvatarService.uploadToStorage(
               uploadUrl,
               editingAvatar.value.videos,
               (progress) => {
@@ -289,7 +295,8 @@ export default {
               }
             );
             
-            updateData.videoUrl = fileUrl;
+            updateData.videoUrl = uvFileUrl;
+            updateData.videoKey = uvKey;
           } catch (error) {
             console.error('Video upload failed:', error);
             toast.error('Video upload failed: ' + (error.message || 'Unknown error'));
@@ -301,13 +308,13 @@ export default {
         // Upload new image if provided
         if (editingAvatar.value.image) {
           try {
-            const { uploadUrl, fileUrl } = await liveAvatarService.getUploadUrl(
+            const { uploadUrl, fileUrl: uiFileUrl, key: uiKey } = await liveAvatarService.getUploadUrl(
               editingAvatar.value.image.name,
               editingAvatar.value.image.type,
               'image'
             );
             
-            await liveAvatarService.uploadToS3(
+            await liveAvatarService.uploadToStorage(
               uploadUrl,
               editingAvatar.value.image,
               (progress) => {
@@ -315,7 +322,8 @@ export default {
               }
             );
             
-            updateData.imageUrl = fileUrl;
+            updateData.imageUrl = uiFileUrl;
+            updateData.imageKey = uiKey;
           } catch (error) {
             console.error('Image upload failed:', error);
             toast.error('Image upload failed: ' + (error.message || 'Unknown error'));

@@ -202,7 +202,7 @@ export default {
               'video'
             );
             
-            await prathanaService.uploadToS3(
+            await prathanaService.uploadToStorage(
               uploadUrl,
               formData.value.videoFile,
               (progress) => {
@@ -228,7 +228,7 @@ export default {
               'image'
             );
             
-            await prathanaService.uploadToS3(
+            await prathanaService.uploadToStorage(
               uploadUrl,
               formData.value.thumbnailFile,
               (progress) => {
@@ -294,7 +294,7 @@ export default {
               'video'
             );
             
-            await prathanaService.uploadToS3(
+            await prathanaService.uploadToStorage(
               uploadUrl,
               editFormData.value.videoFile,
               (progress) => {
@@ -320,7 +320,7 @@ export default {
               'image'
             );
             
-            await prathanaService.uploadToS3(
+            await prathanaService.uploadToStorage(
               uploadUrl,
               editFormData.value.thumbnailFile,
               (progress) => {

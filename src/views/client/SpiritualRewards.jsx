@@ -354,7 +354,7 @@ export default {
               'photo'
             );
             
-            await spiritualRewardsService.uploadToS3(
+            await spiritualRewardsService.uploadToStorage(
               uploadUrl,
               newReward.value.photo,
               (progress) => {
@@ -385,7 +385,7 @@ export default {
               'banner'
             );
             
-            await spiritualRewardsService.uploadToS3(
+            await spiritualRewardsService.uploadToStorage(
               uploadUrl,
               newReward.value.banner,
               (progress) => {
@@ -463,7 +463,7 @@ export default {
               'photo'
             );
             
-            await spiritualRewardsService.uploadToS3(
+            await spiritualRewardsService.uploadToStorage(
               uploadUrl,
               editForm.value.photo,
               (progress) => {
@@ -494,7 +494,7 @@ export default {
               'banner'
             );
             
-            await spiritualRewardsService.uploadToS3(
+            await spiritualRewardsService.uploadToStorage(
               uploadUrl,
               editForm.value.banner,
               (progress) => {

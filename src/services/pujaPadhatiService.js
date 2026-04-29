@@ -51,7 +51,7 @@ const pujaPadhatiService = {
   },
 
   // Upload file to S3
-  uploadToS3: async (uploadUrl, file, onProgress) => {
+  uploadToStorage: async (uploadUrl, file, onProgress) => {
     try {
       await axios.put(uploadUrl, file, {
         headers: {

@@ -216,9 +216,9 @@ export default {
               fileType: 'video'
             });
             
-            const { uploadUrl, fileUrl } = response.data.data;
+            const { uploadUrl, fileUrl: uvFileUrl, key: uvKey } = response.data.data;
             
-            await brahmAvatarService.uploadToS3(
+            await brahmAvatarService.uploadToStorage(
               uploadUrl,
               editingReel.value.newVideo,
               (progress) => {
@@ -226,7 +226,8 @@ export default {
               }
             );
             
-            updateData.videoUrl = fileUrl;
+            updateData.videoUrl = uvFileUrl;
+            updateData.videoKey = uvKey;
           } catch (error) {
             console.error('Video upload failed:', error);
             toast.error('❌ Video upload failed');
@@ -244,9 +245,9 @@ export default {
               fileType: 'image'
             });
             
-            const { uploadUrl, fileUrl } = response.data.data;
+            const { uploadUrl, fileUrl: uiFileUrl, key: uiKey } = response.data.data;
             
-            await brahmAvatarService.uploadToS3(
+            await brahmAvatarService.uploadToStorage(
               uploadUrl,
               editingReel.value.newImage,
               (progress) => {
@@ -254,7 +255,8 @@ export default {
               }
             );
             
-            updateData.imageUrl = fileUrl;
+            updateData.imageUrl = uiFileUrl;
+            updateData.imageKey = uiKey;
           } catch (error) {
             console.error('Image upload failed:', error);
             toast.error('❌ Image upload failed');
@@ -399,9 +401,9 @@ export default {
               fileType: 'video'
             });
             
-            const { uploadUrl, fileUrl } = response.data.data;
+            const { uploadUrl, fileUrl: vFileUrl, key: vKey } = response.data.data;
             
-            await brahmAvatarService.uploadToS3(
+            await brahmAvatarService.uploadToStorage(
               uploadUrl,
               newReel.value.video,
               (progress) => {
@@ -409,7 +411,8 @@ export default {
               }
             );
             
-            videoUrl = fileUrl;
+            videoUrl = vFileUrl;
+            reelData.videoKey = vKey;
           } catch (error) {
             console.error('Video upload failed:', error);
             toast.error('❌ Video upload failed');
@@ -427,9 +430,9 @@ export default {
               fileType: 'image'
             });
             
-            const { uploadUrl, fileUrl } = response.data.data;
+            const { uploadUrl, fileUrl: iFileUrl, key: iKey } = response.data.data;
             
-            await brahmAvatarService.uploadToS3(
+            await brahmAvatarService.uploadToStorage(
               uploadUrl,
               newReel.value.image,
               (progress) => {
@@ -437,7 +440,8 @@ export default {
               }
             );
             
-            imageUrl = fileUrl;
+            imageUrl = iFileUrl;
+            reelData.imageKey = iKey;
           } catch (error) {
             console.error('Image upload failed:', error);
             toast.error('❌ Image upload failed');

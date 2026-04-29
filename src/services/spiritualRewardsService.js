@@ -132,8 +132,8 @@ const spiritualRewardsService = {
     }
   },
 
-  // Upload to S3
-  uploadToS3: async (uploadUrl, file, onProgress) => {
+  // Upload to storage (R2/S3 via presigned URL)
+  uploadToStorage: async (uploadUrl, file, onProgress) => {
     try {
       const xhr = new XMLHttpRequest();
       

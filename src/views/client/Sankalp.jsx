@@ -228,7 +228,7 @@ export default {
             formData.value.bannerImage.type
           );
           
-          await sankalpService.uploadToS3(
+          await sankalpService.uploadToStorage(
             uploadUrl,
             formData.value.bannerImage
           );

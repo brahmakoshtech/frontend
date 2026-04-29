@@ -354,7 +354,7 @@ export default {
               file.type
             );
             
-            await swapnaDecoderService.uploadToS3(uploadUrl, file, (progress) => {
+            await swapnaDecoderService.uploadToStorage(uploadUrl, file, (progress) => {
               uploadProgress.value = progress;
             });
             

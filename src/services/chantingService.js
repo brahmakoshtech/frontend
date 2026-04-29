@@ -38,8 +38,8 @@ const chantingService = {
     }
   },
 
-  // Upload file directly to S3
-  uploadToS3: async (uploadUrl, file, onProgress) => {
+  // Upload file to storage (R2/S3 via presigned URL)
+  uploadToStorage: async (uploadUrl, file, onProgress) => {
     try {
       const xhr = new XMLHttpRequest();
       

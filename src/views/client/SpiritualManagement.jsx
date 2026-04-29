@@ -637,20 +637,22 @@ export default {
         
         let videoUrl = null;
         let audioUrl = null;
+        let videoKey = null;
+        let audioKey = null;
         
-        // Upload video directly to S3 if provided
+        // Upload video directly to R2 if provided
         if (editClipForm.value.video) {
           try {
             editClipUploading.value.video = true;
             editClipUploadProgress.value.video = 0;
             
-            const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
+            const { uploadUrl, fileUrl: vFileUrl, key: vKey } = await spiritualClipService.getUploadUrl(
               editClipForm.value.video.name,
               editClipForm.value.video.type,
               'video'
             );
             
-            await spiritualClipService.uploadToS3(
+            await spiritualClipService.uploadToStorage(
               uploadUrl,
               editClipForm.value.video,
               (progress) => {
@@ -658,7 +660,8 @@ export default {
               }
             );
             
-            videoUrl = fileUrl;
+            videoUrl = vFileUrl;
+            videoKey = vKey;
             editClipUploading.value.video = false;
           } catch (error) {
             console.error('Video upload failed:', error);
@@ -669,19 +672,19 @@ export default {
           }
         }
         
-        // Upload audio directly to S3 if provided
+        // Upload audio directly to R2 if provided
         if (editClipForm.value.audio) {
           try {
             editClipUploading.value.audio = true;
             editClipUploadProgress.value.audio = 0;
             
-            const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
+            const { uploadUrl, fileUrl: aFileUrl, key: aKey } = await spiritualClipService.getUploadUrl(
               editClipForm.value.audio.name,
               editClipForm.value.audio.type,
               'audio'
             );
             
-            await spiritualClipService.uploadToS3(
+            await spiritualClipService.uploadToStorage(
               uploadUrl,
               editClipForm.value.audio,
               (progress) => {
@@ -689,7 +692,8 @@ export default {
               }
             );
             
-            audioUrl = fileUrl;
+            audioUrl = aFileUrl;
+            audioKey = aKey;
             editClipUploading.value.audio = false;
           } catch (error) {
             console.error('Audio upload failed:', error);
@@ -711,9 +715,9 @@ export default {
           type: editClipForm.value.type || currentCategory.value
         };
         
-        // Add URLs if files were uploaded
-        if (videoUrl) updateData.videoUrl = videoUrl;
-        if (audioUrl) updateData.audioUrl = audioUrl;
+        // Add keys/URLs if files were uploaded
+        if (videoKey) { updateData.videoKey = videoKey; updateData.videoUrl = videoUrl; }
+        if (audioKey) { updateData.audioKey = audioKey; updateData.audioUrl = audioUrl; }
         
         const response = await spiritualClipService.updateClipDirect(editingClip.value._id, updateData);
         
@@ -1307,20 +1311,22 @@ export default {
         
         let videoUrl = null;
         let audioUrl = null;
+        let videoKey = null;
+        let audioKey = null;
         
-        // Upload video directly to S3 if provided
+        // Upload video directly to R2 if provided
         if (addClipForm.value.video) {
           try {
             clipUploading.value.video = true;
             clipUploadProgress.value.video = 0;
             
-            const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
+            const { uploadUrl, fileUrl: vFileUrl, key: vKey } = await spiritualClipService.getUploadUrl(
               addClipForm.value.video.name,
               addClipForm.value.video.type,
               'video'
             );
             
-            await spiritualClipService.uploadToS3(
+            await spiritualClipService.uploadToStorage(
               uploadUrl,
               addClipForm.value.video,
               (progress) => {
@@ -1328,7 +1334,8 @@ export default {
               }
             );
             
-            videoUrl = fileUrl;
+            videoUrl = vFileUrl;
+            videoKey = vKey;
             clipUploading.value.video = false;
           } catch (error) {
             console.error('Video upload failed:', error);
@@ -1339,19 +1346,19 @@ export default {
           }
         }
         
-        // Upload audio directly to S3 if provided
+        // Upload audio directly to R2 if provided
         if (addClipForm.value.audio) {
           try {
             clipUploading.value.audio = true;
             clipUploadProgress.value.audio = 0;
             
-            const { uploadUrl, fileUrl } = await spiritualClipService.getUploadUrl(
+            const { uploadUrl, fileUrl: aFileUrl, key: aKey } = await spiritualClipService.getUploadUrl(
               addClipForm.value.audio.name,
               addClipForm.value.audio.type,
               'audio'
             );
             
-            await spiritualClipService.uploadToS3(
+            await spiritualClipService.uploadToStorage(
               uploadUrl,
               addClipForm.value.audio,
               (progress) => {
@@ -1359,7 +1366,8 @@ export default {
               }
             );
             
-            audioUrl = fileUrl;
+            audioUrl = aFileUrl;
+            audioKey = aKey;
             clipUploading.value.audio = false;
           } catch (error) {
             console.error('Audio upload failed:', error);
@@ -1370,17 +1378,19 @@ export default {
           }
         }
         
-        // Create clip with S3 URLs and category type
+        // Create clip with R2 keys and category type
         const response = await spiritualClipService.createClipDirect({
           title: addClipForm.value.title,
           description: addClipForm.value.description,
           suitableTime: addClipForm.value.suitableTime,
           guided: addClipForm.value.guided,
           transcript: addClipForm.value.transcript,
-          type: currentCategory.value,  // Add category type
+          type: currentCategory.value,
           suitableConfiguration: addClipForm.value.suitableConfiguration,
           videoUrl,
-          audioUrl
+          videoKey,
+          audioUrl,
+          audioKey
         });
         
         if (response.success) {

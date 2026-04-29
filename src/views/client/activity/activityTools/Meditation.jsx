@@ -217,7 +217,7 @@ export default {
               'video'
             );
             
-            await meditationService.uploadToS3(
+            await meditationService.uploadToStorage(
               uploadUrl,
               formData.value.video,
               (progress) => {
@@ -243,7 +243,7 @@ export default {
               'image'
             );
             
-            await meditationService.uploadToS3(
+            await meditationService.uploadToStorage(
               uploadUrl,
               formData.value.image,
               (progress) => {
@@ -303,7 +303,7 @@ export default {
               'video'
             );
             
-            await meditationService.uploadToS3(
+            await meditationService.uploadToStorage(
               uploadUrl,
               editFormData.value.video,
               (progress) => {
@@ -329,7 +329,7 @@ export default {
               'image'
             );
             
-            await meditationService.uploadToS3(
+            await meditationService.uploadToStorage(
               uploadUrl,
               editFormData.value.image,
               (progress) => {

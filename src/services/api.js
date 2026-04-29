@@ -942,7 +942,7 @@ class ApiService {
     });
   }
 
-  async uploadToS3(presignedUrl, file) {
+  async uploadToStorage(presignedUrl, file) {
     return fetch(presignedUrl, {
       method: 'PUT',
       body: file,
@@ -1258,7 +1258,7 @@ const api = {
   getUserProfile: apiService.getUserProfile.bind(apiService),
   updateUserProfile: apiService.updateUserProfile.bind(apiService),
   getPresignedUrl: apiService.getPresignedUrl.bind(apiService),
-  uploadToS3: apiService.uploadToS3.bind(apiService),
+  uploadToStorage: apiService.uploadToStorage.bind(apiService),
   createRealtimeAgentRoom: apiService.createRealtimeAgentRoom.bind(apiService),
   forgotPassword: apiService.forgotPassword.bind(apiService),
   verifyResetOTP: apiService.verifyResetOTP.bind(apiService),

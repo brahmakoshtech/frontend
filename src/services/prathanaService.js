@@ -99,7 +99,7 @@ const prathanaService = {
   },
 
   // Upload file to S3
-  uploadToS3: async (uploadUrl, file, onProgress) => {
+  uploadToStorage: async (uploadUrl, file, onProgress) => {
     try {
       const xhr = new XMLHttpRequest();
       

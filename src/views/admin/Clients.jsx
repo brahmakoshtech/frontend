@@ -100,7 +100,7 @@ export default {
           const { presignedUrl, key } = response.data;
 
           // Upload file to S3
-          await api.uploadToS3(presignedUrl, file);
+          await api.uploadToStorage(presignedUrl, file);
 
           // Store the S3 key in the form
           newClient.value.businessLogo = key;

@@ -255,7 +255,7 @@ export default {
               'video'
             );
             
-            await chantingService.uploadToS3(
+            await chantingService.uploadToStorage(
               uploadUrl,
               formData.value.video,
               (progress) => {
@@ -281,7 +281,7 @@ export default {
               'image'
             );
             
-            await chantingService.uploadToS3(
+            await chantingService.uploadToStorage(
               uploadUrl,
               formData.value.image,
               (progress) => {
@@ -358,7 +358,7 @@ export default {
               'video'
             );
             
-            await chantingService.uploadToS3(
+            await chantingService.uploadToStorage(
               uploadUrl,
               editFormData.value.video,
               (progress) => {
@@ -384,7 +384,7 @@ export default {
               'image'
             );
             
-            await chantingService.uploadToS3(
+            await chantingService.uploadToStorage(
               uploadUrl,
               editFormData.value.image,
               (progress) => {

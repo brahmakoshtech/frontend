@@ -374,17 +374,17 @@ export default {
         if (formData.value.thumbnailImage) {
           try {
             const file = formData.value.thumbnailImage;
-            const { uploadUrl, fileUrl, key } = await pujaPadhatiService.getUploadUrl(
+            const { uploadUrl, fileUrl: tFileUrl, key: tKey } = await pujaPadhatiService.getUploadUrl(
               file.name,
               file.type
             );
             
-            await pujaPadhatiService.uploadToS3(uploadUrl, file, (progress) => {
+            await pujaPadhatiService.uploadToStorage(uploadUrl, file, (progress) => {
               uploadProgress.value = progress;
             });
             
-            thumbnailUrl = fileUrl;
-            thumbnailKey = key;
+            thumbnailUrl = tFileUrl;
+            thumbnailKey = tKey;
           } catch (uploadError) {
             console.error('Error uploading thumbnail:', uploadError);
             toast.error('Failed to upload thumbnail');
@@ -397,17 +397,17 @@ export default {
         if (formData.value.audioFile) {
           try {
             const file = formData.value.audioFile;
-            const { uploadUrl, fileUrl, key } = await pujaPadhatiService.getUploadUrl(
+            const { uploadUrl, fileUrl: aFileUrl, key: aKey } = await pujaPadhatiService.getUploadUrl(
               file.name,
               file.type
             );
             
-            await pujaPadhatiService.uploadToS3(uploadUrl, file, (progress) => {
+            await pujaPadhatiService.uploadToStorage(uploadUrl, file, (progress) => {
               audioUploadProgress.value = progress;
             });
             
-            audioUrl = fileUrl;
-            audioKey = key;
+            audioUrl = aFileUrl;
+            audioKey = aKey;
           } catch (uploadError) {
             console.error('Error uploading audio:', uploadError);
             toast.error('Failed to upload audio');
@@ -420,17 +420,17 @@ export default {
         if (formData.value.videoFile) {
           try {
             const file = formData.value.videoFile;
-            const { uploadUrl, fileUrl, key } = await pujaPadhatiService.getUploadUrl(
+            const { uploadUrl, fileUrl: vFileUrl, key: vKey } = await pujaPadhatiService.getUploadUrl(
               file.name,
               file.type
             );
             
-            await pujaPadhatiService.uploadToS3(uploadUrl, file, (progress) => {
+            await pujaPadhatiService.uploadToStorage(uploadUrl, file, (progress) => {
               videoUploadProgress.value = progress;
             });
             
-            videoUrl = fileUrl;
-            videoKey = key;
+            videoUrl = vFileUrl;
+            videoKey = vKey;
           } catch (uploadError) {
             console.error('Error uploading video:', uploadError);
             toast.error('Failed to upload video');
