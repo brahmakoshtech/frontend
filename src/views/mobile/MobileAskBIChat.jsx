@@ -146,7 +146,8 @@ export default {
         const response = await avatarChatService.sendMessage(
           agentId,
           question,
-          avatarName
+          avatarName,
+          avatarId || null
         );
 
         if (response.insufficientCredits) {

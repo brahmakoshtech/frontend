@@ -17,7 +17,7 @@ class AvatarChatService {
     }
   }
 
-  async sendMessage(agentId, message, avatarName = 'AI Guide') {
+  async sendMessage(agentId, message, avatarName = 'AI Guide', liveAvatarId = null) {
     try {
       const token = localStorage.getItem('token_user');
       if (!token) {
@@ -33,7 +33,7 @@ class AvatarChatService {
       // Send message to avatar chat endpoint with user context
       const response = await api.post(
         `/mobile/avatar-chat/${this.currentChatId}/message`,
-        { message, avatarName },
+        { message, avatarName, liveAvatarId },
         { token }
       );
 

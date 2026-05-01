@@ -61,6 +61,20 @@ const liveAvatarService = {
     }
   },
 
+  // Get avatar conversations for client
+  getConversations: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.page) query.append('page', params.page);
+      if (params.limit) query.append('limit', params.limit);
+      const qs = query.toString();
+      const response = await api.get(`/client/avatar-conversations${qs ? `?${qs}` : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Toggle live avatar status
   toggleStatus: async (id) => {
     try {
