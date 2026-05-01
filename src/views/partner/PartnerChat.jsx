@@ -271,6 +271,49 @@ export default {
         console.log('📞 Call ended:', payload);
         inVoiceCall.value = false;
         incomingVoiceCall.value = null;
+        // ✅ FIX: conversation ended mark karo taaki chat billing band ho
+        if (payload?.conversationId) {
+          if (selectedConversation.value?.conversationId === payload.conversationId) {
+            selectedConversation.value = {
+              ...selectedConversation.value,
+              status: 'ended',
+              endedAt: payload.endedAt || new Date().toISOString()
+            };
+          }
+          const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
+          if (conv) conv.status = 'ended';
+          loadConversations();
+        }
+        destroyPeerConnection();
+      });
+
+      // ✅ FIX: voice auto ended (credits khatam)
+      socket.value.on('voice:auto_ended', (payload) => {
+        console.log('📞 Voice auto ended:', payload);
+        inVoiceCall.value = false;
+        incomingVoiceCall.value = null;
+        if (payload?.conversationId) {
+          if (selectedConversation.value?.conversationId === payload.conversationId) {
+            selectedConversation.value = { ...selectedConversation.value, status: 'ended' };
+          }
+          const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
+          if (conv) conv.status = 'ended';
+          loadConversations();
+        }
+        destroyPeerConnection();
+      });
+
+      // ✅ FIX: chat auto ended (credits khatam during chat)
+      socket.value.on('chat:auto_ended', (payload) => {
+        console.log('💬 Chat auto ended:', payload);
+        if (payload?.conversationId) {
+          if (selectedConversation.value?.conversationId === payload.conversationId) {
+            selectedConversation.value = { ...selectedConversation.value, status: 'ended' };
+          }
+          const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
+          if (conv) conv.status = 'ended';
+          loadConversations();
+        }
       });
 
       socket.value.on('voice:signal', async (payload) => {

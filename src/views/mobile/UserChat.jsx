@@ -236,11 +236,65 @@ export default {
 
       socket.value.on('voice:call:ended', (payload) => {
         console.log('📞 Call ended (mobile user):', payload);
+        // ✅ FIX: voice call end hone ke baad chat band karo
+        // Conversation ko ended mark karo taaki message input disable ho
+        if (payload?.conversationId) {
+          // selectedConversation update karo
+          if (selectedConversation.value?.conversationId === payload.conversationId) {
+            selectedConversation.value = {
+              ...selectedConversation.value,
+              status: 'ended',
+              endedAt: payload.endedAt || new Date().toISOString()
+            };
+          }
+          // conversations list mein bhi update karo
+          const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
+          if (conv) {
+            conv.status = 'ended';
+            conv.endedAt = payload.endedAt || new Date().toISOString();
+          }
+          // Reload conversations to get fresh data
+          loadConversations();
+        }
       });
 
       socket.value.on('voice:signal', (payload) => {
         console.log('📶 Voice signal (mobile user):', payload);
         // Mobile app dev: feed payload.signal into WebRTC stack
+      });
+
+      // ✅ FIX: voice auto ended (credits khatam)
+      socket.value.on('voice:auto_ended', (payload) => {
+        console.log('📞 Voice auto ended (credits):', payload);
+        if (payload?.conversationId) {
+          if (selectedConversation.value?.conversationId === payload.conversationId) {
+            selectedConversation.value = {
+              ...selectedConversation.value,
+              status: 'ended',
+              endedAt: new Date().toISOString()
+            };
+          }
+          const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
+          if (conv) conv.status = 'ended';
+          loadConversations();
+        }
+      });
+
+      // ✅ FIX: chat auto ended (credits khatam during chat)
+      socket.value.on('chat:auto_ended', (payload) => {
+        console.log('💬 Chat auto ended (credits):', payload);
+        if (payload?.conversationId) {
+          if (selectedConversation.value?.conversationId === payload.conversationId) {
+            selectedConversation.value = {
+              ...selectedConversation.value,
+              status: 'ended',
+              endedAt: new Date().toISOString()
+            };
+          }
+          const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
+          if (conv) conv.status = 'ended';
+          loadConversations();
+        }
       });
     };
     
