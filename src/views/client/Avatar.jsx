@@ -27,11 +27,15 @@ export default {
     const mediaContent = ref({ type: '', url: '' });
 
     // ── Conversations tab ──
-    const activeTab = ref('avatars'); // 'avatars' | 'conversations'
+    const activeTab = ref('avatars'); // 'avatars' | 'conversations' | 'voice'
     const conversations = ref([]);
     const convLoading = ref(false);
     const convMeta = ref({ page: 1, limit: 20, total: 0, pages: 0 });
     const convPage = ref(1);
+    const voiceLogs = ref([]);
+    const voiceLoading = ref(false);
+    const voiceMeta = ref({ page: 1, limit: 20, total: 0, pages: 0 });
+    const voicePage = ref(1);
 
     // ── Helpers ──
     const fmt = (iso) => {
@@ -79,11 +83,24 @@ export default {
       }
     };
 
+    const loadVoiceLogs = async (page = 1) => {
+      try {
+        voiceLoading.value = true;
+        const res = await liveAvatarService.getVoiceCallLogs({ page, limit: 20 });
+        voiceLogs.value = res.data || [];
+        voiceMeta.value = res.meta || { page, limit: 20, total: 0, pages: 0 };
+        voicePage.value = page;
+      } catch (error) {
+        console.error('Error loading voice logs:', error);
+      } finally {
+        voiceLoading.value = false;
+      }
+    };
+
     const switchTab = (tab) => {
       activeTab.value = tab;
-      if (tab === 'conversations' && conversations.value.length === 0) {
-        loadConversations(1);
-      }
+      if (tab === 'conversations' && conversations.value.length === 0) loadConversations(1);
+      if (tab === 'voice' && voiceLogs.value.length === 0) loadVoiceLogs(1);
     };
 
     // ── Avatar modal helpers ──
@@ -110,7 +127,12 @@ export default {
               )}
               {activeTab.value === 'conversations' && !convLoading.value && (
                 <small class="text-dark d-block mt-1" style={{ opacity: 0.8 }}>
-                  {convMeta.value.total} total conversations
+                  {convMeta.value.total} total avatar conversations
+                </small>
+              )}
+              {activeTab.value === 'voice' && !voiceLoading.value && (
+                <small class="text-dark d-block mt-1" style={{ opacity: 0.8 }}>
+                  {voiceMeta.value.total} total voice calls
                 </small>
               )}
             </div>
@@ -134,10 +156,24 @@ export default {
               onClick={() => switchTab('conversations')}
             >
               <ChatBubbleLeftRightIcon style={{ width: '18px', height: '18px' }} />
-              Conversations
+              Avatar Chats
               {convMeta.value.total > 0 && (
                 <span class={`badge rounded-pill ${activeTab.value === 'conversations' ? 'bg-white text-primary' : 'bg-primary text-white'}`} style={{ fontSize: '0.7rem' }}>
                   {convMeta.value.total}
+                </span>
+              )}
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class={`nav-link fw-semibold px-4 py-2 rounded-3 border-0 d-flex align-items-center gap-2 ${activeTab.value === 'voice' ? 'active bg-warning text-white shadow-sm' : 'bg-light text-muted'}`}
+              onClick={() => switchTab('voice')}
+            >
+              <ClockIcon style={{ width: '18px', height: '18px' }} />
+              Voice Calls
+              {voiceMeta.value.total > 0 && (
+                <span class={`badge rounded-pill ${activeTab.value === 'voice' ? 'bg-white text-warning' : 'bg-warning text-white'}`} style={{ fontSize: '0.7rem' }}>
+                  {voiceMeta.value.total}
                 </span>
               )}
             </button>
@@ -373,6 +409,125 @@ export default {
                   </div>
                   <h4 class="text-muted mb-2">No conversations yet</h4>
                   <p class="text-muted">Avatar conversations will appear here once users start chatting.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── VOICE CALLS TAB ── */}
+        {activeTab.value === 'voice' && (
+          <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-3 p-md-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">
+                  🎙️ Voice Agent Calls (Rashmi & Krishna)
+                </h5>
+                <span class="badge bg-warning rounded-pill px-3 py-2" style={{ fontSize: '0.85rem' }}>
+                  Total: {voiceMeta.value.total}
+                </span>
+              </div>
+
+              {voiceLoading.value ? (
+                <div class="text-center py-5">
+                  <div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div>
+                </div>
+              ) : voiceLogs.value.length > 0 ? (
+                <>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle" style={{ fontSize: '0.875rem' }}>
+                      <thead class="table-light">
+                        <tr>
+                          <th>#</th>
+                          <th>User</th>
+                          <th>Agent (Voice)</th>
+                          <th>Start Time</th>
+                          <th>End Time</th>
+                          <th>Duration</th>
+                          <th>Messages</th>
+                          <th>Credits Used</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {voiceLogs.value.map((log, idx) => (
+                          <tr key={log._id}>
+                            <td class="text-muted">{(voicePage.value - 1) * voiceMeta.value.limit + idx + 1}</td>
+                            <td>
+                              {log.user ? (
+                                <div>
+                                  <div class="fw-semibold">{log.user.name || 'Unknown'}</div>
+                                  <small class="text-muted">{log.user.email || '—'}</small>
+                                </div>
+                              ) : <span class="text-muted">—</span>}
+                            </td>
+                            <td>
+                              <div class="fw-semibold">{log.agent?.name || '—'}</div>
+                              <small class="text-muted">{log.agent?.voiceName || '—'}</small>
+                            </td>
+                            <td>
+                              <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-2" style={{ fontSize: '0.78rem' }}>
+                                {fmt(log.startTime)}
+                              </span>
+                            </td>
+                            <td>
+                              {log.endTime ? (
+                                <span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-2" style={{ fontSize: '0.78rem' }}>
+                                  {fmt(log.endTime)}
+                                </span>
+                              ) : <span class="text-muted">—</span>}
+                            </td>
+                            <td>
+                              <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-2">
+                                {fmtDuration(log.durationMinutes)}
+                              </span>
+                            </td>
+                            <td class="text-center">{log.messagesCount ?? '—'}</td>
+                            <td class="text-center">
+                              <span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-2">
+                                {log.creditsUsed ?? 0}
+                              </span>
+                            </td>
+                            <td>
+                              {log.status === 'ongoing' ? (
+                                <span class="badge bg-success d-flex align-items-center gap-1" style={{ width: 'fit-content' }}>
+                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
+                                  On Going
+                                </span>
+                              ) : (
+                                <span class="badge bg-secondary">Completed</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {voiceMeta.value.pages > 1 && (
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                      <small class="text-muted">
+                        Showing {(voicePage.value - 1) * voiceMeta.value.limit + 1}–{Math.min(voicePage.value * voiceMeta.value.limit, voiceMeta.value.total)} of {voiceMeta.value.total}
+                      </small>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" disabled={voicePage.value <= 1} onClick={() => loadVoiceLogs(voicePage.value - 1)}>
+                          <ChevronLeftIcon style={{ width: '16px', height: '16px' }} /> Prev
+                        </button>
+                        <span class="btn btn-light btn-sm disabled">{voicePage.value} / {voiceMeta.value.pages}</span>
+                        <button class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" disabled={voicePage.value >= voiceMeta.value.pages} onClick={() => loadVoiceLogs(voicePage.value + 1)}>
+                          Next <ChevronRightIcon style={{ width: '16px', height: '16px' }} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div class="text-center py-5">
+                  <div class="mb-4 p-4 rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px' }}>
+                    <ClockIcon style={{ width: '4rem', height: '4rem', color: '#6c757d' }} />
+                  </div>
+                  <h4 class="text-muted mb-2">No voice calls yet</h4>
+                  <p class="text-muted">Voice agent calls (Rashmi, Krishna) will appear here.</p>
                 </div>
               )}
             </div>

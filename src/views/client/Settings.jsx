@@ -331,20 +331,20 @@ export default {
                         <div class="form-text">Deducted from user on every chat message sent.</div>
                       </div>
                       <div class="col-md-6">
-                        <label class="form-label fw-semibold">Voice CCR <span class="text-muted fw-normal">(credits per second)</span></label>
+                        <label class="form-label fw-semibold">Voice CCR <span class="text-muted fw-normal">(credits per 10 seconds)</span></label>
                         <div class="input-group">
                           <span class="input-group-text">🎙️</span>
                           <input
                             type="number"
                             min="0"
-                            step="0.1"
+                            step="1"
                             class="form-control"
                             value={ccr.value.voiceCCR}
                             onInput={(e) => { ccr.value.voiceCCR = Number(e.target.value || 0); }}
                           />
-                          <span class="input-group-text">credits/sec</span>
+                          <span class="input-group-text">credits/10s</span>
                         </div>
-                        <div class="form-text">Deducted from user every second during voice call.</div>
+                        <div class="form-text">Deducted every 10 seconds during voice call. Default: 20 credits.</div>
                       </div>
                     </div>
                     <div class="mt-4 d-flex justify-content-end">

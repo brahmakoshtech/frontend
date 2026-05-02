@@ -61,6 +61,21 @@ const liveAvatarService = {
     }
   },
 
+  // Get voice agent call logs (Rashmi, Krishna)
+  getVoiceCallLogs: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.page) query.append('page', params.page);
+      if (params.limit) query.append('limit', params.limit);
+      if (params.agentId) query.append('agentId', params.agentId);
+      const qs = query.toString();
+      const response = await api.get(`/client/agents/voice-call-logs${qs ? `?${qs}` : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get avatar conversations for client
   getConversations: async (params = {}) => {
     try {
