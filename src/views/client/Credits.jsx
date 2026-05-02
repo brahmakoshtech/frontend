@@ -22,10 +22,9 @@ export default {
           params.append('search', search.value);
         }
         const response = await api.getClientUsers(`?${params.toString()}`);
-        // /client/users returns { success, data: { users, count, ... } }
-        const payload = response.data || response.data?.data || {};
-        users.value = payload.users || payload.data?.users || [];
-        total.value = payload.total ?? payload.count ?? users.value.length;
+        // /client/users returns { success, users, total/count }
+        users.value = response.users || response.data?.users || [];
+        total.value = response.total ?? response.count ?? users.value.length;
       } catch (error) {
         console.error('[ClientCredits] Failed to fetch users:', error);
       } finally {
@@ -102,6 +101,7 @@ export default {
                 placeholder="Search by email or name..."
                 value={search.value}
                 onInput={(e) => (search.value = e.target.value)}
+                onKeydown={(e) => e.key === 'Enter' && onSearch()}
                 style={{ maxWidth: '260px' }}
               />
               <button class="btn btn-outline-primary" onClick={onSearch}>

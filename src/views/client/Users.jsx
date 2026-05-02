@@ -27,7 +27,8 @@ export default {
     const fetchUsers = async () => {
       try {
         const response = await api.getClientUsers();
-        users.value = response.data.users;
+        // backend returns { success, users, total } directly (no data wrapper)
+        users.value = response.users || [];
       } catch (error) {
         console.error('Failed to fetch users:', error);
       }

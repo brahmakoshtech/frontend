@@ -9,7 +9,8 @@ export default {
     const fetchUsers = async () => {
       try {
         const response = await api.getAdminUsers();
-        users.value = response.data.users;
+        // backend returns { success, data: { users } }
+        users.value = response.data?.users || [];
       } catch (error) {
         console.error('Failed to fetch users:', error);
       }

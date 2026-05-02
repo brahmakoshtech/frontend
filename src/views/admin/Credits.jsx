@@ -22,9 +22,10 @@ export default {
           params.append('search', search.value);
         }
         const response = await api.getAdminUsers(`?${params.toString()}`);
+        // backend returns { success, data: { users, total } }
         const data = response.data || {};
-        users.value = data.users || data.data?.users || [];
-        total.value = data.total ?? data.data?.total ?? users.value.length;
+        users.value = data.users || [];
+        total.value = data.total ?? users.value.length;
       } catch (error) {
         console.error('[AdminCredits] Failed to fetch users:', error);
       } finally {
@@ -104,6 +105,7 @@ export default {
                 placeholder="Search by email or name..."
                 value={search.value}
                 onInput={(e) => (search.value = e.target.value)}
+                onKeydown={(e) => e.key === 'Enter' && onSearch()}
                 style={{ maxWidth: '260px' }}
               />
               <button class="btn btn-outline-primary" onClick={onSearch}>
