@@ -401,11 +401,6 @@ export default {
         appState.value === STATE_ERROR ||
         (appState.value === STATE_JOINING && agentState.hasAgentJoinedRoom.value)
       );
-        hasError: hasError.value,
-        appState: appState.value,
-        hasAgentJoinedRoom: agentState.hasAgentJoinedRoom.value,
-        shouldShow
-      });
       return shouldShow;
     });
 

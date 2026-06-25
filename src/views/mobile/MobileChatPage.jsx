@@ -41,6 +41,7 @@ export default {
         }
         
         // Debug logging
+        console.log('[MobileChatPage] Token debug:', {
           hasUserToken: !!userToken,
           tokenLength: userToken ? userToken.length : 0,
           tokenPreview: userToken ? userToken.substring(0, 20) + '...' : 'none',
