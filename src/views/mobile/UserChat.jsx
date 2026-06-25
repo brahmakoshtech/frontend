@@ -79,8 +79,10 @@ export default {
         transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 2000,
-        timeout: 20000
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 10000,
+        timeout: 20000,
+        forceNew: false
       });
       
       // Connection events
@@ -229,44 +231,42 @@ export default {
       });
 
       socket.value.on('voice:call:ended', (payload) => {
-        // ✅ FIX: voice call end hone ke baad chat band karo
-        // Conversation ko ended mark karo taaki message input disable ho
+        // continueChat:true means voice ended but chat session stays open.
+        // Do NOT mark the conversation as 'ended' when continueChat is true.
+        const shouldEndChat = !payload.continueChat;
         if (payload?.conversationId) {
-          // selectedConversation update karo
           if (selectedConversation.value?.conversationId === payload.conversationId) {
             selectedConversation.value = {
               ...selectedConversation.value,
-              status: 'ended',
-              endedAt: payload.endedAt || new Date().toISOString()
+              voiceCallActive: false,
+              ...(shouldEndChat ? { status: 'ended', endedAt: payload.endedAt || new Date().toISOString() } : {})
             };
           }
-          // conversations list mein bhi update karo
           const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
           if (conv) {
-            conv.status = 'ended';
-            conv.endedAt = payload.endedAt || new Date().toISOString();
+            conv.voiceCallActive = false;
+            if (shouldEndChat) {
+              conv.status = 'ended';
+              conv.endedAt = payload.endedAt || new Date().toISOString();
+            }
           }
-          // Reload conversations to get fresh data
           loadConversations();
         }
       });
 
-      socket.value.on('voice:signal', (payload) => {
-        // Mobile app dev: feed payload.signal into WebRTC stack
-      });
-
-      // ✅ FIX: voice auto ended (credits khatam)
+      // voice:auto_ended = credits exhausted → conversation truly ends, billing stops
       socket.value.on('voice:auto_ended', (payload) => {
         if (payload?.conversationId) {
           if (selectedConversation.value?.conversationId === payload.conversationId) {
             selectedConversation.value = {
               ...selectedConversation.value,
               status: 'ended',
+              voiceCallActive: false,
               endedAt: new Date().toISOString()
             };
           }
           const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
-          if (conv) conv.status = 'ended';
+          if (conv) { conv.status = 'ended'; conv.voiceCallActive = false; }
           loadConversations();
         }
       });

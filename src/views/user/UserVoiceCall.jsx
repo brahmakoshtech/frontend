@@ -253,8 +253,16 @@ export default {
 
       socket.value.on('voice:call:ended', (payload) => {
         const convId = callConversationId.value || payload?.conversationId;
+        // Disconnect THIS page's socket BEFORE navigating to chat.
+        // The chat page will create its own socket connection.
+        // Keeping both sockets alive causes duplicate message:send events
+        // which results in double credit deductions.
         destroyPeerConnection();
-        // Auto-navigate to chat screen after call ends
+        if (socket.value) {
+          socket.value.disconnect();
+          socket.value = null;
+          isConnected.value = false;
+        }
         setTimeout(() => {
           router.push({
             name: 'MobileUserChat',

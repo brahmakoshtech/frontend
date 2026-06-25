@@ -54,7 +54,10 @@ export default {
         transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 2000
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 10000,
+        timeout: 20000,
+        forceNew: false
       });
       
       // Connection events
@@ -259,15 +262,21 @@ export default {
       messages.value = [];
       activeView.value = 'chat';
       
-      // Join conversation via WebSocket
-      socket.value.emit('conversation:join',
-        { conversationId: conversation.conversationId },
-        async (response) => {
-          if (response.success) {
-            await loadMessages(conversation.conversationId);
+      // Join conversation via WebSocket if connected, otherwise load directly
+      if (socket.value && isConnected.value) {
+        socket.value.emit('conversation:join',
+          { conversationId: conversation.conversationId },
+          async (response) => {
+            if (response?.success) {
+              await loadMessages(conversation.conversationId);
+            } else {
+              await loadMessages(conversation.conversationId);
+            }
           }
-        }
-      );
+        );
+      } else {
+        await loadMessages(conversation.conversationId);
+      }
     };
     
     // Load messages
@@ -321,21 +330,34 @@ export default {
         }
       };
       
-      socket.value.emit('message:send', messageData, (response) => {
-        if (response.success) {
-          updateConversationPreview();
-          newMessage.value = '';
-          stopTyping();
-        } else {
-          console.error('❌ Failed to send message:', response.message);
-          alert(response.message);
-        }
-      });
+      if (socket.value && isConnected.value) {
+        socket.value.emit('message:send', messageData, (response) => {
+          if (response?.success) {
+            updateConversationPreview();
+            newMessage.value = '';
+            stopTyping();
+          } else {
+            console.error('❌ Failed to send message:', response?.message);
+            alert(response?.message || 'Failed to send message');
+          }
+        });
+      } else {
+        api.sendMessage(selectedConversation.value.conversationId, messageData)
+          .then(() => {
+            updateConversationPreview();
+            newMessage.value = '';
+            loadMessages(selectedConversation.value.conversationId);
+          })
+          .catch(error => {
+            console.error('❌ Failed to send message:', error);
+            alert('Failed to send message');
+          });
+      }
     };
     
     // Typing indicators
     const startTyping = () => {
-      if (!selectedConversation.value) return;
+      if (!selectedConversation.value || !socket.value || !isConnected.value) return;
       
       socket.value.emit('typing:start', {
         conversationId: selectedConversation.value.conversationId
@@ -346,7 +368,7 @@ export default {
     };
     
     const stopTyping = () => {
-      if (!selectedConversation.value) return;
+      if (!selectedConversation.value || !socket.value || !isConnected.value) return;
       
       socket.value.emit('typing:stop', {
         conversationId: selectedConversation.value.conversationId
@@ -360,7 +382,11 @@ export default {
     
     // Mark messages as read
     const markMessagesAsRead = (conversationId) => {
-      socket.value.emit('message:read', { conversationId });
+      if (socket.value && isConnected.value) {
+        socket.value.emit('message:read', { conversationId });
+      } else {
+        api.markMessagesAsRead(conversationId);
+      }
     };
     
     // Back to partners list

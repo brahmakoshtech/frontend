@@ -150,9 +150,11 @@ export default {
         },
         transports: ['polling', 'websocket'],
         reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 2000,
-        timeout: 20000
+        reconnectionAttempts: 5,
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 10000,
+        timeout: 20000,
+        forceNew: false
       });
       
       // Connection events
@@ -260,35 +262,40 @@ export default {
       socket.value.on('voice:call:ended', (payload) => {
         inVoiceCall.value = false;
         incomingVoiceCall.value = null;
-        // ✅ FIX: conversation ended mark karo taaki chat billing band ho
+        destroyPeerConnection();
         if (payload?.conversationId) {
+          // continueChat:true means the conversation stays ACCEPTED — chat is still open.
+          // Only mark ended on frontend when the server explicitly says continueChat is false/absent.
+          const shouldEndChat = !payload.continueChat;
           if (selectedConversation.value?.conversationId === payload.conversationId) {
             selectedConversation.value = {
               ...selectedConversation.value,
-              status: 'ended',
-              endedAt: payload.endedAt || new Date().toISOString()
+              voiceCallActive: false,
+              ...(shouldEndChat ? { status: 'ended', endedAt: payload.endedAt || new Date().toISOString() } : {})
             };
           }
           const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
-          if (conv) conv.status = 'ended';
+          if (conv) {
+            conv.voiceCallActive = false;
+            if (shouldEndChat) conv.status = 'ended';
+          }
           loadConversations();
         }
-        destroyPeerConnection();
       });
 
-      // ✅ FIX: voice auto ended (credits khatam)
+      // voice:auto_ended = credits exhausted → conversation truly ends
       socket.value.on('voice:auto_ended', (payload) => {
         inVoiceCall.value = false;
         incomingVoiceCall.value = null;
+        destroyPeerConnection();
         if (payload?.conversationId) {
           if (selectedConversation.value?.conversationId === payload.conversationId) {
-            selectedConversation.value = { ...selectedConversation.value, status: 'ended' };
+            selectedConversation.value = { ...selectedConversation.value, status: 'ended', voiceCallActive: false };
           }
           const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
-          if (conv) conv.status = 'ended';
+          if (conv) { conv.status = 'ended'; conv.voiceCallActive = false; }
           loadConversations();
         }
-        destroyPeerConnection();
       });
 
       // ✅ FIX: chat auto ended (credits khatam during chat)
