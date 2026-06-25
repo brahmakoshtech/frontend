@@ -127,6 +127,17 @@ export function ensurePartnerVoiceConnected() {
 
   socketRef.value.on('connect', () => {
     isConnected.value = true;
+    // Clear stale local call state that causes "Continue Calling" after reconnect
+    incomingCalls.value = [];
+    const staleStatuses = new Set(['ringing', 'in_call']);
+    if (callHistory.value.some((h) => staleStatuses.has(h.status))) {
+      callHistory.value = callHistory.value.map((h) =>
+        staleStatuses.has(h.status)
+          ? { ...h, status: 'ended', endedAt: nowIso(), lastEventAt: nowIso() }
+          : h
+      );
+      saveHistory(callHistory.value);
+    }
   });
 
   socketRef.value.on('disconnect', () => {
@@ -174,7 +185,12 @@ export function ensurePartnerVoiceConnected() {
     const conversationId = payload?.conversationId;
     if (conversationId) {
       incomingCalls.value = incomingCalls.value.filter((c) => c.conversationId !== conversationId);
-      upsertHistory(conversationId, { status: 'ended', lastEventAt: nowIso(), endedAt: nowIso() });
+      upsertHistory(conversationId, {
+        status: 'ended',
+        lastEventAt: nowIso(),
+        endedAt: nowIso(),
+        continueChat: payload?.continueChat ?? false
+      });
     }
   });
 

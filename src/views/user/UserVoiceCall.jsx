@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { io } from 'socket.io-client';
 import api from '../../services/api.js';
 
@@ -7,10 +7,12 @@ export default {
   name: 'UserVoiceCall',
   setup() {
     const route = useRoute();
+    const router = useRouter();
     const socket = ref(null);
     const isConnected = ref(false);
     const status = ref('idle'); // 'idle' | 'ringing' | 'in_call' | 'ended'
     const info = ref(null); // call payload
+    const callConversationId = ref(route.query.conversationId || null);
 
     const peerConnection = ref(null);
     const localStream = ref(null);
@@ -169,6 +171,7 @@ export default {
 
     const startOutgoingCall = async (conversationId) => {
       if (!conversationId || !socket.value || !isConnected.value) return;
+      callConversationId.value = conversationId;
       try {
         const pc = createPeerConnection(conversationId);
         await ensureTracksAdded(pc);
@@ -237,10 +240,27 @@ export default {
 
       socket.value.on('voice:call:rejected', () => {
         status.value = 'ended';
+        // Navigate back to chat after rejection
+        const convId = callConversationId.value;
+        destroyPeerConnection();
+        setTimeout(() => {
+          router.push({
+            name: 'MobileUserChat',
+            query: convId ? { conversationId: convId } : {}
+          });
+        }, 1500);
       });
 
-      socket.value.on('voice:call:ended', () => {
+      socket.value.on('voice:call:ended', (payload) => {
+        const convId = callConversationId.value || payload?.conversationId;
         destroyPeerConnection();
+        // Auto-navigate to chat screen after call ends
+        setTimeout(() => {
+          router.push({
+            name: 'MobileUserChat',
+            query: convId ? { conversationId: convId } : {}
+          });
+        }, 1000);
       });
 
       socket.value.on('voice:signal', async (payload) => {
@@ -388,9 +408,17 @@ export default {
           )}
 
           {status.value === 'ended' && (
-            <p style="margin-top:12px; font-size:13px; color:#9ca3af;">
-              Call ended. You can close this page.
-            </p>
+            <div style="text-align:center;">
+              <p style="margin-bottom:12px; font-size:13px; color:#9ca3af;">
+                Call ended. Redirecting to chat...
+              </p>
+              <button
+                onClick={() => router.push({ name: 'MobileUserChat', query: callConversationId.value ? { conversationId: callConversationId.value } : {} })}
+                style="padding:10px 20px; background:#6366f1; border:none; border-radius:9999px; color:white; font-weight:600; cursor:pointer;"
+              >
+                Go to Chat
+              </button>
+            </div>
           )}
         </div>
 

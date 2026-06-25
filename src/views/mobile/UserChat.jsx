@@ -215,6 +215,14 @@ export default {
       });
 
       socket.value.on('voice:call:accepted', (payload) => {
+        // When call is accepted, navigate to voice call page with conversationId
+        const convId = payload?.conversationId;
+        if (convId) {
+          router.push({
+            name: 'UserVoiceCall',
+            query: { conversationId: convId }
+          });
+        }
       });
 
       socket.value.on('voice:call:rejected', (payload) => {
@@ -410,11 +418,11 @@ export default {
       const partner = selectedPartner.value;
 
       const existingConv = conversations.value.find(
-        c => c.otherUser?._id === partner._id
+        c => c.otherUser?._id === partner._id && c.status !== 'ended' && c.status !== 'rejected' && c.status !== 'cancelled'
       );
 
       // If active conversation exists, go directly to voice call screen
-      if (existingConv && existingConv.status !== 'ended') {
+      if (existingConv) {
         showPartnerDetails.value = false;
         showPartnersList.value = false;
         await selectConversation(existingConv);
@@ -423,10 +431,6 @@ export default {
           query: { conversationId: existingConv.conversationId }
         });
         return;
-      }
-
-      // No conversation or previous one ended → start new consultation
-      if (existingConv?.status === 'ended') {
       }
 
       showPartnerDetails.value = false;
@@ -914,6 +918,17 @@ export default {
       // Load data
       await loadPartners();
       await loadConversations();
+
+      // Auto-open conversation if conversationId is in query params (e.g. returning from voice call)
+      const queryConvId = new URLSearchParams(window.location.search).get('conversationId');
+      if (queryConvId) {
+        showPartnersList.value = false;
+        // Wait for conversations to load then open the matching one
+        const match = conversations.value.find(c => c.conversationId === queryConvId);
+        if (match) {
+          await selectConversation(match);
+        }
+      }
     });
     
     onUnmounted(() => {

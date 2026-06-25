@@ -78,19 +78,35 @@ export default {
 
     const loadRecentSessions = async () => {
       try {
-        const res = await api.getPartnerChatCreditHistory({ page: 1, limit: 5 });
+        const res = await api.request('/mobile/partner/sessions', { params: { page: 1, limit: 5 } });
         if (res?.success && res.data) {
           sessions.value = res.data.map((entry, idx) => ({
             id: entry.conversationId || idx,
-            client: entry.user?.profile?.name || entry.user?.email || 'User',
+            client: entry.userName || entry.user?.profile?.name || entry.userEmail || 'User',
             type: (entry.serviceType || 'chat').charAt(0).toUpperCase() + (entry.serviceType || 'chat').slice(1),
             amount: entry.creditsEarned || 0,
-            date: entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : '',
+            date: entry.endTime ? new Date(entry.endTime).toLocaleDateString() : '',
             status: 'completed'
           }));
         }
       } catch (err) {
         console.error('Failed to load recent sessions:', err);
+        // Fallback to credit history
+        try {
+          const res = await api.getPartnerChatCreditHistory({ page: 1, limit: 5 });
+          if (res?.success && res.data) {
+            sessions.value = res.data.map((entry, idx) => ({
+              id: entry.conversationId || idx,
+              client: entry.user?.profile?.name || entry.user?.email || 'User',
+              type: (entry.serviceType || 'chat').charAt(0).toUpperCase() + (entry.serviceType || 'chat').slice(1),
+              amount: entry.creditsEarned || 0,
+              date: entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : '',
+              status: 'completed'
+            }));
+          }
+        } catch (fallbackErr) {
+          console.error('Failed to load sessions fallback:', fallbackErr);
+        }
       }
     };
 
