@@ -16,9 +16,7 @@ export default {
     });
 
     const handleToggleSidebar = () => {
-      console.log('Header toggle clicked, current sidebar state:', sidebarState.value);
       toggleSidebar();
-      console.log('After toggle, sidebar state:', sidebarState.value);
     };
 
     const toggleMenu = () => {

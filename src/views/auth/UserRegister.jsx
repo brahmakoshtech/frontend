@@ -189,7 +189,6 @@ export default {
  
     function initGoogle() {
       if (!window.google || !window.google.accounts) {
-        console.log('Google SDK not loaded yet');
         return;
       }
       
@@ -214,7 +213,6 @@ export default {
               shape: 'rectangular'
             }
           );
-          console.log('Google button rendered successfully');
         } else {
           console.error('Google button container not found');
         }

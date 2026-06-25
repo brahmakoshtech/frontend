@@ -576,7 +576,6 @@ export default {
         const response = await spiritualRewardsService.getAllRewards();
         if (response.success) {
           rewards.value = response.data;
-          console.log('Fetched rewards:', response.data); // Debug log
         } else {
           toast.error(response.message || 'Failed to fetch rewards');
         }

@@ -226,7 +226,6 @@ const brandAssetService = {
       // Return null to use placeholder instead of broken URL
       return null;
     } catch (error) {
-      console.warn('Error getting presigned URL:', error.message);
       // Return null to use placeholder image
       return null;
     }

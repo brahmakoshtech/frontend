@@ -337,7 +337,6 @@ export function useAuth() {
               userToken.value = storedToken;
               // Ensure localStorage and store are in sync
               if (userToken.value !== storedToken) {
-                console.warn('[Auth Store] Token mismatch detected, syncing...');
                 userToken.value = storedToken;
               }
               break;
@@ -351,7 +350,6 @@ export function useAuth() {
         switch (role) {
           case 'user':
             if (userToken.value !== storedToken) {
-              console.log('[Auth Store] Syncing user token from localStorage');
               userToken.value = storedToken;
             }
             break;

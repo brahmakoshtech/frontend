@@ -149,11 +149,8 @@ export default {
 
       // Handle meeting state changes
       callObject.on('joined-meeting', () => {
-        console.log('Joined meeting event fired');
         meetingState.value = 'joined-meeting';
         appState.value = STATE_JOINED;
-        console.log('App state updated to STATE_JOINED:', appState.value);
-        console.log('Current appState value:', appState.value === STATE_JOINED);
       });
 
       callObject.on('left-meeting', () => {
@@ -171,7 +168,6 @@ export default {
       
       // Also listen to meeting-state event
       callObject.on('meeting-state', (ev) => {
-        console.log('Meeting state changed:', ev.meetingState);
         meetingState.value = ev.meetingState;
       });
     };
@@ -244,13 +240,11 @@ export default {
         // The meeting state event will also fire, but set it here too
         // to ensure UI updates immediately
         const currentMeetingState = callObject.meetingState();
-        console.log('Current meeting state after join:', currentMeetingState);
         
         // Force update to show call view - set to JOINED immediately
         // The event will confirm it, but we want to show the UI right away
         appState.value = STATE_JOINED;
         meetingState.value = currentMeetingState || 'joined-meeting';
-        console.log('Set appState to JOINED immediately after join');
       } catch (error) {
         console.error('Error creating or joining room', error);
         appState.value = STATE_IDLE;
@@ -407,7 +401,6 @@ export default {
         appState.value === STATE_ERROR ||
         (appState.value === STATE_JOINING && agentState.hasAgentJoinedRoom.value)
       );
-      console.log('showCallView computed:', {
         hasError: hasError.value,
         appState: appState.value,
         hasAgentJoinedRoom: agentState.hasAgentJoinedRoom.value,
@@ -417,7 +410,6 @@ export default {
     });
 
     return () => {
-      console.log('Render function called, appState:', appState.value, 'showCallView:', showCallView.value);
       
       // Error state
       if (hasError.value) {

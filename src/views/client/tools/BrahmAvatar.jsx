@@ -65,7 +65,6 @@ export default {
         .replace(/&#x2F;/g, '/')
         .replace(/&#x3D;/g, '=');
       
-      console.log('🔧 URL Decode:', { original: url, decoded: decodedUrl });
       return decodedUrl;
     };
 
@@ -73,14 +72,11 @@ export default {
       try {
         loading.value = true;
         const response = await brahmAvatarService.getBrahmAvatars(true);
-        console.log('🔍 API Response:', response.data);
         
         // Handle nested data structure: response.data.data.data
         const reelsData = response.data?.data?.data || response.data?.data || [];
         reels.value = Array.isArray(reelsData) ? reelsData : [];
         
-        console.log('📦 Reels loaded:', reels.value.length);
-        console.log('🎬 First reel:', reels.value[0]);
         
         // Clean and decode URLs, remove duplicates
         if (Array.isArray(reels.value)) {
@@ -99,9 +95,6 @@ export default {
               delete reel.image; // Remove duplicate
             }
             
-            console.log(`Reel ${index + 1} (${reel.name}):`);
-            console.log('  - videoUrl:', reel.videoUrl);
-            console.log('  - imageUrl:', reel.imageUrl);
           });
         }
       } catch (error) {
@@ -127,9 +120,6 @@ export default {
     };
 
     const editReel = (reel) => {
-      console.log('🔧 Edit reel called with:', reel);
-      console.log('🎥 Video URL:', reel.videoUrl);
-      console.log('🖼️ Image URL:', reel.imageUrl);
       
       // Clean URLs for editing
       const reelCopy = { ...reel };
@@ -141,7 +131,6 @@ export default {
       }
       
       editingReel.value = reelCopy;
-      console.log('📝 Editing reel set to:', editingReel.value);
       showEditModal.value = true;
       openDropdownId.value = null;
     };
@@ -266,8 +255,6 @@ export default {
         
         const response = await brahmAvatarService.updateBrahmAvatar(editingReel.value._id, updateData);
         
-        console.log('🔄 Update API Response:', response);
-        console.log('🔄 Response data:', response.data);
         
         // Update local state immediately with the response data
         const reelIndex = reels.value.findIndex(r => r._id === editingReel.value._id);
@@ -285,7 +272,6 @@ export default {
           // Update the reel in the array
           reels.value[reelIndex] = updatedReel;
           
-          console.log('✅ Local state updated with:', updatedReel);
         }
         
         // Reset progress and close modal
@@ -575,8 +561,6 @@ export default {
                                     muted
                                     onError={(e) => {
                                       console.error('Main card video load error:', e);
-                                      console.log('Video URL:', reel.videoUrl || reel.video);
-                                      console.log('Full reel object:', reel);
                                     }}
                                   >
                                     <source src={reel.videoUrl || reel.video} type="video/mp4" />
@@ -605,8 +589,6 @@ export default {
                                   crossorigin="anonymous"
                                   onError={(e) => {
                                     console.error('Main card image load error:', e);
-                                    console.log('Image URL:', reel.imageUrl || reel.image);
-                                    console.log('Full reel object:', reel);
                                   }}
                                 />
                               )}
@@ -1251,7 +1233,6 @@ export default {
                                 crossorigin="anonymous"
                                 onError={(e) => {
                                   console.error('Video load error:', e);
-                                  console.log('Video URL:', editingReel.value.videoUrl || editingReel.value.video);
                                 }}
                               >
                                 <source src={editingReel.value.videoUrl || editingReel.value.video} type="video/mp4" />
@@ -1310,7 +1291,6 @@ export default {
                                 crossorigin="anonymous"
                                 onError={(e) => {
                                   console.error('Image load error:', e);
-                                  console.log('Image URL:', editingReel.value.imageUrl || editingReel.value.image);
                                 }}
                               />
                               <div class="mt-1">

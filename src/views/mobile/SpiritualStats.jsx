@@ -67,10 +67,6 @@ export default {
         }
         const response = await spiritualStatsService.getUserStats();
         if (response.success) {
-          console.log('Raw API response:', response.data);
-          console.log('Recent activities:', response.data.recentActivities);
-          console.log('Recent activities length:', response.data.recentActivities?.length);
-          console.log('Activity types:', response.data.recentActivities?.map(a => a.type));
           
           userStats.value = {
             totalStats: response.data.totalStats || {

@@ -120,24 +120,18 @@ export default {
         loading.value = true;
         toast.info('Creating testimonial...');
         const { image, ...testimonialData } = newTestimonial.value;
-        console.log('1. Creating testimonial without image:', testimonialData);
         const response = await testimonialService.createTestimonial(testimonialData);
         
         if (response.success && response.data) {
           let createdTestimonial = response.data;
-          console.log('2. Testimonial created:', createdTestimonial._id);
           
           // Upload image if provided
           if (image && createdTestimonial._id) {
-            console.log('3. Uploading image for testimonial:', createdTestimonial._id);
-            console.log('4. Image file:', image.name, image.type, image.size);
             try {
               toast.info('Uploading image...');
               const imageResponse = await testimonialService.uploadImage(createdTestimonial._id, image);
-              console.log('5. Image upload response:', imageResponse);
               if (imageResponse.success && imageResponse.data) {
                 createdTestimonial.image = imageResponse.data.imageUrl;
-                console.log('6. Image uploaded successfully:', imageResponse.data.imageUrl);
               } else {
                 console.error('7. Image upload failed:', imageResponse.error);
               }
@@ -146,7 +140,6 @@ export default {
               toast.error('⚠️ Testimonial created but image upload failed');
             }
           } else {
-            console.log('3. No image to upload or no testimonial ID');
           }
           
           newTestimonial.value = { name: '', rating: 5, message: '', image: null };
@@ -304,55 +297,6 @@ export default {
     };
 
     onMounted(() => {
-      // Console log all tokens for debugging
-      const clientToken = localStorage.getItem('token_client');
-      const userToken = localStorage.getItem('token_user');
-      const adminToken = localStorage.getItem('token_admin');
-      const superAdminToken = localStorage.getItem('token_super_admin');
-      
-      console.log('=== TESTIMONIAL TOKEN DEBUG ===');
-      console.log('Client Token:', clientToken);
-      console.log('User Token:', userToken);
-      console.log('Admin Token:', adminToken);
-      console.log('Super Admin Token:', superAdminToken);
-      console.log('Current URL:', window.location.href);
-      console.log('Testimonial Context: CLIENT DASHBOARD');
-      
-      // Decode and validate client token
-      if (clientToken && clientToken.startsWith('eyJ')) {
-        try {
-          const payload = JSON.parse(atob(clientToken.split('.')[1]));
-          console.log('✅ Client Token Payload:', payload);
-          console.log('🕐 Token Expires:', new Date(payload.exp * 1000));
-          console.log('⏰ Current Time:', new Date());
-          console.log('🔑 Token Valid:', payload.exp * 1000 > Date.now());
-          
-          // Copy token for Postman
-          console.log('📋 COPY THIS TOKEN FOR POSTMAN:');
-          console.log(clientToken);
-        } catch (e) {
-          console.log('❌ Could not decode client token:', e);
-        }
-      }
-      
-      // Check if user token is real or test
-      if (userToken === 'your_user_token_here') {
-        console.log('⚠️ User token is a test value, not real token');
-        console.log('💡 To get real user token: Login as user role');
-      } else if (userToken && userToken.startsWith('eyJ')) {
-        console.log('✅ User token appears to be real JWT');
-        try {
-          const payload = JSON.parse(atob(userToken.split('.')[1]));
-          console.log('User Token Payload:', payload);
-        } catch (e) {
-          console.log('❌ Could not decode user token');
-        }
-      } else {
-        console.log('❌ No valid user token found');
-      }
-      
-      console.log('===============================');
-      
       fetchTestimonials();
     });
 

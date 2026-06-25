@@ -65,8 +65,6 @@ export default {
         return;
       }
       
-      console.log('🔌 Connecting to WebSocket...');
-      console.log('🔑 Using token:', token.substring(0, 20) + '...');
       
       // Disconnect existing socket if any
       if (socket.value) {
@@ -87,8 +85,6 @@ export default {
       
       // Connection events
       socket.value.on('connect', () => {
-        console.log('✅ WebSocket connected');
-        console.log('📍 Socket ID:', socket.value.id);
         isConnected.value = true;
         if (messagePollInterval) {
           clearInterval(messagePollInterval);
@@ -97,14 +93,12 @@ export default {
       });
       
       socket.value.on('connected', (data) => {
-        console.log('✅ Server acknowledged connection:', data);
         if (data.userId) {
           userInfo.value.id = data.userId;
         }
       });
       
       socket.value.on('disconnect', (reason) => {
-        console.log('❌ WebSocket disconnected, reason:', reason);
         isConnected.value = false;
       });
       
@@ -119,7 +113,6 @@ export default {
       
       // Message events
       socket.value.on('message:new', (data) => {
-        console.log('📨 New message received:', data);
         
         if (selectedConversation.value?.conversationId === data.conversationId) {
           messages.value.push(data.message);
@@ -147,7 +140,6 @@ export default {
       });
       
       socket.value.on('message:read:receipt', (data) => {
-        console.log('✅ Messages read by partner:', data);
         
         if (data.messageIds === 'all') {
           messages.value.forEach(msg => {
@@ -180,11 +172,9 @@ export default {
       
       // Conversation events
       socket.value.on('conversation:partner:joined', (data) => {
-        console.log('👤 Partner joined conversation:', data);
       });
       
       socket.value.on('conversation:accepted', async (data) => {
-        console.log('✅ Conversation accepted:', data);
         
         // Move from pending to active
         const pendingConv = conversations.value.find(c => c.conversationId === data.conversationId);
@@ -206,7 +196,6 @@ export default {
       });
       
       socket.value.on('conversation:rejected', async (data) => {
-        console.log('❌ Conversation rejected:', data);
         
         // Remove from conversations
         conversations.value = conversations.value.filter(
@@ -222,20 +211,16 @@ export default {
 
       // Voice call events (mobile)
       socket.value.on('voice:call:incoming', (payload) => {
-        console.log('📞 Incoming voice call (mobile user):', payload);
         // Mobile app dev can hook incoming call UI here
       });
 
       socket.value.on('voice:call:accepted', (payload) => {
-        console.log('📞 Call accepted (mobile user):', payload);
       });
 
       socket.value.on('voice:call:rejected', (payload) => {
-        console.log('📞 Call rejected (mobile user):', payload);
       });
 
       socket.value.on('voice:call:ended', (payload) => {
-        console.log('📞 Call ended (mobile user):', payload);
         // ✅ FIX: voice call end hone ke baad chat band karo
         // Conversation ko ended mark karo taaki message input disable ho
         if (payload?.conversationId) {
@@ -259,13 +244,11 @@ export default {
       });
 
       socket.value.on('voice:signal', (payload) => {
-        console.log('📶 Voice signal (mobile user):', payload);
         // Mobile app dev: feed payload.signal into WebRTC stack
       });
 
       // ✅ FIX: voice auto ended (credits khatam)
       socket.value.on('voice:auto_ended', (payload) => {
-        console.log('📞 Voice auto ended (credits):', payload);
         if (payload?.conversationId) {
           if (selectedConversation.value?.conversationId === payload.conversationId) {
             selectedConversation.value = {
@@ -282,7 +265,6 @@ export default {
 
       // ✅ FIX: chat auto ended (credits khatam during chat)
       socket.value.on('chat:auto_ended', (payload) => {
-        console.log('💬 Chat auto ended (credits):', payload);
         if (payload?.conversationId) {
           if (selectedConversation.value?.conversationId === payload.conversationId) {
             selectedConversation.value = {
@@ -311,7 +293,6 @@ export default {
           if (u.email) userInfo.value.email = u.email;
         }
       } catch (e) {
-        console.warn('[UserChat] Could not load user profile:', e?.message);
       }
     };
 
@@ -343,11 +324,9 @@ export default {
       loading.value = true;
       try {
         const response = await api.getAvailablePartners();
-        console.log('📦 Partners response:', response);
         
         if (response && response.success) {
           partners.value = response.data || [];
-          console.log('✅ Loaded partners:', partners.value.length);
         }
       } catch (error) {
         console.error('❌ Error loading partners:', error);
@@ -362,7 +341,6 @@ export default {
       loading.value = true;
       try {
         const response = await api.getConversations();
-        console.log('📦 Conversations response:', response);
         
         if (response && response.success) {
           const list = response.data || [];
@@ -372,7 +350,6 @@ export default {
               new Date(c.lastMessageAt || c.updatedAt || c.createdAt || 0).getTime();
             return getTime(b) - getTime(a);
           });
-          console.log('✅ Loaded conversations:', conversations.value.length);
         }
       } catch (error) {
         console.error('❌ Error loading conversations:', error);
@@ -384,7 +361,6 @@ export default {
     
     // Open partner details first (then allow request)
     const openPartnerDetails = async (partner) => {
-      console.log('👤 Selected partner:', partner);
       selectedPartner.value = partner;
       showPartnersList.value = true;
       showPartnerDetails.value = true;
@@ -408,7 +384,6 @@ export default {
       
       // If active conversation exists, just open it
       if (existingConv && existingConv.status !== 'ended') {
-        console.log('ℹ️ Conversation already exists, opening it');
         showPartnerDetails.value = false;
         showPartnersList.value = false;
         await selectConversation(existingConv);
@@ -417,7 +392,6 @@ export default {
 
       // No conversation or previous one ended → start new consultation
       if (existingConv?.status === 'ended') {
-        console.log('ℹ️ Previous consultation ended - starting new one');
       }
 
       showPartnerDetails.value = false;
@@ -425,7 +399,6 @@ export default {
 
       const hasCompleteDetails = fillAstrologyFromProfile();
       if (hasCompleteDetails) {
-        console.log('✅ Birth details from profile - creating conversation directly');
         await createConversationRequest('consultation');
       } else {
         showAstrologyForm.value = true;
@@ -442,7 +415,6 @@ export default {
 
       // If active conversation exists, go directly to voice call screen
       if (existingConv && existingConv.status !== 'ended') {
-        console.log('ℹ️ Conversation already exists, opening voice call');
         showPartnerDetails.value = false;
         showPartnersList.value = false;
         await selectConversation(existingConv);
@@ -455,7 +427,6 @@ export default {
 
       // No conversation or previous one ended → start new consultation
       if (existingConv?.status === 'ended') {
-        console.log('ℹ️ Previous consultation ended - starting new voice call request');
       }
 
       showPartnerDetails.value = false;
@@ -463,7 +434,6 @@ export default {
 
       const hasCompleteDetails = fillAstrologyFromProfile();
       if (hasCompleteDetails) {
-        console.log('✅ Birth details from profile - creating conversation for voice call');
         const conv = await createConversationRequest('voice');
         if (conv?.conversationId) {
           router.push({
@@ -491,7 +461,6 @@ export default {
           }
         });
         
-        console.log('📤 Creating conversation request with astrology data:', astroData);
         
         const response = await api.createConversation({
           partnerId: selectedPartner.value._id,
@@ -499,7 +468,6 @@ export default {
         });
         
         if (response && response.success) {
-          console.log('✅ Conversation request created');
           
           // Add to conversations
           const conversation = response.data;
@@ -558,7 +526,6 @@ export default {
     
     // Select conversation
     const selectConversation = async (conversation) => {
-      console.log('💬 Selecting conversation:', conversation);
       selectedConversation.value = conversation;
       messages.value = [];
       showPartnersList.value = false;
@@ -570,7 +537,6 @@ export default {
           { conversationId: conversation.conversationId },
           async (response) => {
             if (response && response.success) {
-              console.log('✅ Joined conversation');
               await loadMessages(conversation.conversationId);
             } else {
               console.error('❌ Failed to join conversation:', response?.message);
@@ -605,7 +571,6 @@ export default {
           messages.value = (response.data && response.data.messages) || [];
           if (response.data.sessionDetails) conversationDetails.value.sessionDetails = response.data.sessionDetails;
           if (response.data.rating) conversationDetails.value.rating = response.data.rating;
-          console.log('✅ Loaded messages:', messages.value.length);
           scrollToBottom();
           
           if (selectedConversation.value?.status !== 'ended') {
@@ -654,7 +619,6 @@ export default {
       if (socket.value && isConnected.value) {
         socket.value.emit('message:send', messageData, (response) => {
           if (response && response.success) {
-            console.log('✅ Message sent');
             updateConversationPreview();
             newMessage.value = '';
             stopTyping();
@@ -667,7 +631,6 @@ export default {
         // Fallback to REST API if WebSocket not connected
         api.sendMessage(selectedConversation.value.conversationId, messageData)
           .then(() => {
-            console.log('✅ Message sent via REST');
             updateConversationPreview();
             newMessage.value = '';
             loadMessages(selectedConversation.value.conversationId);
@@ -741,7 +704,6 @@ export default {
         };
         const endRes = await api.endConversation(selectedConversation.value.conversationId, feedbackPayload);
         
-        console.log('✅ Conversation ended');
         
         const conv = conversations.value.find(c => c.conversationId === selectedConversation.value.conversationId);
         if (conv) {
@@ -941,7 +903,6 @@ export default {
     
     // Lifecycle
     onMounted(async () => {
-      console.log('🚀 UserChat component mounted');
       await loadUserProfile();
       
       // Request notification permission
@@ -956,7 +917,6 @@ export default {
     });
     
     onUnmounted(() => {
-      console.log('👋 UserChat component unmounting');
       if (messagePollInterval) {
         clearInterval(messagePollInterval);
         messagePollInterval = null;

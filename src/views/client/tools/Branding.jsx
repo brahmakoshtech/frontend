@@ -104,12 +104,6 @@ export default {
                   asset.backgroundLogoImage = asset.backgroundLogoImage || null;
                 }
               }
-              // Debug log
-              console.log('Asset loaded:', {
-                name: asset.brandLogoName,
-                hasBackgroundImage: !!asset.backgroundLogoImage,
-                backgroundImageUrl: asset.backgroundLogoImage
-              });
               return asset;
             })
           );
@@ -412,14 +406,6 @@ export default {
       const adminToken = localStorage.getItem('token_admin');
       const superAdminToken = localStorage.getItem('token_super_admin');
       
-      console.log('=== TOKEN DEBUG ===');
-      console.log('Client Token:', clientToken);
-      console.log('User Token:', userToken);
-      console.log('Admin Token:', adminToken);
-      console.log('Super Admin Token:', superAdminToken);
-      console.log('Current URL:', window.location.href);
-      console.log('Current Role Context:', window.location.pathname.includes('/client') ? 'CLIENT' : 'OTHER');
-      console.log('==================');
       
       loadBrandAssets();
     });

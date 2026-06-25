@@ -288,7 +288,6 @@ export default {
         
         // Only send text fields, exclude founderImage and _id
         const { founderImage, _id, ...messageData } = editMessage.value;
-        console.log('Sending to backend:', messageData); // Debug log
         const response = await founderMessageService.updateMessage(_id, messageData);
         
         if (response.success) {

@@ -58,7 +58,6 @@ export default {
         const activityType = route.query.type || 'meditation';
         const categoryId = route.query.categoryId;
         
-        console.log('Fetching configurations for:', { activityType, categoryId });
         
         let response;
         if (categoryId) {
@@ -67,7 +66,6 @@ export default {
           
           // If no results, fallback to type-based filtering
           if (!response.success || !response.data || response.data.length === 0) {
-            console.log('No configurations found for categoryId, falling back to type filter');
             response = await spiritualActivityService.getAllSpiritualCheckinConfigurations(activityType);
           }
         } else {
@@ -77,9 +75,7 @@ export default {
         
         if (response.success && response.data) {
           configurations.value = response.data;
-          console.log('Loaded configurations:', response.data.length);
         } else {
-          console.log('No configurations found');
           configurations.value = [];
         }
       } catch (error) {
@@ -91,15 +87,11 @@ export default {
     const fetchMeditationClips = async () => {
       try {
         loading.value = true;
-        console.log('Fetching meditation clips...');
         const response = await spiritualClipService.getAllClips({ type: 'meditation' });
-        console.log('API Response:', response);
         
         if (response.success && response.data && response.data.length > 0) {
           clips.value = response.data;
-          console.log('Loaded clips from API:', response.data.length);
         } else {
-          console.log('No clips found, using fallback data');
           clips.value = [
             {
               _id: 'fallback-1',
@@ -136,7 +128,6 @@ export default {
 
     // Computed filtered configurations based on selected emotion AND duration
     const filteredConfigurations = computed(() => {
-      console.log('Filtering configurations for emotion:', selectedEmotion.value, 'duration:', selectedDuration.value);
       
       // Filter by emotion first
       let emotionFiltered = configurations.value.filter(config => 
@@ -144,7 +135,6 @@ export default {
       );
       
       if (emotionFiltered.length === 0) {
-        console.log('No configurations for this emotion');
         return [];
       }
       
@@ -153,7 +143,6 @@ export default {
       const exactMatch = emotionFiltered.filter(config => config.duration === durationStr);
       
       if (exactMatch.length > 0) {
-        console.log('Exact match found:', exactMatch.length);
         return exactMatch;
       }
       
@@ -164,28 +153,21 @@ export default {
         return Math.abs(aDuration - selectedDuration.value) - Math.abs(bDuration - selectedDuration.value);
       });
       
-      console.log('Using closest duration:', sorted[0].duration, 'for selected:', durationStr);
       return [sorted[0]];
     });
 
     // Computed filtered clips based on selected emotion
     const filteredClips = computed(() => {
-      console.log('Filtering clips for emotion:', selectedEmotion.value);
-      console.log('All clips:', clips.value);
       if (!selectedEmotion.value) return clips.value;
       const filtered = clips.value.filter(clip => {
-        console.log('Clip emotion:', clip.emotion, 'Selected:', selectedEmotion.value);
         return clip.emotion?.toLowerCase() === selectedEmotion.value.toLowerCase();
       });
-      console.log('Filtered clips:', filtered);
       return filtered.length > 0 ? filtered : clips.value;
     });
 
     // Auto-select clip based on emotion
     const autoSelectClipForEmotion = async () => {
       const configs = filteredConfigurations.value;
-      console.log('Found configurations:', configs.length);
-      console.log('Configuration details:', configs.map(c => ({ id: c._id, emotion: c.emotion, duration: c.duration, karmaPoints: c.karmaPoints })));
       
       // Calculate fallback karma points: 3 + (duration - 1) * 1.33 to get range 3-15
       const fallbackKarma = Math.min(15, Math.max(3, Math.round(3 + (selectedDuration.value - 1) * 1.33)));
@@ -198,7 +180,6 @@ export default {
           );
           
           const results = await Promise.all(allClipsPromises);
-          console.log('Clips API results:', results.map(r => ({ configId: r.config._id, success: r.response.success, clipsCount: r.response.data?.length || 0 })));
           
           const allClips = [];
           results.forEach(({ config, response }) => {
@@ -209,7 +190,6 @@ export default {
             }
           });
           
-          console.log('Total clips found:', allClips.length);
           
           if (allClips.length > 0) {
             availableClips.value = allClips;
@@ -217,15 +197,12 @@ export default {
             const config = configs.find(c => c._id === clip.configId);
             selectedClip.value = clip;
             selectedConfig.value = config;
-            console.log('Selected config karma points:', config?.karmaPoints);
-            console.log('Setting selectedConfig.value to:', { id: config?._id, karmaPoints: config?.karmaPoints });
             selectedVideoUrl.value = clip.videoPresignedUrl || clip.videoUrl || '';
             selectedAudioUrl.value = clip.audioPresignedUrl || clip.audioUrl || '';
             selectedVideoKey.value = clip.videoKey || '';
             selectedAudioKey.value = clip.audioKey || '';
           } else {
             // No clips found - use fallback
-            console.log('No clips found, using fallback with calculated karma:', fallbackKarma);
             selectedClip.value = null;
             selectedConfig.value = { karmaPoints: fallbackKarma };
             availableClips.value = [];
@@ -247,7 +224,6 @@ export default {
         }
       } else {
         // No configurations found - use fallback
-        console.log('No configurations found, using fallback with calculated karma:', fallbackKarma);
         selectedClip.value = null;
         selectedConfig.value = { karmaPoints: fallbackKarma };
         availableClips.value = [];
@@ -283,7 +259,6 @@ export default {
       try {
         const token = localStorage.getItem('token_user');
         if (!token) {
-          console.warn('User not logged in, session not saved');
           alert('⚠️ Please log in to save your meditation sessions and earn karma points!');
           return;
         }
@@ -303,7 +278,6 @@ export default {
         
         const response = await spiritualStatsService.saveSession(sessionData);
         if (response.success) {
-          console.log('Session saved successfully:', response.data?.statusMessage || response.message);
           if (response.data?.statusMessage) {
             // Show status message to user
             setTimeout(() => {
@@ -324,18 +298,14 @@ export default {
       // Start background media playback after a short delay to ensure elements are mounted
       setTimeout(() => {
         if (selectedVideoUrl.value && backgroundVideo.value) {
-          console.log('Starting video:', selectedVideoUrl.value);
           isVideoPlaying.value = true;
           backgroundVideo.value.play().catch(e => {
-            console.log('Video autoplay prevented:', e);
             isVideoPlaying.value = false;
           });
         }
         if (selectedAudioUrl.value && backgroundAudio.value) {
-          console.log('Starting audio:', selectedAudioUrl.value);
           isAudioPlaying.value = true;
           backgroundAudio.value.play().catch(e => {
-            console.log('Audio autoplay prevented:', e);
             isAudioPlaying.value = false;
           });
         }

@@ -47,7 +47,6 @@ export default {
       }
 
       
-      console.log('🔌 Connecting to WebSocket...');
       
       socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
         path: '/socket.io/',
@@ -60,16 +59,13 @@ export default {
       
       // Connection events
       socket.value.on('connect', () => {
-        console.log('✅ WebSocket connected');
         isConnected.value = true;
       });
       
       socket.value.on('connected', (data) => {
-        console.log('✅ Server acknowledged connection:', data);
       });
       
       socket.value.on('disconnect', () => {
-        console.log('❌ WebSocket disconnected');
         isConnected.value = false;
       });
       
@@ -79,7 +75,6 @@ export default {
       
       // Message events
       socket.value.on('message:new', (data) => {
-        console.log('📨 New message received:', data);
         
         if (selectedConversation.value?.conversationId === data.conversationId) {
           messages.value.push(data.message);
@@ -143,25 +138,20 @@ export default {
 
       // Voice call events
       socket.value.on('voice:call:incoming', (payload) => {
-        console.log('📞 Incoming voice call (web user):', payload);
         // TODO: show incoming call UI and allow accept/reject
       });
 
       socket.value.on('voice:call:accepted', (payload) => {
-        console.log('📞 Call accepted (web user):', payload);
         // TODO: start WebRTC here
       });
 
       socket.value.on('voice:call:rejected', (payload) => {
-        console.log('📞 Call rejected (web user):', payload);
       });
 
       socket.value.on('voice:call:ended', (payload) => {
-        console.log('📞 Call ended (web user):', payload);
       });
 
       socket.value.on('voice:signal', (payload) => {
-        console.log('📶 Voice signal (web user):', payload);
         // TODO: feed payload.signal into WebRTC peer connection on user side
       });
     };
@@ -274,7 +264,6 @@ export default {
         { conversationId: conversation.conversationId },
         async (response) => {
           if (response.success) {
-            console.log('✅ Joined conversation');
             await loadMessages(conversation.conversationId);
           }
         }
@@ -334,7 +323,6 @@ export default {
       
       socket.value.emit('message:send', messageData, (response) => {
         if (response.success) {
-          console.log('✅ Message sent');
           updateConversationPreview();
           newMessage.value = '';
           stopTyping();

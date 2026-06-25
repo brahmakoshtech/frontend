@@ -17,7 +17,6 @@ const getPresignedImageUrl = async (imageUrl, imageKey = null) => {
         return response.data.data.presignedUrl;
       }
     } catch (error) {
-      console.warn('Failed to get presigned URL from key:', error);
     }
   }
   
@@ -43,7 +42,6 @@ const getPresignedImageUrl = async (imageUrl, imageKey = null) => {
         return response.data.data.presignedUrl;
       }
     } catch (error) {
-      console.warn('Failed to get presigned URL from URL:', error);
     }
   }
   
@@ -181,7 +179,6 @@ const testimonialService = {
         }
       }
     } catch (error) {
-      console.warn('Failed to get presigned URL:', error.message);
       // Return null to use placeholder image instead of broken URL
       return null;
     }

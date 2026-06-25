@@ -52,7 +52,6 @@ export default {
         try {
           await login(email.value, password.value, selectedRole.value);
         } catch (loginErr) {
-          console.warn('[Register] Auto-login after register failed:', loginErr);
         }
 
         if (selectedRole.value === 'user') {

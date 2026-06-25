@@ -132,7 +132,6 @@ const sponsorService = {
         }
       }
     } catch (error) {
-      console.warn('Failed to get presigned URL:', error.message);
       // Return null to use placeholder logo instead of broken URL
       return null;
     }

@@ -171,7 +171,6 @@ export default {
     const loadShlokas = async (chapterNumber = null) => {
       try {
         loading.value = true;
-        console.log('Loading shlokas with chapterNumber:', chapterNumber);
         const { shlokaService } = await import('../../../../services/shlokaService.js');
         
         let response;
@@ -181,7 +180,6 @@ export default {
           response = await shlokaService.getAllShlokas();
         }
         
-        console.log('Shlokas API response:', response);
         if (response.success && response.data) {
           shlokas.value = response.data;
         } else {

@@ -1,4 +1,3 @@
-// UserKundali.jsx - Enhanced with comprehensive console logging for debugging
 import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../services/api.js';
@@ -38,212 +37,16 @@ export default {
     const numerologyDate = ref('');
     const numerologyName = ref('');
 
-    // 🔍 DEBUGGING HELPER: Log data structure
-    const logDataStructure = (obj, name, indent = 0) => {
-      const spaces = '  '.repeat(indent);
-      console.log(`${spaces}${name}:`, typeof obj);
-      
-      if (obj === null || obj === undefined) {
-        console.log(`${spaces}  → Value: ${obj}`);
-        return;
-      }
-
-      if (Array.isArray(obj)) {
-        console.log(`${spaces}  → Array length: ${obj.length}`);
-        if (obj.length > 0) {
-          console.log(`${spaces}  → First item:`, obj[0]);
-        }
-      } else if (typeof obj === 'object') {
-        const keys = Object.keys(obj);
-        console.log(`${spaces}  → Keys (${keys.length}):`, keys.slice(0, 10));
-        if (keys.length > 10) {
-          console.log(`${spaces}  → ... and ${keys.length - 10} more keys`);
-        }
-      } else {
-        console.log(`${spaces}  → Value:`, obj);
-      }
-    };
-
     const fetchUserDetails = async () => {
       try {
         loading.value = true;
-        
-        console.group('🚀 FETCHING USER DETAILS');
-        console.log('User ID:', userId);
-        console.log('API Call: getUserCompleteDetails');
-        console.log('Timestamp:', new Date().toISOString());
-        console.groupEnd();
-
         const response = await api.getUserCompleteDetails(userId);
-        
-        console.group('📦 API RESPONSE RECEIVED');
-        console.log('Full Response:', response);
-        console.log('Response Data:', response.data);
-        console.groupEnd();
-
-        // 🔍 DETAILED DATA STRUCTURE LOGGING
-        console.group('🔍 DETAILED DATA STRUCTURE ANALYSIS');
-        
-        if (response.data) {
-          logDataStructure(response.data, 'response.data', 0);
-          
-          // User data
-          if (response.data.user) {
-            console.group('👤 USER DATA');
-            console.log('User Object:', response.data.user);
-            logDataStructure(response.data.user, 'user', 1);
-            
-            if (response.data.user.profile) {
-              console.log('Profile:', response.data.user.profile);
-              logDataStructure(response.data.user.profile, 'user.profile', 2);
-            }
-            console.groupEnd();
-          } else {
-            console.warn('⚠️ No user data found in response');
-          }
-
-          // Astrology data
-          if (response.data.astrology) {
-            console.group('⭐ ASTROLOGY DATA');
-            console.log('Astrology Object:', response.data.astrology);
-            logDataStructure(response.data.astrology, 'astrology', 1);
-
-            // Birth Details
-            if (response.data.astrology.birthDetails) {
-              console.group('📅 Birth Details');
-              console.log('Full Object:', response.data.astrology.birthDetails);
-              console.table(response.data.astrology.birthDetails);
-              console.groupEnd();
-            } else {
-              console.warn('⚠️ No birthDetails found');
-            }
-
-            // Astro Details
-            if (response.data.astrology.astroDetails) {
-              console.group('🌟 Astro Details');
-              console.log('Full Object:', response.data.astrology.astroDetails);
-              console.table(response.data.astrology.astroDetails);
-              console.groupEnd();
-            } else {
-              console.warn('⚠️ No astroDetails found');
-            }
-
-            // Planets
-            if (response.data.astrology.planets) {
-              console.group('🪐 PLANETS DATA');
-              console.log('Planets Type:', typeof response.data.astrology.planets);
-              console.log('Is Array:', Array.isArray(response.data.astrology.planets));
-              console.log('Length/Keys:', Array.isArray(response.data.astrology.planets) 
-                ? response.data.astrology.planets.length 
-                : Object.keys(response.data.astrology.planets).length);
-              console.log('Full Planets Data:', response.data.astrology.planets);
-              
-              if (Array.isArray(response.data.astrology.planets) && response.data.astrology.planets.length > 0) {
-                console.log('First Planet Sample:', response.data.astrology.planets[0]);
-                console.table(response.data.astrology.planets);
-              }
-              console.groupEnd();
-            } else {
-              console.warn('⚠️ No planets data found');
-            }
-
-            // Extended Planets
-            if (response.data.astrology.planetsExtended) {
-              console.group('🌑 EXTENDED PLANETS DATA');
-              console.log('Extended Planets Type:', typeof response.data.astrology.planetsExtended);
-              console.log('Is Array:', Array.isArray(response.data.astrology.planetsExtended));
-              console.log('Length/Keys:', Array.isArray(response.data.astrology.planetsExtended) 
-                ? response.data.astrology.planetsExtended.length 
-                : Object.keys(response.data.astrology.planetsExtended).length);
-              console.log('Full Extended Planets Data:', response.data.astrology.planetsExtended);
-              
-              if (Array.isArray(response.data.astrology.planetsExtended) && response.data.astrology.planetsExtended.length > 0) {
-                console.log('First Extended Planet Sample:', response.data.astrology.planetsExtended[0]);
-                console.table(response.data.astrology.planetsExtended);
-              }
-              console.groupEnd();
-            } else {
-              console.warn('⚠️ No extended planets data found');
-            }
-
-            // Birth Chart
-            if (response.data.astrology.birthChart) {
-              console.group('📊 BIRTH CHART DATA');
-              console.log('Birth Chart Type:', typeof response.data.astrology.birthChart);
-              console.log('Full Birth Chart:', response.data.astrology.birthChart);
-              
-              if (response.data.astrology.birthChart.houses) {
-                console.log('Houses Type:', typeof response.data.astrology.birthChart.houses);
-                console.log('Houses Data:', response.data.astrology.birthChart.houses);
-                
-                if (typeof response.data.astrology.birthChart.houses === 'object') {
-                  console.log('Houses Keys:', Object.keys(response.data.astrology.birthChart.houses));
-                  
-                  // Show sample houses
-                  const houses = response.data.astrology.birthChart.houses;
-                  for (let i = 1; i <= 3; i++) {
-                    const house = houses[i] || houses[i.toString()];
-                    console.log(`House ${i}:`, house);
-                  }
-                }
-              } else {
-                console.warn('⚠️ No houses in birth chart');
-              }
-              console.groupEnd();
-            } else {
-              console.warn('⚠️ No birth chart found');
-            }
-
-            // Extended Birth Chart
-            if (response.data.astrology.birthExtendedChart) {
-              console.group('📊 EXTENDED BIRTH CHART DATA');
-              console.log('Extended Chart Type:', typeof response.data.astrology.birthExtendedChart);
-              console.log('Full Extended Chart:', response.data.astrology.birthExtendedChart);
-              
-              if (response.data.astrology.birthExtendedChart.houses) {
-                console.log('Extended Houses:', response.data.astrology.birthExtendedChart.houses);
-              }
-              console.groupEnd();
-            } else {
-              console.warn('⚠️ No extended birth chart found');
-            }
-
-            console.groupEnd(); // End Astrology Data
-          } else {
-            console.error('❌ NO ASTROLOGY DATA FOUND IN RESPONSE');
-            console.log('Available keys in response.data:', Object.keys(response.data));
-          }
-        } else {
-          console.error('❌ NO DATA IN RESPONSE');
-        }
-        
-        console.groupEnd(); // End Detailed Analysis
-
-        // Set the data
         userDetails.value = response.data;
-        
-        console.group('✅ DATA SET IN COMPONENT');
-        console.log('userDetails.value:', userDetails.value);
-        console.log('Has astrology:', !!userDetails.value?.astrology);
-        console.log('Has planets:', !!userDetails.value?.astrology?.planets);
-        console.log('Has birth chart:', !!userDetails.value?.astrology?.birthChart);
-        console.groupEnd();
-
       } catch (err) {
-        console.group('❌ ERROR FETCHING USER DETAILS');
-        console.error('Error Object:', err);
-        console.error('Error Message:', err.message);
-        console.error('Error Stack:', err.stack);
-        if (err.response) {
-          console.error('Response Status:', err.response.status);
-          console.error('Response Data:', err.response.data);
-        }
-        console.groupEnd();
-        
+        console.error('Failed to fetch user details:', err);
         error.value = err.message;
       } finally {
         loading.value = false;
-        console.log('✅ Loading state set to false');
       }
     };
 
@@ -277,11 +80,6 @@ export default {
       try {
         panchangLoading.value = true;
         
-        console.group('🌅 FETCHING PANCHANG DATA');
-        console.log('User ID:', userId);
-        console.log('Location:', panchangLocation.value);
-        console.log('Current Date:', new Date().toISOString());
-        console.groupEnd();
 
         const response = await api.post(`/client/users/${userId}/panchang`, {
           currentDate: new Date().toISOString(),
@@ -289,17 +87,11 @@ export default {
           longitude: panchangLocation.value.longitude
         });
         
-        console.group('📦 PANCHANG RESPONSE');
-        console.log('Full Response:', response);
-        console.log('Panchang Data:', response.data.data);
-        console.groupEnd();
 
         panchangData.value = response.data.data;
         showPanchangForm.value = false;
       } catch (err) {
-        console.group('❌ PANCHANG ERROR');
         console.error('Error:', err);
-        console.groupEnd();
         alert('Failed to fetch panchang data: ' + err.message);
       } finally {
         panchangLoading.value = false;
@@ -317,28 +109,17 @@ export default {
       try {
         numerologyLoading.value = true;
         
-        console.group('🔢 FETCHING NUMEROLOGY DATA');
-        console.log('User ID:', userId);
-        console.log('Date:', numerologyDate.value);
-        console.log('Name:', name);
-        console.groupEnd();
 
         const response = await api.post(`/client/users/${userId}/numerology`, {
           date: numerologyDate.value,
           name: name
         });
         
-        console.group('📦 NUMEROLOGY RESPONSE');
-        console.log('Full Response:', response);
-        console.log('Numerology Data:', response.data.data);
-        console.groupEnd();
 
         numerologyData.value = response.data.data;
         showNumerologyForm.value = false;
       } catch (err) {
-        console.group('❌ NUMEROLOGY ERROR');
         console.error('Error:', err);
-        console.groupEnd();
         alert('Failed to fetch numerology data: ' + err.message);
       } finally {
         numerologyLoading.value = false;
@@ -371,17 +152,7 @@ export default {
       router.back();
     };
 
-    // Watch for data changes
-    watch(userDetails, (newVal) => {
-      console.group('👀 USER DETAILS CHANGED');
-      console.log('New Value:', newVal);
-      console.log('Has Astrology:', !!newVal?.astrology);
-      console.groupEnd();
-    });
 
-    watch(activeTab, (newTab) => {
-      console.log('📑 Active Tab Changed:', newTab);
-    });
 
     const tabs = [
       { 
@@ -429,8 +200,6 @@ export default {
     ];
 
     onMounted(() => {
-      console.log('🎬 UserKundali Component Mounted');
-      console.log('User ID from route:', userId);
       fetchUserDetails();
     });
 

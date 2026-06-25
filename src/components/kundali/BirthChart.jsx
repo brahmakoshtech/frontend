@@ -29,7 +29,6 @@ export default {
 
     const getChartData = (type) => {
       if (!props.data) {
-        console.warn('No data provided to BirthChart component');
         return null;
       }
       
@@ -46,13 +45,11 @@ export default {
         // Check if houses have any data
         const hasHouseData = Object.keys(chartData.houses).length > 0;
         if (!hasHouseData) {
-          console.warn(`Chart ${type} has empty houses object`);
           return null;
         }
         return chartData;
       }
 
-      console.warn(`No valid chart data found for ${type}`);
       return null;
     };
 

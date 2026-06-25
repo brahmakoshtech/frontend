@@ -37,12 +37,10 @@ export default {
             }
           } catch (e) {
             if (e.message.includes('Invalid token')) throw e;
-            console.warn('[MobileChatPage] Could not verify token:', e);
           }
         }
         
         // Debug logging
-        console.log('[MobileChatPage] Loading chats:', {
           hasUserToken: !!userToken,
           tokenLength: userToken ? userToken.length : 0,
           tokenPreview: userToken ? userToken.substring(0, 20) + '...' : 'none',

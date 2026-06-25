@@ -55,10 +55,8 @@ export default {
               if (uploadRes.ok && uploadData?.success) {
                 localStorage.setItem('partner_data', JSON.stringify(uploadData.data.partner));
               } else {
-                console.warn('Partner profile picture upload failed:', uploadData?.message);
               }
             } catch (uploadErr) {
-              console.warn('Partner profile picture upload error:', uploadErr);
             }
           }
 

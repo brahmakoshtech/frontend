@@ -23,7 +23,6 @@ let auth = null;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  console.log('Firebase initialized successfully');
 } catch (error) {
   console.error('Firebase initialization error:', error);
   // Firebase will be null if config is missing, but app won't crash

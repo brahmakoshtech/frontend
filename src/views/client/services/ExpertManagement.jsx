@@ -106,16 +106,11 @@ export default {
     const loadExperts = async (categoryId = null) => {
       try {
         loading.value = true;
-        console.log('Loading experts with categoryId:', categoryId);
-        const response = await expertService.getExperts(true, categoryId); // Include inactive experts
-        console.log('Experts API response:', response);
+        const response = await expertService.getExperts(true, categoryId);
         if (response.success) {
-          console.log('Experts data:', response.data);
-          
           experts.value = response.data || [];
           filteredExperts.value = experts.value;
         } else {
-          console.error('Failed to load experts:', response);
           toast.error('Failed to load experts');
         }
       } catch (error) {
@@ -228,10 +223,7 @@ export default {
           categoryId: expertForm.value.categoryId
         };
         
-        console.log('Creating expert with data:', expertData);
-        
         const response = await expertService.createExpert(expertData);
-        console.log('Create expert response:', response);
         
         if (response.success) {
           const newExpert = response.data;
@@ -241,7 +233,6 @@ export default {
             try {
               await expertService.uploadProfilePhoto(newExpert._id, expertForm.value.profilePhoto);
             } catch (uploadError) {
-              console.warn('Profile photo upload failed:', uploadError);
             }
           }
           
@@ -250,7 +241,6 @@ export default {
             try {
               await expertService.uploadBanner(newExpert._id, expertForm.value.backgroundBanner);
             } catch (uploadError) {
-              console.warn('Banner upload failed:', uploadError);
             }
           }
           
@@ -403,7 +393,6 @@ export default {
             try {
               await expertService.uploadProfilePhoto(editingExpert.value._id, editForm.value.profilePhoto);
             } catch (uploadError) {
-              console.warn('Profile photo upload failed:', uploadError);
             }
           }
           
@@ -412,7 +401,6 @@ export default {
             try {
               await expertService.uploadBanner(editingExpert.value._id, editForm.value.backgroundBanner);
             } catch (uploadError) {
-              console.warn('Banner upload failed:', uploadError);
             }
           }
           

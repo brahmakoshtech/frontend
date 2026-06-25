@@ -159,7 +159,6 @@ export default {
         const token = clientToken || userToken;
         
         if (!token) {
-          console.warn('No authentication token found - showing empty state');
           expertCategories.value = [];
           return;
         }
@@ -174,7 +173,6 @@ export default {
             throw new Error('Token expired');
           }
         } catch (tokenError) {
-          console.warn('Invalid token detected, clearing:', tokenError.message);
           if (clientToken) {
             localStorage.removeItem('token_client');
           }
@@ -191,11 +189,6 @@ export default {
           const actualData = response.data.data || response.data;
           let categoriesList = Array.isArray(actualData.data) ? actualData.data : 
                              Array.isArray(actualData) ? actualData : [];
-          console.log('Categories loaded:', categoriesList);
-          // Debug background images
-          categoriesList.forEach(cat => {
-            console.log('Category:', cat.name, 'Background Image:', cat.backgroundImage);
-          });
           expertCategories.value = categoriesList;
         } else {
           expertCategories.value = [];

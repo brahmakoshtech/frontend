@@ -92,14 +92,12 @@ export default {
         const activityType = route.query.type || 'prayer';
         const categoryId = route.query.categoryId;
         
-        console.log('Fetching configurations for:', { activityType, categoryId });
         
         let response;
         if (categoryId) {
           response = await spiritualActivityService.getSingleCheckinAllConfigration(categoryId);
           
           if (!response.success || !response.data || response.data.length === 0) {
-            console.log('No configurations found for categoryId, falling back to type filter');
             response = await spiritualActivityService.getAllSpiritualCheckinConfigurations(activityType);
           }
         } else {
@@ -108,9 +106,7 @@ export default {
         
         if (response.success && response.data) {
           configurations.value = response.data;
-          console.log('Loaded configurations:', response.data.length);
         } else {
-          console.log('No configurations found');
           configurations.value = [];
         }
       } catch (error) {
@@ -122,15 +118,11 @@ export default {
     const fetchPrayerClips = async () => {
       try {
         loading.value = true;
-        console.log('Fetching prayer clips...');
         const response = await spiritualClipService.getAllClips({ type: 'prayer' });
-        console.log('API Response:', response);
         
         if (response.success && response.data && response.data.length > 0) {
           clips.value = response.data;
-          console.log('Loaded clips from API:', response.data.length);
         } else {
-          console.log('No clips found, using fallback data');
           clips.value = [
             {
               _id: 'fallback-1',
@@ -163,7 +155,6 @@ export default {
 
     const autoSelectClipForEmotion = async () => {
       const configs = filteredConfigurations();
-      console.log('Found configurations for emotion:', configs.length);
       
       if (configs.length === 0) {
         selectedClip.value = null;
@@ -258,7 +249,6 @@ export default {
       try {
         const token = localStorage.getItem('token_user');
         if (!token) {
-          console.warn('User not logged in, session not saved');
           alert('⚠️ Please log in to save your prayer sessions and earn karma points!');
           return;
         }
@@ -278,7 +268,6 @@ export default {
         
         const response = await spiritualStatsService.saveSession(sessionData);
         if (response.success) {
-          console.log('Session saved successfully:', response.data?.statusMessage || response.message);
           if (response.data?.statusMessage) {
             setTimeout(() => {
               alert(response.data.statusMessage);
@@ -304,17 +293,14 @@ export default {
       // Start background media playback after a short delay to ensure elements are mounted
       setTimeout(() => {
         if (selectedVideoUrl.value && backgroundVideo.value) {
-          console.log('Starting video:', selectedVideoUrl.value);
           isVideoPlaying.value = true;
           
           // Listen for video end event
           backgroundVideo.value.onended = () => {
-            console.log('Video ended, completing session');
             completeSession();
           };
           
           backgroundVideo.value.play().catch(e => {
-            console.log('Video autoplay prevented:', e);
             isVideoPlaying.value = false;
             notificationMessage.value = '📹 Tap the Video button to start playback';
             notificationType.value = 'info';
@@ -323,17 +309,14 @@ export default {
           });
         }
         if (selectedAudioUrl.value && backgroundAudio.value) {
-          console.log('Starting audio:', selectedAudioUrl.value);
           isAudioPlaying.value = true;
           
           // Listen for audio end event
           backgroundAudio.value.onended = () => {
-            console.log('Audio ended, completing session');
             completeSession();
           };
           
           backgroundAudio.value.play().catch(e => {
-            console.log('Audio autoplay prevented:', e);
             isAudioPlaying.value = false;
             notificationMessage.value = '🎵 Tap the Audio button to start playback';
             notificationType.value = 'info';

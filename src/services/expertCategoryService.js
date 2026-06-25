@@ -28,11 +28,6 @@ class ExpertCategoryService {
   // Create expert category
   async createExpertCategory(categoryData) {
     try {
-      const clientToken = localStorage.getItem('token_client');
-      const userToken = localStorage.getItem('token_user');
-      const token = clientToken || userToken;
-      console.log('Token check:', { hasToken: !!token, tokenLength: token?.length, tokenType: clientToken ? 'client' : 'user' });
-      
       const response = await this.api.post('/', categoryData);
       return response.data;
     } catch (error) {
@@ -41,14 +36,8 @@ class ExpertCategoryService {
     }
   }
 
-  // Get all expert categories
   async getAllExpertCategories() {
     try {
-      const clientToken = localStorage.getItem('token_client');
-      const userToken = localStorage.getItem('token_user');
-      const token = clientToken || userToken;
-      console.log('Token check:', { hasToken: !!token, tokenLength: token?.length, tokenType: clientToken ? 'client' : 'user' });
-      
       const response = await this.api.get('/');
       return response.data;
     } catch (error) {

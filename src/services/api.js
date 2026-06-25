@@ -27,7 +27,7 @@ const getTokenForRole = (role) => {
         if (payload.role === role) {
           return token;
         } else {
-          console.warn(`[Token Mismatch] Token role (${payload.role}) doesn't match requested role (${role})`);
+    
           return null;
         }
       } catch (e) {
@@ -48,10 +48,6 @@ class ApiService {
   async request(endpoint, options = {}) {
     const method = options.method || 'GET';
     let token = options.token;
-    console.log('token', token);
-    console.log('endpoint', endpoint);
-    console.log('method', method);
-    console.log('client token check:', localStorage.getItem('token_client'));
     let tokenSource = 'provided';
   
     // Handle query params
@@ -117,10 +113,8 @@ class ApiService {
         endpoint.includes('/chantings') || endpoint.includes('/brahm-avatars') ||
         endpoint.includes('/reviews') || endpoint.includes('/experts') || endpoint.includes('/swapna-decoder')) {
         token = getTokenForRole('client');
-        console.log('getTokenForRole result:', token);
         if (!token) {
           token = localStorage.getItem('token_client');
-          console.log('Direct localStorage fallback:', token);
         }
         tokenSource = endpoint.includes('/testimonials') ? 'client (testimonials endpoint)' : 
                      endpoint.includes('/founder-messages') ? 'client (founder-messages endpoint)' : 
@@ -169,14 +163,7 @@ class ApiService {
           tokenSource = token ? 'chat (fallback)' : 'none';
         }
         
-        if (token) {
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log('[Chat Endpoint] Using token with role:', payload.role);
-          } catch (e) {
-            console.warn('[API Warning] Could not verify token role:', e);
-          }
-        }
+
       } else if (endpoint.includes('/user/') || endpoint.includes('/users/') ||
         endpoint.includes('/mobile/chat') || endpoint.includes('/mobile/voice') || 
         endpoint.includes('/mobile/user/profile') || endpoint.includes('/mobile/realtime-agent') ||
@@ -204,7 +191,6 @@ class ApiService {
               tokenSource = 'rejected (wrong role)';
             }
           } catch (e) {
-            console.warn('[API Warning] Could not verify token role:', e);
           }
         }
   

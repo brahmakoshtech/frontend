@@ -368,15 +368,12 @@ export default {
     };
 
     const deletePrayer = async (id) => {
-      console.log('🗑️ DELETE BUTTON CLICKED - Prayer ID:', id);
       
       if (confirm('Are you sure you want to PERMANENTLY DELETE this prayer?')) {
         try {
           loading.value = true;
-          console.log('Calling DELETE API...');
           
           const response = await prathanaService.delete(id);
-          console.log('✅ DELETE API Response:', response);
           
           // Remove prayer from list without reloading
           prayers.value = prayers.value.filter(p => p._id !== id);
@@ -415,10 +412,8 @@ export default {
     };
 
     const toggleStatus = async (prayer) => {
-      console.log('🔄 TOGGLE STATUS CLICKED - Prayer ID:', prayer._id, 'Current status:', prayer.isActive);
       try {
         const response = await prathanaService.toggleStatus(prayer._id);
-        console.log('✅ Toggle status successful. New status:', response.data.isActive);
         const index = prayers.value.findIndex(p => p._id === prayer._id);
         if (index !== -1) {
           prayers.value[index] = {

@@ -29,7 +29,7 @@ export default {
 
     const getPlanetsData = (type) => {
       if (!props.data) {
-        console.warn('No data provided to PlanetaryPosition component');
+
         return [];
       }
       
@@ -52,7 +52,7 @@ export default {
 
       // Ensure we have a valid array
       if (!Array.isArray(planetsArray)) {
-        console.warn(`Planet data for ${type} is not an array:`, planetsArray);
+
         return [];
       }
 
@@ -61,7 +61,7 @@ export default {
         planet && (planet.name || planet.planet)
       );
 
-      console.log(`${type} planets count:`, validPlanets.length);
+
       return validPlanets;
     };
 

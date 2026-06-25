@@ -30,8 +30,6 @@ export default {
     const expandedCards = ref(new Set());
 
     const handleActivity = (activity) => {
-      console.log('Activity clicked:', activity);
-      console.log('Category ID:', activity._id || activity.id);
       
       let activityType = (activity.type || activity.category || '').toLowerCase();
       
@@ -43,7 +41,6 @@ export default {
         else if (title.includes('silence')) activityType = 'silence';
       }
       
-      console.log('Final activity type:', activityType);
       
       const categoryRoutes = {
         meditation: '/mobile/user/meditate',
@@ -59,7 +56,6 @@ export default {
       };
       
       const route = categoryRoutes[activityType] || '/mobile/user/meditate';
-      console.log('Routing to:', route);
       
       router.push({
         path: route,
@@ -101,7 +97,6 @@ export default {
             stats: response.data.stats || {}
           };
           motivation.value = response.data.motivation || motivation.value;
-          console.log('Data loaded:', { activities: activities.value.length, stats: userStats.value });
         } else {
           toast.error('Failed to load spiritual activities');
         }

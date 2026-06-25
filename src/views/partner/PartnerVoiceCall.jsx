@@ -171,7 +171,6 @@ export default {
             alert(res?.message || 'Failed to start call');
             destroyPeerConnection();
           } else {
-            console.log('Call initiated:', res);
           }
         });
 
@@ -199,7 +198,6 @@ export default {
         };
         mr.start(); // continuous recording
       } catch (e) {
-        console.warn('MediaRecorder not available for partner voice:', e?.message);
       }
     };
 
@@ -239,7 +237,6 @@ export default {
           audioKey: key
         });
       } catch (e) {
-        console.warn('Failed to upload partner call recording:', e?.message);
       }
     };
 

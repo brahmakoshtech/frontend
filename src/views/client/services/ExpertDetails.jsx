@@ -106,9 +106,6 @@ export default {
 
     const fetchReviews = async () => {
       try {
-        console.log('=== FETCH REVIEWS DEBUG ===');
-        console.log('Expert ID from route:', expertId);
-        console.log('Route params:', route.params);
         
         if (!expertId) {
           console.error('Expert ID is missing!');
@@ -119,7 +116,6 @@ export default {
         // Check if we have authentication token
         const token = localStorage.getItem('token_client') || localStorage.getItem('token_user');
         if (!token) {
-          console.warn('No authentication token found');
           reviews.value = [];
           return;
         }
@@ -135,9 +131,7 @@ export default {
             // If it's an S3 URL, try to get presigned URL
             if (imageUrl && ((imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('amazonaws.com') || imageUrl.includes('r2.cloudflarestorage.com') || (!imageUrl.startsWith('http') && imageUrl.length > 0)))) {
               try {
-                console.log('Getting presigned URL for:', imageUrl);
                 const presignedUrl = await testimonialService.getPresignedImageUrl(imageUrl);
-                console.log('Presigned URL received:', presignedUrl);
                 if (presignedUrl) {
                   imageUrl = presignedUrl;
                 }
@@ -155,10 +149,8 @@ export default {
           }));
           
           reviews.value = reviewsList;
-          console.log('Reviews loaded:', reviewsList.map(r => ({ id: r.id || r._id, rating: r.rating, userName: r.userName })));
         } else {
           console.error('Backend reviews not available:', response.error);
-          console.log('Response structure:', response);
           reviews.value = [];
         }
       } catch (error) {
@@ -247,13 +239,9 @@ export default {
         loading.value = true;
         toast.info('Adding review...');
         
-        console.log('=== ADD REVIEW DEBUG ===');
-        console.log('Expert ID:', expertId);
-        console.log('New Review Data:', newReview.value);
         
         const { userImage, ...reviewData } = newReview.value;
         const response = await reviewService.createReview(expertId, reviewData);
-        console.log('Create review response:', response);
         
         if (response.success && response.data) {
           let createdReview = response.data.data || response.data; // Handle nested response

@@ -60,13 +60,10 @@ export default {
         }
         
         if (!userId) {
-          console.warn('[MobileSwapnaDecoder] No userId found - skipping request fetch');
           return;
         }
         
-        console.log('[MobileSwapnaDecoder] Fetching requests with:', { userId, clientId });
         const data = await dreamRequestService.getAll({ userId, clientId });
-        console.log('[MobileSwapnaDecoder] Received requests:', data.length);
         myRequests.value = data;
       } catch (error) {
         console.error('Error loading requests:', error);
@@ -125,15 +122,19 @@ export default {
 
       loading.value = true;
       try {
-        const clientId = localStorage.getItem('user_client_id');
         const token = localStorage.getItem('token_user');
         
-        // Extract userId from token
         let userId = null;
+        let clientId = localStorage.getItem('user_client_id');
+
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId;
+            // If clientId not in localStorage, extract from token
+            if (!clientId && payload.clientId) {
+              clientId = payload.clientId;
+            }
           } catch (e) {
             console.error('Error parsing token:', e);
             toast.error('Session expired. Please login again.');

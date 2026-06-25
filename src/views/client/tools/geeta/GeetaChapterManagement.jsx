@@ -401,8 +401,7 @@ export default {
                           {activeDropdown.value === chapter._id && (
                             <div class="dropdown-menu show position-absolute shadow-lg border-0 rounded-3" style={{ minWidth: '160px', right: '0', top: '100%', zIndex: 1000 }}>
                               {chapter.status === 'active' ? (
-                                // Active card - show all options
-                                <>
+                                <div>
                                   <button 
                                     class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
                                     onClick={(e) => { e.stopPropagation(); viewChapter(chapter); }}
@@ -432,9 +431,8 @@ export default {
                                     <TrashIcon style={{ width: '1rem', height: '1rem' }} />
                                     <span class="fw-medium">Delete</span>
                                   </button>
-                                </>
+                                </div>
                               ) : (
-                                // Inactive card - show only enable option
                                 <button 
                                   class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2"
                                   onClick={(e) => { e.stopPropagation(); toggleChapterStatus(chapter); }}
@@ -452,7 +450,7 @@ export default {
                         {/* Icon */}
                         <div class="mb-4">
                           <div 
-                            class="chapter-icon d-inline-flex align-items-center justify-content-center rounded-3"
+                            class="chapter-icon d-inline-flex align-items-center justify-content-center rounded-3 overflow-hidden"
                             style={{ 
                               width: '100px', 
                               height: '100px',
@@ -461,31 +459,25 @@ export default {
                             }}
                           >
                             {chapter.imageUrl ? (
-                              <>
-                                <img 
-                                  src={chapter.imageUrl}
-                                  alt={chapter.name}
-                                  class="rounded-3"
-                                  style={{ width: '90px', height: '90px', objectFit: 'cover' }}
-                                  onError={(e) => { 
-                                    // Fallback to a placeholder or hide
-                                    e.target.style.display = 'none';
-                                  }}
-                                />
-                                <div class="position-absolute bottom-0 start-0 p-1 bg-success text-white" style={{ fontSize: '0.6rem' }}>IMG</div>
-                              </>
+                              <img 
+                                src={chapter.imageUrl}
+                                alt={chapter.name}
+                                class="rounded-3"
+                                style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                                onError={(e) => { 
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling && (e.target.nextSibling.style.display = 'flex');
+                                }}
+                              />
                             ) : (
-                              <div class="position-absolute bottom-0 start-0 p-1 bg-danger text-white" style={{ fontSize: '0.6rem' }}>NO IMG</div>
+                              <BookOpenIcon 
+                                style={{ 
+                                  color: '#f97316',
+                                  width: '2rem',
+                                  height: '2rem'
+                                }}
+                              />
                             )}
-                            <BookOpenIcon 
-                              style={{ 
-                                fontSize: '2rem',
-                                color: '#f97316',
-                                width: '2rem',
-                                height: '2rem',
-                                display: chapter.imageUrl ? 'none' : 'block'
-                              }}
-                            />
                           </div>
                         </div>
 

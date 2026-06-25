@@ -57,14 +57,12 @@ export default {
     const addDebugLog = (message) => {
       const timestamp = new Date().toLocaleTimeString();
       debugLog.value.push(`[${timestamp}] ${message}`);
-      console.log(`[VoiceAgent Debug] ${message}`);
       if (debugLog.value.length > 20) {
         debugLog.value.shift();
       }
     };
 
     onMounted(() => {
-      console.log('[VoiceAgent] Component mounted');
       addDebugLog('Component mounted - Ready to start');
     });
 
@@ -113,25 +111,21 @@ export default {
     const startSession = async () => {
       try {
         addDebugLog('START button clicked');
-        console.log('[VoiceAgent] Starting session...');
         connectionStatus.value = 'connecting';
 
         // Setup WebSocket connectio
         const wsUrl = 'wss://prod.brahmakosh.com/api/voice/agent';
         
         addDebugLog(`Connecting to WebSocket: ${wsUrl}`);
-        console.log('[VoiceAgent] Connecting to WebSocket:', wsUrl);
         ws = new WebSocket(wsUrl);
 
         ws.onopen = async () => {
           addDebugLog('WebSocket connected successfully');
-          console.log('[VoiceAgent] WebSocket connected');
           connectionStatus.value = 'connected';
 
           try {
             // Get microphone access
             addDebugLog('Requesting microphone access...');
-            console.log('[VoiceAgent] Requesting microphone access...');
             mediaStream = await navigator.mediaDevices.getUserMedia({
               audio: {
                 echoCancellation: true,
@@ -142,7 +136,6 @@ export default {
               }
             });
             addDebugLog('Microphone access granted');
-            console.log('[VoiceAgent] Microphone access granted');
 
             // Initialize audio context for recording
             audioContext = new (window.AudioContext || window.webkitAudioContext)({
@@ -200,7 +193,6 @@ export default {
               voiceName: voiceName
             };
             addDebugLog(`Sending start command (userId: ${user.value?._id})`);
-            console.log('[VoiceAgent] Sending start command to backend:', startCommand);
             ws.send(JSON.stringify(startCommand));
 
           } catch (micError) {
@@ -218,12 +210,10 @@ export default {
         ws.onmessage = async (event) => {
           const data = JSON.parse(event.data);
           addDebugLog(`Received: ${data.type}`);
-          console.log('[VoiceAgent] Received message:', data.type, data);
 
           switch (data.type) {
             case 'started':
               addDebugLog(`Backend started - chatId: ${data.chatId}`);
-              console.log('[VoiceAgent] Backend confirmed start, chatId:', data.chatId);
               chatId.value = data.chatId;
               isActive.value = true;
               break;
@@ -345,7 +335,6 @@ export default {
 
         ws.onclose = (event) => {
           addDebugLog(`WebSocket closed (code: ${event.code}, reason: ${event.reason || 'None'})`);
-          console.log('[VoiceAgent] WebSocket closed', event);
           const wasActive = isActive.value;
           cleanup();
           connectionStatus.value = 'disconnected';
@@ -358,7 +347,6 @@ export default {
         };
 
         addDebugLog('Session initialization complete, waiting for backend...');
-        console.log('[VoiceAgent] Session initialization complete');
 
       } catch (error) {
         addDebugLog(`Failed to start: ${error.message}`);
@@ -375,7 +363,6 @@ export default {
 
     // Stop session
     const stopSession = () => {
-      console.log('[VoiceAgent] Stopping session...');
       
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'stop' }));
@@ -386,7 +373,6 @@ export default {
 
     // Cleanup resources
     const cleanup = () => {
-      console.log('[VoiceAgent] Cleaning up...');
 
       isActive.value = false;
       isProcessing.value = false;

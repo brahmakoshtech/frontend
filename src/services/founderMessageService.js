@@ -208,7 +208,6 @@ const founderMessageService = {
           return response.data.presignedUrl;
         }
       } catch (error) {
-        console.warn('Failed to get presigned URL from key:', error);
       }
     }
     
@@ -240,7 +239,6 @@ const founderMessageService = {
           return response.data.presignedUrl;
         }
       } catch (error) {
-        console.warn('Failed to get presigned URL from URL:', error);
       }
     }
     

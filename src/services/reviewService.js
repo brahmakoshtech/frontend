@@ -84,7 +84,6 @@ const reviewService = {
   // Upload review image
   uploadReviewImage: async (reviewId, imageFile) => {
     try {
-      console.log('Uploading review image:', { reviewId, fileName: imageFile?.name });
       
       if (!reviewId) {
         throw new Error('Review ID is required for image upload');

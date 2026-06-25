@@ -23,7 +23,6 @@ export default {
       try {
         loading.value = true;
         const response = await api.getUserCompleteDetails(userId);
-        console.log('API Response:', response.data);
         userDetails.value = response.data;
       } catch (err) {
         console.error('Failed to fetch user details:', err);

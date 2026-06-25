@@ -117,7 +117,6 @@ export default {
         };
         mr.start();
       } catch (e) {
-        console.warn('MediaRecorder not available for user voice:', e?.message);
       }
     };
 
@@ -157,7 +156,6 @@ export default {
           audioKey: key
         });
       } catch (e) {
-        console.warn('Failed to upload user call recording:', e?.message);
       }
     };
 
@@ -186,7 +184,6 @@ export default {
             status.value = 'ended';
             destroyPeerConnection();
           } else {
-            console.log('Voice call initiated (user side):', res);
           }
         });
 
@@ -235,7 +232,6 @@ export default {
       });
 
       socket.value.on('voice:call:accepted', (payload) => {
-        console.log('Call accepted (user side):', payload);
         status.value = 'in_call';
       });
 
