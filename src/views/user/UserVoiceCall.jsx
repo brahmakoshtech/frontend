@@ -206,7 +206,7 @@ export default {
         return;
       }
 
-      socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+      socket.value = io(import.meta.env.VITE_WS_URL || '', {
         path: '/socket.io/',
         auth: { token },
         transports: ['polling', 'websocket'],

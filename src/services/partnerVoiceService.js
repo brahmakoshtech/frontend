@@ -108,13 +108,16 @@ export function ensurePartnerVoiceConnected() {
 
   if (!socketRef.value) {
     lastToken = token;
-    socketRef.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+    // Dev mein VITE_WS_URL nahi hoga — empty string se Vite proxy use hogi
+    // Prod mein VITE_WS_URL set hoga (e.g. https://prod.brahmakosh.com)
+    const wsUrl = import.meta.env.VITE_WS_URL || '';
+    socketRef.value = io(wsUrl, {
       path: '/socket.io/',
       auth: { token },
       transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
-      reconnectionDelay: 1500,
+      reconnectionDelay: 2000,
       timeout: 20000
     });
   }

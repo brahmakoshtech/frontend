@@ -35,7 +35,9 @@ export default {
         }
       } catch (error) {
         console.error('Login error:', error);
-        toast.error(error.message || 'Login failed. Please try again.');
+        // Show exact server message for approval/rejection status
+        const serverMessage = error?.response?.data?.message || error?.responseData?.message || error.message;
+        toast.error(serverMessage || 'Login failed. Please try again.');
       } finally {
         loading.value = false;
       }

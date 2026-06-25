@@ -48,13 +48,13 @@ export default {
 
       
       
-      socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+      socket.value = io(import.meta.env.VITE_WS_URL || '', {
         path: '/socket.io/',
         auth: { token },
         transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 1000
+        reconnectionDelay: 2000
       });
       
       // Connection events

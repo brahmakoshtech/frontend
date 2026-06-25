@@ -142,7 +142,8 @@ export default {
         socket.value.disconnect();
       }
       
-      socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+      const wsUrl = import.meta.env.VITE_WS_URL || '';
+      socket.value = io(wsUrl, {
         path: '/socket.io/',
         auth: { 
           token: token
@@ -150,7 +151,7 @@ export default {
         transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionAttempts: 10,
-        reconnectionDelay: 1500,
+        reconnectionDelay: 2000,
         timeout: 20000
       });
       
