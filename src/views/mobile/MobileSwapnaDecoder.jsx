@@ -125,16 +125,13 @@ export default {
         const token = localStorage.getItem('token_user');
         
         let userId = null;
-        let clientId = localStorage.getItem('user_client_id');
+        // Use stored CLI-XXXXXX clientId
+        const clientId = localStorage.getItem('user_client_id');
 
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId;
-            // If clientId not in localStorage, extract from token
-            if (!clientId && payload.clientId) {
-              clientId = payload.clientId;
-            }
           } catch (e) {
             console.error('Error parsing token:', e);
             toast.error('Session expired. Please login again.');
@@ -152,8 +149,8 @@ export default {
         await dreamRequestService.create({
           dreamSymbol: requestForm.value.dreamSymbol,
           additionalDetails: requestForm.value.additionalDetails,
-          clientId,
-          userId
+          // Send clientId only if it's a valid CLI-XXXXXX, otherwise backend resolves it
+          ...(clientId && clientId !== 'null' && /^CLI-/i.test(clientId) ? { clientId } : {}),
         });
         toast.success('Dream request submitted successfully! We will notify you when it\'s ready.');
         closeRequestModal();

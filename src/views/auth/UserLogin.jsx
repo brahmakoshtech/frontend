@@ -31,10 +31,13 @@ export default {
         if (response.success) {
           // Store token
           localStorage.setItem('token_user', response.data.token);
-          // Store client info for reference
-          localStorage.setItem('user_client_id', response.data.clientId);
-          localStorage.setItem('user_client_name', response.data.clientName);
-          
+          // Only store clientId if it's actually valid (not null/undefined)
+          if (response.data.clientId) {
+            localStorage.setItem('user_client_id', response.data.clientId);
+          }
+          if (response.data.clientName) {
+            localStorage.setItem('user_client_name', response.data.clientName);
+          }
           router.push('/mobile/user/dashboard');
         }
       } catch (err) {

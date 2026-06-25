@@ -157,6 +157,11 @@ export function useAuth() {
           userToken.value = tokenValue;
           userUser.value = userData;
           localStorage.setItem('token_user', tokenValue);
+          // Save CLI-XXXXXX clientId (from response, not token which has ObjectId)
+          const loginClientId = response.data.clientId || response.data.data?.clientId;
+          if (loginClientId && loginClientId !== 'null') {
+            localStorage.setItem('user_client_id', loginClientId);
+          }
           break;
       }
       
@@ -183,6 +188,11 @@ export function useAuth() {
       userToken.value = tokenValue;
       userUser.value = userData;
       localStorage.setItem('token_user', tokenValue);
+      // Save CLI-XXXXXX clientId (from response, not token which has ObjectId)
+      const fbClientId = response.data.clientId || response.data.data?.clientId;
+      if (fbClientId && fbClientId !== 'null') {
+        localStorage.setItem('user_client_id', fbClientId);
+      }
       
       return response;
     } finally {
