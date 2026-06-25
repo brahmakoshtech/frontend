@@ -145,13 +145,13 @@ export default {
       socket.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
         path: '/socket.io/',
         auth: { 
-          token: token  // Send token in auth object
+          token: token
         },
         transports: ['polling', 'websocket'],
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        timeout: 10000
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1500,
+        timeout: 20000
       });
       
       // Connection events

@@ -100,14 +100,24 @@ function emitToSignalSubscribers(payload) {
 export function ensurePartnerVoiceConnected() {
   const token = localStorage.getItem('partner_token');
   if (!token) return;
-  if (socketRef.value) return;
 
-  socketRef.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
-    path: '/socket.io/',
-    auth: { token },
-    transports: ['polling', 'websocket'],
-    reconnection: true
-  });
+  // Reconnect if token changed
+  if (socketRef.value && lastToken && lastToken !== token) {
+    disconnectPartnerVoice();
+  }
+
+  if (!socketRef.value) {
+    lastToken = token;
+    socketRef.value = io(import.meta.env.VITE_WS_URL || 'http://localhost:5000', {
+      path: '/socket.io/',
+      auth: { token },
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1500,
+      timeout: 20000
+    });
+  }
 
   if (listenersAttached) return;
   listenersAttached = true;
