@@ -1,6 +1,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import api from '../../services/api.js';
 
 export default {
   name: 'PartnerLogin',
@@ -22,13 +23,7 @@ export default {
 
       loading.value = true;
       try {
-        const response = await fetch('http://localhost:5000/api/partners/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(loginForm.value)
-        });
-
-        const data = await response.json();
+        const data = await api.partnerLogin(loginForm.value.email, loginForm.value.password);
 
         if (data.success) {
           localStorage.setItem('partner_token', data.data.token);
@@ -40,7 +35,7 @@ export default {
         }
       } catch (error) {
         console.error('Login error:', error);
-        toast.error('Network error. Please try again.');
+        toast.error(error.message || 'Login failed. Please try again.');
       } finally {
         loading.value = false;
       }
@@ -49,13 +44,10 @@ export default {
     const handleGoogleLogin = async (response) => {
       loading.value = true;
       try {
-        const res = await fetch('http://localhost:5000/api/partners/google-login', {
+        const data = await api.request('/partners/google-login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential: response.credential })
+          body: { credential: response.credential },
         });
-
-        const data = await res.json();
 
         if (data.success) {
           localStorage.setItem('partner_token', data.data.token);

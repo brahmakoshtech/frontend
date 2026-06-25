@@ -1,14 +1,13 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import api from '../../services/api.js';
 
 export default {
   name: 'PartnerRegister',
   setup() {
     const router = useRouter();
     const toast = useToast();
-
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     const loading = ref(false);
     const registerForm = ref({
@@ -28,25 +27,25 @@ export default {
 
       loading.value = true;
       try {
-        const response = await fetch(`${API_BASE_URL}/partners/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(registerForm.value)
-        });
-
-        const data = await response.json();
+        const data = await api.partnerRegister(
+          registerForm.value.name,
+          registerForm.value.email,
+          registerForm.value.password,
+          registerForm.value.specialization
+        );
 
         if (data.success) {
           const token = data.data.token;
           localStorage.setItem('partner_token', token);
           localStorage.setItem('partner_data', JSON.stringify(data.data.partner));
 
-          // Optional: upload profile picture right after registration (S3 + save in DB)
+          // Optional: upload profile picture right after registration
           if (profileImageFile.value) {
             try {
               const formData = new FormData();
               formData.append('image', profileImageFile.value);
-              const uploadRes = await fetch(`${API_BASE_URL}/mobile/partner/profile/picture`, {
+              const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+              const uploadRes = await fetch(`${apiBase}/mobile/partner/profile/picture`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData
@@ -54,9 +53,9 @@ export default {
               const uploadData = await uploadRes.json();
               if (uploadRes.ok && uploadData?.success) {
                 localStorage.setItem('partner_data', JSON.stringify(uploadData.data.partner));
-              } else {
               }
             } catch (uploadErr) {
+              console.error('Image upload error:', uploadErr);
             }
           }
 
@@ -67,7 +66,7 @@ export default {
         }
       } catch (error) {
         console.error('Registration error:', error);
-        toast.error('Network error. Please try again.');
+        toast.error(error.message || 'Registration failed. Please try again.');
       } finally {
         loading.value = false;
       }
