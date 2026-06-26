@@ -2,6 +2,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import io from 'socket.io-client';
 import api from '../../services/api.js';
+import { getSocketServerUrl } from '../../utils/socketUrl.js';
 
 export default {
   name: 'UserChat',
@@ -71,7 +72,7 @@ export default {
         socket.value.disconnect();
       }
       
-      socket.value = io(import.meta.env.VITE_WS_URL || '', {
+      socket.value = io(getSocketServerUrl(), {
         path: '/socket.io/',
         auth: { 
           token: token

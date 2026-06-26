@@ -1,15 +1,19 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import io from 'socket.io-client';
 import api from '../../services/api.js';
+import {
+  connectPartnerSocket,
+  getPartnerSocketConnectedRef,
+  getPartnerSocketRef
+} from '../../services/partnerSocketService.js';
 
 export default {
   name: 'PartnerChat',
   setup() {
     const router = useRouter();
-    // State
-    const socket = ref(null);
-    const isConnected = ref(false);
+    // Shared partner socket (same connection as voice service — avoids duplicate sockets)
+    const socket = getPartnerSocketRef();
+    const isConnected = getPartnerSocketConnectedRef();
     const loading = ref(false);
     const activeTab = ref('conversations'); // 'conversations' or 'requests'
     
@@ -53,6 +57,7 @@ export default {
     let typingTimeout = null;
     // Message poll interval when WebSocket is disconnected
     let messagePollInterval = null;
+    let chatListenersAttached = false;
 
     // WebRTC helpers
     const createPeerConnection = (conversationId) => {
@@ -127,7 +132,7 @@ export default {
       return stream;
     };
     
-    // WebSocket Connection
+    // WebSocket Connection (shared singleton — do not disconnect on unmount)
     const connectWebSocket = () => {
       const token = localStorage.getItem('partner_token');
       
@@ -135,45 +140,25 @@ export default {
         console.error('❌ No partner token found');
         return;
       }
-      
-      
-      // Disconnect existing socket if any
-      if (socket.value) {
-        socket.value.disconnect();
-      }
-      
-      const wsUrl = import.meta.env.VITE_WS_URL || '';
-      socket.value = io(wsUrl, {
-        path: '/socket.io/',
-        auth: { 
-          token: token
-        },
-        transports: ['polling', 'websocket'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 3000,
-        reconnectionDelayMax: 10000,
-        timeout: 20000,
-        forceNew: false
-      });
-      
-      // Connection events
+
+      connectPartnerSocket();
+      if (!socket.value || chatListenersAttached) return;
+      chatListenersAttached = true;
       socket.value.on('connect', () => {
-        isConnected.value = true;
         if (messagePollInterval) {
           clearInterval(messagePollInterval);
           messagePollInterval = null;
         }
       });
-      
+
       socket.value.on('connected', (data) => {
         if (data.userId) {
           partnerInfo.value.id = data.userId;
         }
       });
       
-      socket.value.on('disconnect', (reason) => {
-        isConnected.value = false;
+      socket.value.on('disconnect', () => {
+        // shared socket — connection state tracked in partnerSocketService
       });
       
       socket.value.on('connect_error', (error) => {
@@ -854,14 +839,12 @@ export default {
         clearInterval(messagePollInterval);
         messagePollInterval = null;
       }
-      if (socket.value) {
-        if (selectedConversation.value) {
-          socket.value.emit('conversation:leave', {
-            conversationId: selectedConversation.value.conversationId
-          });
-        }
-        socket.value.disconnect();
+      if (socket.value && selectedConversation.value) {
+        socket.value.emit('conversation:leave', {
+          conversationId: selectedConversation.value.conversationId
+        });
       }
+      // Do NOT disconnect shared partner socket — voice overlay/dashboard still needs it
     });
     
     return () => (

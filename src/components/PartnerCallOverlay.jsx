@@ -22,8 +22,13 @@ export default {
     const accept = () => {
       const call = topIncoming.value;
       if (!call?.conversationId) return;
-      partnerVoiceAccept(call.conversationId);
-      partnerVoiceNavigateToCall(call.conversationId);
+      partnerVoiceAccept(call.conversationId, (res) => {
+        if (!res?.success) {
+          alert(res?.message || 'Failed to accept call');
+          return;
+        }
+        partnerVoiceNavigateToCall(call.conversationId);
+      });
     };
 
     const reject = () => {

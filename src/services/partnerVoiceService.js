@@ -1,11 +1,16 @@
 import { ref } from 'vue';
-import { io } from 'socket.io-client';
 import router from '../router/index.js';
+import {
+  connectPartnerSocket,
+  disconnectPartnerSocket,
+  getPartnerSocketConnectedRef,
+  getPartnerSocketRef
+} from './partnerSocketService.js';
 
 const HISTORY_KEY = 'partner_voice_call_history_v1';
 
-const socketRef = ref(null);
-const isConnected = ref(false);
+const socketRef = getPartnerSocketRef();
+const isConnected = getPartnerSocketConnectedRef();
 
 // Active incoming ringing calls
 const incomingCalls = ref([]);
@@ -101,32 +106,13 @@ export function ensurePartnerVoiceConnected() {
   const token = localStorage.getItem('partner_token');
   if (!token) return;
 
-  // Reconnect if token changed
-  if (socketRef.value && lastToken && lastToken !== token) {
-    disconnectPartnerVoice();
-  }
-
-  if (!socketRef.value) {
-    lastToken = token;
-    // Dev mein VITE_WS_URL nahi hoga — empty string se Vite proxy use hogi
-    // Prod mein VITE_WS_URL set hoga (e.g. https://prod.brahmakosh.com)
-    const wsUrl = import.meta.env.VITE_WS_URL || '';
-    socketRef.value = io(wsUrl, {
-      path: '/socket.io/',
-      auth: { token },
-      transports: ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-      timeout: 20000
-    });
-  }
+  connectPartnerSocket();
+  if (!socketRef.value) return;
 
   if (listenersAttached) return;
   listenersAttached = true;
 
   socketRef.value.on('connect', () => {
-    isConnected.value = true;
     // Clear stale local call state that causes "Continue Calling" after reconnect
     incomingCalls.value = [];
     const staleStatuses = new Set(['ringing', 'in_call']);
@@ -138,10 +124,6 @@ export function ensurePartnerVoiceConnected() {
       );
       saveHistory(callHistory.value);
     }
-  });
-
-  socketRef.value.on('disconnect', () => {
-    isConnected.value = false;
   });
 
   socketRef.value.on('voice:call:incoming', (payload) => {
@@ -203,15 +185,7 @@ export function ensurePartnerVoiceConnected() {
 }
 
 export function disconnectPartnerVoice() {
-  if (socketRef.value) {
-    try {
-      socketRef.value.disconnect();
-    } catch {
-      // ignore
-    }
-  }
-  socketRef.value = null;
-  isConnected.value = false;
+  disconnectPartnerSocket(true);
   listenersAttached = false;
 }
 
@@ -251,11 +225,23 @@ export function partnerVoiceNavigateToCall(conversationId) {
   });
 }
 
-export function partnerVoiceAccept(conversationId) {
-  if (!conversationId || !socketRef.value || !isConnected.value) return false;
-  socketRef.value.emit('voice:call:accept', { conversationId });
-  incomingCalls.value = incomingCalls.value.filter((c) => c.conversationId !== conversationId);
-  upsertHistory(conversationId, { status: 'in_call', lastEventAt: nowIso() });
+export function partnerVoiceAccept(conversationId, onResult) {
+  if (!conversationId || !socketRef.value || !isConnected.value) {
+    onResult?.({ success: false, message: 'Not connected to server. Please wait and try again.' });
+    return false;
+  }
+
+  socketRef.value.emit('voice:call:accept', { conversationId }, (res) => {
+    if (!res?.success) {
+      onResult?.(res);
+      return;
+    }
+
+    incomingCalls.value = incomingCalls.value.filter((c) => c.conversationId !== conversationId);
+    upsertHistory(conversationId, { status: 'in_call', lastEventAt: nowIso() });
+    onResult?.(res);
+  });
+
   return true;
 }
 

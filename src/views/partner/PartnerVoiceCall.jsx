@@ -255,8 +255,14 @@ export default {
         const pc = createPeerConnection(convId);
         await ensureTracksAdded(pc);
         startRecording();
-        partnerVoiceAccept(convId);
-        status.value = 'in_call';
+        partnerVoiceAccept(convId, (res) => {
+          if (!res?.success) {
+            alert(res?.message || 'Failed to accept call');
+            destroyPeerConnection();
+            return;
+          }
+          status.value = 'in_call';
+        });
       } catch (err) {
         console.error('Failed to accept incoming call (partner):', err);
         destroyPeerConnection();

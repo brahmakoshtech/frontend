@@ -120,8 +120,13 @@ export default {
 
     const acceptIncoming = (conversationId) => {
       if (!conversationId) return;
-      partnerVoiceAccept(conversationId);
-      partnerVoiceNavigateToCall(conversationId);
+      partnerVoiceAccept(conversationId, (res) => {
+        if (!res?.success) {
+          alert(res?.message || 'Failed to accept call');
+          return;
+        }
+        partnerVoiceNavigateToCall(conversationId);
+      });
     };
 
     const declineIncoming = (conversationId) => {
