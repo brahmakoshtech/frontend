@@ -7,7 +7,8 @@ import {
   UserIcon, 
   FilmIcon,
   ArrowRightIcon,
-  SparklesIcon
+  SparklesIcon,
+  CreditCardIcon
 } from '@heroicons/vue/24/outline';
 
 export default {
@@ -56,6 +57,14 @@ export default {
         description: 'Watch spiritual reels and divine content',
         route: '/mobile/user/brahm-avatar',
         color: '#ff9500'
+      },
+      {
+        id: 6,
+        name: '💳 Buy Credits / Plans',
+        icon: CreditCardIcon,
+        description: 'Purchase credit packs or subscribe to a plan via Stripe',
+        route: '/mobile/user/payment',
+        color: '#0ea5e9'
       }
     ];
 
