@@ -142,7 +142,9 @@ export default {
       }
 
       connectPartnerSocket();
-      if (!socket.value || chatListenersAttached) return;
+      // FIX #7: socket null ya chatListenersAttached stale hone par listeners dobara attach karo
+      if (!socket.value) return;
+      if (chatListenersAttached) return;
       chatListenersAttached = true;
       socket.value.on('connect', () => {
         if (messagePollInterval) {
@@ -158,6 +160,8 @@ export default {
       });
       
       socket.value.on('disconnect', () => {
+        // FIX #7: socket disconnect hone par chatListenersAttached reset karo
+        chatListenersAttached = false;
         // shared socket — connection state tracked in partnerSocketService
       });
       
@@ -319,9 +323,21 @@ export default {
             inVoiceCall.value = true;
           } else if (signal.type === 'answer') {
             await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            // FIX #4: answer set hone ke baad pending ICE candidates flush karo
+            const pending = pc._pendingIceCandidates || [];
+            for (const cand of pending) {
+              await pc.addIceCandidate(new RTCIceCandidate(cand));
+            }
+            pc._pendingIceCandidates = [];
             inVoiceCall.value = true;
           } else if (signal.type === 'ice-candidate' && signal.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            // FIX #4: remoteDescription set nahi hai to buffer karo
+            if (!pc.remoteDescription) {
+              pc._pendingIceCandidates = pc._pendingIceCandidates || [];
+              pc._pendingIceCandidates.push(signal.candidate);
+            } else {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
           }
         } catch (err) {
           console.error('WebRTC handling error (partner):', err);
@@ -436,31 +452,57 @@ export default {
     };
     
     // Voice call helpers
-    const startVoiceCall = () => {
+    const startVoiceCall = async () => {
       if (!selectedConversation.value || !socket.value || !isConnected.value) return;
       const conversationId = selectedConversation.value.conversationId;
-      socket.value.emit('voice:call:initiate', { conversationId }, (res) => {
-        if (!res?.success) {
-          alert(res?.message || 'Failed to start voice call');
-        } else {
-        }
-      });
+      try {
+        isVoiceCalling.value = true;
+        // FIX #8: pehle WebRTC peer connection aur offer banao
+        const pc = createPeerConnection(conversationId);
+        const stream = await ensureLocalStream();
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        socket.value.emit('voice:call:initiate', { conversationId }, (res) => {
+          if (!res?.success) {
+            alert(res?.message || 'Failed to start voice call');
+            destroyPeerConnection();
+            isVoiceCalling.value = false;
+          } else {
+            // FIX #1 pattern: offer sirf initiate success ke baad bhejo
+            socket.value.emit('voice:signal', {
+              conversationId,
+              signal: { type: 'offer', sdp: pc.localDescription }
+            });
+          }
+        });
+      } catch (err) {
+        console.error('startVoiceCall error:', err);
+        destroyPeerConnection();
+        isVoiceCalling.value = false;
+      }
     };
 
-    const acceptVoiceCall = () => {
-      if (!incomingVoiceCall.value || !socket.value || !isConnected.value) return;
-      const conversationId = incomingVoiceCall.value.conversationId;
+    const acceptVoiceCall = async () => {
+      // FIX #10: incomingVoiceCall null hone par bhi kaam kare
+      const callData = incomingVoiceCall.value;
+      if (!callData || !socket.value || !isConnected.value) return;
+      const conversationId = callData.conversationId;
       socket.value.emit('voice:call:accept', { conversationId }, (res) => {
         if (!res?.success) {
           alert(res?.message || 'Failed to accept call');
         } else {
+          incomingVoiceCall.value = null;
         }
       });
     };
 
     const rejectVoiceCall = () => {
-      if (!incomingVoiceCall.value || !socket.value || !isConnected.value) return;
-      const conversationId = incomingVoiceCall.value.conversationId;
+      // FIX #10: incomingVoiceCall null check
+      const callData = incomingVoiceCall.value;
+      if (!callData || !socket.value || !isConnected.value) return;
+      const conversationId = callData.conversationId;
       socket.value.emit('voice:call:reject', { conversationId }, (res) => {
         if (!res?.success) {
           alert(res?.message || 'Failed to reject call');
@@ -480,6 +522,7 @@ export default {
     // Navigate to full voice-call page with current conversation
     const openVoiceCallPage = () => {
       if (!selectedConversation.value) return;
+      // FIX #13: window.location.href ki jagah Vue Router use karo
       router.push({
         name: 'PartnerVoiceCall',
         query: { conversationId: selectedConversation.value.conversationId }

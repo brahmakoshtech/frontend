@@ -155,8 +155,10 @@ export default {
     };
 
     const startCall = async () => {
-      const convId = prompt('Enter conversationId to call (from chat):');
-      if (!convId || !socket.value || !isConnected.value) return;
+      if (!socket.value || !isConnected.value) return;
+      // FIX #11: prompt() ki jagah targetConversationId.value use karo
+      const convId = targetConversationId.value || prompt('Enter conversationId to call (from chat):');
+      if (!convId) return;
       targetConversationId.value = convId;
       try {
         status.value = 'calling';
@@ -166,17 +168,17 @@ export default {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
+        // FIX #1: pehle call initiate karo, sirf success hone par offer bhejo
         socket.value.emit('voice:call:initiate', { conversationId: convId }, (res) => {
           if (!res?.success) {
             alert(res?.message || 'Failed to start call');
             destroyPeerConnection();
           } else {
+            socket.value.emit('voice:signal', {
+              conversationId: convId,
+              signal: { type: 'offer', sdp: pc.localDescription }
+            });
           }
-        });
-
-        socket.value.emit('voice:signal', {
-          conversationId: convId,
-          signal: { type: 'offer', sdp: pc.localDescription }
         });
       } catch (err) {
         console.error('Failed to start call:', err);
@@ -252,15 +254,17 @@ export default {
       if (!targetConversationId.value || !socket.value || !isConnected.value) return;
       try {
         const convId = targetConversationId.value;
-        const pc = createPeerConnection(convId);
-        await ensureTracksAdded(pc);
-        startRecording();
-        partnerVoiceAccept(convId, (res) => {
+        // FIX #3: accept emit karo pehle, WebRTC tracks baad mein SDP offer aane par add honge
+        partnerVoiceAccept(convId, async (res) => {
           if (!res?.success) {
             alert(res?.message || 'Failed to accept call');
             destroyPeerConnection();
             return;
           }
+          // Peer connection aur tracks tabhi add karo jab accept confirm ho
+          const pc = createPeerConnection(convId);
+          await ensureTracksAdded(pc);
+          startRecording();
           status.value = 'in_call';
         });
       } catch (err) {
@@ -277,15 +281,11 @@ export default {
     };
 
     const endCall = () => {
-      if (!targetConversationId.value || !socket.value || !isConnected.value) {
-        const convId = targetConversationId.value;
-        stopRecording().then(() => uploadRecording(convId)).finally(() => {
-          destroyPeerConnection();
-        });
-        return;
-      }
       const convId = targetConversationId.value;
-      partnerVoiceEnd(convId);
+      // FIX #2: socket check se pehle convId save karo, phir dono cases mein emit try karo
+      if (socket.value && isConnected.value && convId) {
+        partnerVoiceEnd(convId);
+      }
       stopRecording().then(() => uploadRecording(convId)).finally(() => {
         destroyPeerConnection();
       });
@@ -324,6 +324,12 @@ export default {
       destroyPeerConnection();
       if (unsubscribeSignals) unsubscribeSignals();
     });
+
+    // FIX #12: status reset helper — call end ke baad naya call start ho sake
+    const resetCallState = () => {
+      status.value = 'idle';
+      targetConversationId.value = null;
+    };
 
     const ringingCalls = computed(() => incomingCalls.value);
     const completedCalls = computed(() => callHistory.value.filter((c) => c.status && c.status !== 'ringing'));
@@ -421,8 +427,8 @@ export default {
                         </button>
                         <button
                           onClick={() => {
-                            // Navigate to the chat screen for this conversation
-                            window.location.href = `/partner/chat?conversationId=${encodeURIComponent(c.conversationId)}`;
+                            // FIX #13: Vue Router use karo full page reload avoid karne ke liye
+                            router.push({ name: 'PartnerChat', query: { conversationId: c.conversationId } });
                           }}
                           style="padding:8px 10px; background:#0ea5e9; color:white; border:none; border-radius:9999px; cursor:pointer; font-weight:700;"
                         >
@@ -503,7 +509,16 @@ export default {
           )}
 
           {status.value === 'ended' && (
-            <p style="margin-top:12px; font-size:13px; color:#9ca3af;">Call ended.</p>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:12px;">
+              <p style="font-size:13px; color:#9ca3af;">Call ended.</p>
+              {/* FIX #12: naya call shuru karne ka button */}
+              <button
+                onClick={resetCallState}
+                style="padding:10px 16px; background:#6b7280; border:none; border-radius:9999px; color:white; font-weight:600; cursor:pointer;"
+              >
+                Start New Call
+              </button>
+            </div>
           )}
         </div>
 

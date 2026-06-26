@@ -67,6 +67,7 @@ export function disconnectPartnerSocket(force = false) {
 
   if (socketRef.value) {
     try {
+      socketRef.value.removeAllListeners();
       socketRef.value.disconnect();
     } catch {
       // ignore
