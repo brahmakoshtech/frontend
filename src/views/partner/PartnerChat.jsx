@@ -249,22 +249,18 @@ export default {
         incomingVoiceCall.value = null;
         destroyPeerConnection();
         if (payload?.conversationId) {
-          // continueChat:true means the conversation stays ACCEPTED — chat is still open.
-          // Only mark ended on frontend when the server explicitly says continueChat is false/absent.
-          const shouldEndChat = !payload.continueChat;
+          // continueChat is always false now — voice call end = chat stays as-is, no auto-open
           if (selectedConversation.value?.conversationId === payload.conversationId) {
             selectedConversation.value = {
               ...selectedConversation.value,
-              voiceCallActive: false,
-              ...(shouldEndChat ? { status: 'ended', endedAt: payload.endedAt || new Date().toISOString() } : {})
+              voiceCallActive: false
             };
           }
           const conv = conversations.value.find(c => c.conversationId === payload.conversationId);
           if (conv) {
             conv.voiceCallActive = false;
-            if (shouldEndChat) conv.status = 'ended';
           }
-          loadConversations();
+          // Do NOT call loadConversations() here — that causes chat to auto-activate after call ends
         }
       });
 
