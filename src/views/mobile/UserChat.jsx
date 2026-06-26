@@ -414,15 +414,23 @@ export default {
       }
     };
 
+    const isVoiceCallConversation = (conv) =>
+      conv?.type === 'voice_call' || conv?.conversationType === 'call';
+
     const startVoiceCallForSelectedPartner = async () => {
       if (!selectedPartner.value) return;
       const partner = selectedPartner.value;
 
       const existingConv = conversations.value.find(
-        c => c.otherUser?._id === partner._id && c.status !== 'ended' && c.status !== 'rejected' && c.status !== 'cancelled'
+        c =>
+          c.otherUser?._id === partner._id &&
+          isVoiceCallConversation(c) &&
+          c.status !== 'ended' &&
+          c.status !== 'rejected' &&
+          c.status !== 'cancelled'
       );
 
-      // If active conversation exists, go directly to voice call screen
+      // If an active voice-call request/session exists, go directly to voice call screen
       if (existingConv) {
         showPartnerDetails.value = false;
         showPartnersList.value = false;
@@ -469,7 +477,8 @@ export default {
         
         const response = await api.createConversation({
           partnerId: selectedPartner.value._id,
-          astrologyData: astroData
+          astrologyData: astroData,
+          type: mode === 'voice' ? 'voice_call' : 'chat'
         });
         
         if (response && response.success) {

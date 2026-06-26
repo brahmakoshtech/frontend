@@ -225,17 +225,19 @@ export default {
     };
     
     // Create conversation request
-    const createConversationRequest = async () => {
-      if (!selectedPartner.value) return;
+    const createConversationRequest = async (mode = 'consultation') => {
+      if (!selectedPartner.value) return null;
       
       try {
         const response = await api.createConversation({
           partnerId: selectedPartner.value._id,
-          astrologyData: astrologyData.value
+          astrologyData: astrologyData.value,
+          type: mode === 'voice' ? 'voice_call' : 'chat'
         });
         
-        if (response.data.success) {
-          const conversation = response.data.data;
+        const payload = response?.data ?? response;
+        if (payload?.success) {
+          const conversation = payload.data;
           
           // Add to conversations list
           conversations.value.unshift(conversation);
@@ -244,16 +246,26 @@ export default {
           showAstrologyForm.value = false;
           
           // Show waiting message
-          alert('Conversation request sent! Waiting for partner to accept.');
+          alert(
+            mode === 'voice'
+              ? 'Voice call request sent! Connecting...'
+              : 'Conversation request sent! Waiting for partner to accept.'
+          );
           
-          // Switch to conversations view
-          activeView.value = 'chat';
-          selectConversation(conversation);
+          if (mode !== 'voice') {
+            // Switch to conversations view for chat requests only
+            activeView.value = 'chat';
+            selectConversation(conversation);
+          }
+
+          return conversation;
         }
       } catch (error) {
         console.error('Error creating conversation:', error);
         alert(error.response?.data?.message || 'Failed to create conversation request');
       }
+
+      return null;
     };
     
     // Select conversation
@@ -588,23 +600,20 @@ export default {
                   Cancel
                 </button>
                 <button
-                  onClick={createConversationRequest}
+                  onClick={() => createConversationRequest('consultation')}
                   style="flex: 1; padding: 12px; background-color: #6366f1; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;"
                 >
                   Request Consultation
                 </button>
                 <button
-                  onClick={() => {
-                    // First create conversation, then go to voice page when it’s created
-                    createConversationRequest().then(() => {
-                      const conv = conversations.value[0];
-                      if (conv) {
-                        router.push({
-                          name: 'UserVoiceCall',
-                          query: { conversationId: conv.conversationId }
-                        });
-                      }
-                    });
+                  onClick={async () => {
+                    const conv = await createConversationRequest('voice');
+                    if (conv?.conversationId) {
+                      router.push({
+                        name: 'UserVoiceCall',
+                        query: { conversationId: conv.conversationId }
+                      });
+                    }
                   }}
                   style="flex: 1; padding: 12px; background-color: #0ea5e9; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer;"
                 >
